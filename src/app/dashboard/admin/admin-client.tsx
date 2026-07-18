@@ -8,9 +8,10 @@ import {
   assignMatchToCourtAction,
   startMatchTimerAction,
   endMatchEarlyAction,
-  checkAndRotateExpiredMatchesAction
+  checkAndRotateExpiredMatchesAction,
+  creditUserCashAction
 } from '@/lib/actions/admin'
-import { Users, Clock, ShieldCheck, ShieldAlert, X, Search, UserCheck, Play, Award, Zap, Power, Volume2, QrCode, Trash2, Camera, AlertTriangle, Calendar, RefreshCw } from 'lucide-react'
+import { Users, Clock, ShieldCheck, ShieldAlert, X, Search, UserCheck, Play, Award, Zap, Power, Volume2, QrCode, Trash2, Camera, AlertTriangle, Calendar, RefreshCw, DollarSign } from 'lucide-react'
 
 interface Court {
   id: string
@@ -220,6 +221,20 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
   
   // Manual scan text field
   const [scanText, setScanText] = useState('')
+  const [overrideCashAmount, setOverrideCashAmount] = useState('')
+
+  useEffect(() => {
+    if (scanText.trim().startsWith('CASH-TOPUP:')) {
+      const decoded = decodeURIComponent(scanText.trim())
+      const amountMatch = decoded.match(/amount=([^&]+)/)
+      if (amountMatch) {
+        setOverrideCashAmount(amountMatch[1])
+      }
+    } else {
+      setOverrideCashAmount('')
+    }
+    setAdminMessage(null)
+  }, [scanText])
 
   // State to force re-render client countdown calculations every second
   const [ticks, setTicks] = useState(0)
@@ -1048,6 +1063,112 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
               </div>
 
               {scanText.trim() && (() => {
+                const isCashQr = scanText.trim().startsWith('CASH-TOPUP:')
+                
+                if (isCashQr) {
+                  const decoded = decodeURIComponent(scanText.trim())
+                  const userIdMatch = decoded.match(/userId=([^&]+)/)
+                  const parsedUserId = userIdMatch ? userIdMatch[1] : null
+                  const matchedScanUser = users.find(u => u.id === parsedUserId)
+
+                  if (!matchedScanUser) {
+                    return (
+                      <div style={{
+                        padding: '12px', textAlign: 'center', background: 'rgba(239, 68, 68, 0.03)',
+                        border: '1.5px dashed #fecaca', borderRadius: 'var(--radius-lg)',
+                        fontSize: '12px', color: 'var(--color-danger)', fontWeight: 650, marginTop: '4px'
+                      }}>
+                        No member found matching QR Cash Top-Up request.
+                      </div>
+                    )
+                  }
+
+                  const parsedAmt = parseFloat(overrideCashAmount) || 0
+
+                  return (
+                    <div style={{ marginTop: '4px' }}>
+                      <div style={{
+                        display: 'flex', flexDirection: 'column', gap: '12px',
+                        background: 'rgba(244, 124, 0, 0.03)', border: '1.5px solid rgba(244, 124, 0, 0.3)',
+                        borderRadius: 'var(--radius-lg)', padding: '14px',
+                        textAlign: 'left'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
+                              💵 Cash Top-Up: {matchedScanUser.name}
+                            </span>
+                            <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                              {matchedScanUser.email}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                          <div>Current Balance: <strong>₱{matchedScanUser.credits.toFixed(2)}</strong></div>
+                          <div>New Balance: <strong style={{ color: 'var(--color-success)' }}>₱{(matchedScanUser.credits + parsedAmt).toFixed(2)}</strong></div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                          <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Confirm Cash Received (₱):</label>
+                          <input
+                            type="number"
+                            value={overrideCashAmount}
+                            onChange={e => setOverrideCashAmount(e.target.value)}
+                            style={{
+                              width: '100%', height: '34px', padding: '0 10px',
+                              borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                              background: 'var(--color-card)', color: 'var(--color-text-primary)',
+                              fontSize: '13px', fontWeight: 700, outline: 'none', boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+
+                        {adminMessage && (
+                          <div style={{
+                            padding: '8px 10px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 600,
+                            background: adminMessage.success ? 'var(--color-success-subtle)' : 'var(--color-danger-subtle)',
+                            color: adminMessage.success ? 'var(--color-success)' : 'var(--color-danger)',
+                            border: `1px solid ${adminMessage.success ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+                          }}>
+                            {adminMessage.text}
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          disabled={isPending || parsedAmt <= 0}
+                          onClick={() => {
+                            startTransition(async () => {
+                              const res = await creditUserCashAction(matchedScanUser.id, parsedAmt)
+                              if (res.success) {
+                                setAdminMessage({ success: true, text: `Successfully credited ₱${parsedAmt.toFixed(2)} cash to ${matchedScanUser.name}!` })
+                                setTimeout(() => {
+                                  setIsScannerOpen(false)
+                                  setScanText('')
+                                }, 1500)
+                              } else {
+                                setAdminMessage({ success: false, text: res.error || 'Failed to credit cash.' })
+                              }
+                            })
+                          }}
+                          style={{
+                            width: '100%', height: '36px', background: 'var(--color-primary)',
+                            color: 'white', border: 'none', borderRadius: 'var(--radius-md)',
+                            fontSize: '12px', fontWeight: 800, cursor: (isPending || parsedAmt <= 0) ? 'not-allowed' : 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                            boxShadow: 'var(--shadow-sm)', transition: 'background var(--duration-fast)',
+                            opacity: (isPending || parsedAmt <= 0) ? 0.6 : 1
+                          }}
+                        >
+                          <DollarSign size={14} />
+                          <span>{isPending ? 'Processing...' : 'Confirm Cash Received & Credit'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                }
+
                 const matchedScanUser = users.find(u => 
                   u.id.substring(0, 12).toLowerCase() === scanText.trim().toLowerCase()
                 )

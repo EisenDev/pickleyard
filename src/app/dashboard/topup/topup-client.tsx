@@ -8,9 +8,10 @@ import Link from 'next/link'
 
 interface Props {
   userBalance: number
+  userId: string
 }
 
-type PaymentMethod = 'instapay' | 'gcash' | 'maya' | 'bank' | 'cash' | 'voucher'
+type PaymentMethod = 'instapay' | 'gcash' | 'maya' | 'cash' | 'voucher'
 
 const PAYMENT_METHODS = [
   {
@@ -38,14 +39,6 @@ const PAYMENT_METHODS = [
     bg: 'rgba(0,176,116,0.08)'
   },
   {
-    id: 'bank' as PaymentMethod,
-    label: 'Bank Transfer',
-    description: 'BDO, BPI, Unionbank, Metrobank',
-    icon: Building2,
-    color: '#7c3aed',
-    bg: 'rgba(124,58,237,0.08)'
-  },
-  {
     id: 'cash' as PaymentMethod,
     label: 'Pay with Cash',
     description: 'Pay at the front desk counter',
@@ -65,7 +58,7 @@ const PAYMENT_METHODS = [
 
 const PRESET_AMOUNTS = [100, 200, 300, 500, 1000, 1500]
 
-export function TopUpClient({ userBalance }: Props) {
+export function TopUpClient({ userBalance, userId }: Props) {
   const searchParams = useSearchParams()
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null)
   const [selectedAmount, setSelectedAmount] = useState<number>(300)
@@ -81,8 +74,12 @@ export function TopUpClient({ userBalance }: Props) {
     const cancel = searchParams.get('cancel')
     if (success) {
       setMessage({ success: true, text: 'Payment completed successfully! Your credits have been updated.' })
+      const timer = setTimeout(() => setMessage(null), 15000)
+      return () => clearTimeout(timer)
     } else if (cancel) {
       setMessage({ success: false, text: 'Payment checkout was cancelled or failed.' })
+      const timer = setTimeout(() => setMessage(null), 15000)
+      return () => clearTimeout(timer)
     }
   }, [searchParams])
 
@@ -199,7 +196,7 @@ export function TopUpClient({ userBalance }: Props) {
 
         {/* Right: Amount + Confirm */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {selectedMethod && selectedMethod !== 'voucher' && selectedMethod !== 'cash' && (
+          {selectedMethod && selectedMethod !== 'voucher' && (
             <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '16px', margin: '0 0 16px' }}>
                 Select Top-Up Amount
@@ -260,20 +257,38 @@ export function TopUpClient({ userBalance }: Props) {
                 </div>
               </div>
 
-              <button
-                onClick={handleTopUp}
-                disabled={isPending || !finalAmount || finalAmount <= 0}
-                style={{
-                  width: '100%', height: '42px',
-                  background: 'var(--color-primary)', color: 'white',
-                  border: 'none', borderRadius: 'var(--radius-md)',
-                  fontSize: '13px', fontWeight: 800, cursor: 'pointer',
-                  boxShadow: 'var(--shadow-primary-btn)',
-                  opacity: isPending ? 0.7 : 1
-                }}
-              >
-                {isPending ? 'Processing...' : `Top Up ₱${(finalAmount || 0).toFixed(2)} via ${PAYMENT_METHODS.find(m => m.id === selectedMethod)?.label}`}
-              </button>
+              {selectedMethod !== 'cash' ? (
+                <button
+                  onClick={handleTopUp}
+                  disabled={isPending || !finalAmount || finalAmount <= 0}
+                  style={{
+                    width: '100%', height: '42px',
+                    background: 'var(--color-primary)', color: 'white',
+                    border: 'none', borderRadius: 'var(--radius-md)',
+                    fontSize: '13px', fontWeight: 800, cursor: 'pointer',
+                    boxShadow: 'var(--shadow-primary-btn)',
+                    opacity: isPending ? 0.7 : 1
+                  }}
+                >
+                  {isPending ? 'Processing...' : `Top Up ₱${(finalAmount || 0).toFixed(2)} via ${PAYMENT_METHODS.find(m => m.id === selectedMethod)?.label}`}
+                </button>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', marginTop: '12px', borderTop: '1px solid var(--color-border)', paddingTop: '16px' }}>
+                  <div style={{ padding: '8px', background: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=CASH-TOPUP:userId=${userId}%26amount=${finalAmount}`} 
+                      alt="Cash Top Up QR Pass" 
+                      style={{ width: '150px', height: '150px', display: 'block', objectFit: 'contain' }} 
+                    />
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Cash Payment QR Pass
+                  </span>
+                  <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: 0, lineHeight: '1.5', textAlign: 'center' }}>
+                    Present this QR to the front desk staff. They will scan it and credit <strong>₱{(finalAmount || 0).toFixed(2)}</strong> to your account instantly.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -304,19 +319,6 @@ export function TopUpClient({ userBalance }: Props) {
               >
                 Redeem Code
               </button>
-            </div>
-          )}
-
-          {selectedMethod === 'cash' && (
-            <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '24px', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
-              <CreditCard size={36} color="var(--color-accent)" style={{ margin: '0 auto 12px' }} />
-              <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', margin: '0 0 8px' }}>Pay with Cash</h3>
-              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px', lineHeight: 1.6, margin: '8px 0 0' }}>
-                Visit the PaddleYard front desk counter and pay in cash. The staff will credit your account immediately.
-              </p>
-              <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', padding: '12px', marginTop: '16px', fontSize: '12px', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
-                📍 Front Desk — Open daily 7:00 AM – 11:00 PM
-              </div>
             </div>
           )}
 

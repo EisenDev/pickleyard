@@ -18,7 +18,7 @@ export default async function TopUpPage() {
         Loading Top-Up portal...
       </div>
     }>
-      <TopUpClient userBalance={Number(user.credits)} />
+      <TopUpClient userBalance={Number(user.credits)} userId={user.id} />
     </Suspense>
   )
 }

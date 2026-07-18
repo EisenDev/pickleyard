@@ -628,3 +628,45 @@ export async function registerUserByAdminAction(data: {
     return { success: false, error: error.message }
   }
 }
+
+// 12. Top up player credits manually via Cash at the front desk
+export async function creditUserCashAction(
+  userId: string,
+  amount: number
+): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized. Staff permissions required.' }
+
+  if (!amount || amount <= 0) {
+    return { success: false, error: 'Invalid top up amount.' }
+  }
+
+  try {
+    await db.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId } })
+      if (!user) throw new Error('User not found.')
+
+      // Update user credits
+      await tx.user.update({
+        where: { id: user.id },
+        data: { credits: Number(user.credits) + amount }
+      })
+
+      // Create ledger entry
+      await tx.transaction.create({
+        data: {
+          userId: user.id,
+          amount,
+          type: 'TOPUP',
+          reference: `CASH-${new Date().getTime()}`
+        }
+      })
+    })
+
+    revalidatePath('/dashboard/admin')
+    revalidatePath('/dashboard/admin/users')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to top up balance.' }
+  }
+}
