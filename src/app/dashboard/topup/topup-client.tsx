@@ -1,0 +1,341 @@
+'use client'
+
+import { useState, useTransition, useEffect } from 'react'
+import { createPaymongoSessionAction } from '@/lib/actions/paymongo'
+import { useSearchParams } from 'next/navigation'
+import { ShieldCheck, ShieldAlert, CreditCard, Smartphone, Building2, QrCode, Wallet, Tag, ChevronRight, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
+
+interface Props {
+  userBalance: number
+}
+
+type PaymentMethod = 'instapay' | 'gcash' | 'maya' | 'bank' | 'cash' | 'voucher'
+
+const PAYMENT_METHODS = [
+  {
+    id: 'instapay' as PaymentMethod,
+    label: 'InstaPay',
+    description: 'Real-time transfer via InstaPay network',
+    icon: QrCode,
+    color: 'var(--color-primary)',
+    bg: 'var(--color-primary-subtle)'
+  },
+  {
+    id: 'gcash' as PaymentMethod,
+    label: 'GCash',
+    description: 'Pay using your GCash e-wallet',
+    icon: Smartphone,
+    color: '#0066cc',
+    bg: 'rgba(0,102,204,0.08)'
+  },
+  {
+    id: 'maya' as PaymentMethod,
+    label: 'Maya (PayMaya)',
+    description: 'Pay using Maya digital wallet',
+    icon: Wallet,
+    color: '#00b074',
+    bg: 'rgba(0,176,116,0.08)'
+  },
+  {
+    id: 'bank' as PaymentMethod,
+    label: 'Bank Transfer',
+    description: 'BDO, BPI, Unionbank, Metrobank',
+    icon: Building2,
+    color: '#7c3aed',
+    bg: 'rgba(124,58,237,0.08)'
+  },
+  {
+    id: 'cash' as PaymentMethod,
+    label: 'Pay with Cash',
+    description: 'Pay at the front desk counter',
+    icon: CreditCard,
+    color: 'var(--color-accent)',
+    bg: 'var(--color-accent-subtle)'
+  },
+  {
+    id: 'voucher' as PaymentMethod,
+    label: 'Redeem Voucher',
+    description: 'Enter a promotional code',
+    icon: Tag,
+    color: '#059669',
+    bg: 'rgba(5,150,105,0.08)'
+  },
+]
+
+const PRESET_AMOUNTS = [100, 200, 300, 500, 1000, 1500]
+
+export function TopUpClient({ userBalance }: Props) {
+  const searchParams = useSearchParams()
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null)
+  const [selectedAmount, setSelectedAmount] = useState<number>(300)
+  const [customAmount, setCustomAmount] = useState('')
+  const [voucherCode, setVoucherCode] = useState('')
+  const [isPending, startTransition] = useTransition()
+  const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
+
+  const finalAmount = customAmount ? parseFloat(customAmount) : selectedAmount
+
+  useEffect(() => {
+    const success = searchParams.get('success')
+    const cancel = searchParams.get('cancel')
+    if (success) {
+      setMessage({ success: true, text: 'Payment completed successfully! Your credits have been updated.' })
+    } else if (cancel) {
+      setMessage({ success: false, text: 'Payment checkout was cancelled or failed.' })
+    }
+  }, [searchParams])
+
+  const handleTopUp = () => {
+    if (!selectedMethod) return
+    if (selectedMethod === 'voucher') {
+      setMessage({ success: false, text: 'Voucher redemption coming soon. Please contact staff.' })
+      return
+    }
+    if (selectedMethod === 'cash') {
+      return
+    }
+    setMessage(null)
+    startTransition(async () => {
+      const result = await createPaymongoSessionAction(finalAmount, selectedMethod)
+      if (result.success) {
+        // Redirect browser to PayMongo secure checkout session url
+        window.location.href = result.checkoutUrl
+      } else {
+        setMessage({ success: false, text: result.error })
+      }
+    })
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }} className="animate-fade-up">
+      {/* Back and Header */}
+      <div>
+        <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', textDecoration: 'none', marginBottom: '12px', fontWeight: 600 }}>
+          <ArrowLeft size={14} /> Dashboard
+        </Link>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+              Top Up Credits
+            </h1>
+            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px', margin: '4px 0 0' }}>
+              Add credits securely to your PaddleYard account.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {message && (
+        <div style={{
+          padding: '12px 16px', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '13px',
+          display: 'flex', alignItems: 'center', gap: '8px',
+          background: message.success ? 'var(--color-success-subtle)' : 'var(--color-danger-subtle)',
+          color: message.success ? 'var(--color-success)' : 'var(--color-danger)',
+          border: `1px solid ${message.success ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`
+        }}>
+          {message.success ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
+          <span>{message.text}</span>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '24px' }} className="topup-main-grid">
+        {/* Left: Payment Methods */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Current Balance */}
+          <div style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #005F63 100%)', borderRadius: 'var(--radius-xl)', padding: '28px', color: 'white', boxShadow: 'var(--shadow-md)' }}>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>CURRENT BALANCE</div>
+            <div style={{ fontSize: '36px', fontWeight: 800, marginTop: '6px', letterSpacing: '-0.02em' }}>
+              ₱{userBalance.toFixed(2)}
+            </div>
+          </div>
+
+          {/* Payment Method Selection */}
+          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '16px', margin: '0 0 16px' }}>
+              Choose Payment Method
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {PAYMENT_METHODS.map(method => {
+                const Icon = method.icon
+                const isSelected = selectedMethod === method.id
+                return (
+                  <button
+                    key={method.id}
+                    onClick={() => setSelectedMethod(method.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '14px',
+                      padding: '12px 16px',
+                      borderRadius: 'var(--radius-md)',
+                      border: isSelected ? `1px solid ${method.color}` : '1px solid var(--color-border)',
+                      background: isSelected ? method.bg : 'var(--color-card)',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all var(--duration-fast)',
+                      width: '100%'
+                    }}
+                  >
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 'var(--radius-md)',
+                      background: isSelected ? method.bg : 'var(--color-surface)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      border: `1px solid ${isSelected ? method.color : 'var(--color-border)'}`
+                    }}>
+                      <Icon size={18} color={method.color} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{method.label}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '1px' }}>{method.description}</div>
+                    </div>
+                    <ChevronRight size={16} color={isSelected ? method.color : 'var(--color-text-disabled)'} />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Amount + Confirm */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {selectedMethod && selectedMethod !== 'voucher' && selectedMethod !== 'cash' && (
+            <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '16px', margin: '0 0 16px' }}>
+                Select Top-Up Amount
+              </h3>
+
+              {/* Preset amounts */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '16px' }}>
+                {PRESET_AMOUNTS.map(amt => (
+                  <button
+                    key={amt}
+                    onClick={() => { setSelectedAmount(amt); setCustomAmount('') }}
+                    style={{
+                      height: '40px', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: '13px', fontWeight: 700,
+                      border: selectedAmount === amt && !customAmount ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: selectedAmount === amt && !customAmount ? 'var(--color-primary-subtle)' : 'var(--color-card)',
+                      color: selectedAmount === amt && !customAmount ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      transition: 'all var(--duration-fast)'
+                    }}
+                  >
+                    ₱{amt}
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom amount */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Or enter custom amount (₱)
+                </label>
+                <input
+                  type="number"
+                  placeholder="e.g. 750"
+                  value={customAmount}
+                  onChange={e => setCustomAmount(e.target.value)}
+                  style={{
+                    width: '100%', height: '40px', padding: '0 12px',
+                    borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                    background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                    fontSize: '14px', outline: 'none'
+                  }}
+                />
+              </div>
+
+              {/* Summary */}
+              <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                  <span>Top-up amount</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>₱{(finalAmount || 0).toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                  <span>Current balance</span>
+                  <span style={{ fontWeight: 700 }}>₱{userBalance.toFixed(2)}</span>
+                </div>
+                <div style={{ height: 1, background: 'var(--color-border)' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
+                  <span>New balance</span>
+                  <span style={{ color: 'var(--color-primary)' }}>₱{(userBalance + (finalAmount || 0)).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleTopUp}
+                disabled={isPending || !finalAmount || finalAmount <= 0}
+                style={{
+                  width: '100%', height: '42px',
+                  background: 'var(--color-primary)', color: 'white',
+                  border: 'none', borderRadius: 'var(--radius-md)',
+                  fontSize: '13px', fontWeight: 800, cursor: 'pointer',
+                  boxShadow: 'var(--shadow-primary-btn)',
+                  opacity: isPending ? 0.7 : 1
+                }}
+              >
+                {isPending ? 'Processing...' : `Top Up ₱${(finalAmount || 0).toFixed(2)} via ${PAYMENT_METHODS.find(m => m.id === selectedMethod)?.label}`}
+              </button>
+            </div>
+          )}
+
+          {selectedMethod === 'voucher' && (
+            <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '16px', margin: '0 0 16px' }}>
+                Redeem Voucher Code
+              </h3>
+              <input
+                type="text"
+                placeholder="Enter voucher/promo code..."
+                value={voucherCode}
+                onChange={e => setVoucherCode(e.target.value.toUpperCase())}
+                style={{
+                  width: '100%', height: '42px', padding: '0 12px', marginBottom: '12px',
+                  borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                  fontSize: '14px', fontWeight: 700, letterSpacing: '0.05em', outline: 'none'
+                }}
+              />
+              <button
+                onClick={handleTopUp}
+                disabled={!voucherCode.trim()}
+                style={{
+                  width: '100%', height: '42px', background: 'var(--color-primary)', color: 'white',
+                  border: 'none', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700, cursor: 'pointer'
+                }}
+              >
+                Redeem Code
+              </button>
+            </div>
+          )}
+
+          {selectedMethod === 'cash' && (
+            <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '24px', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
+              <CreditCard size={36} color="var(--color-accent)" style={{ margin: '0 auto 12px' }} />
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', margin: '0 0 8px' }}>Pay with Cash</h3>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px', lineHeight: 1.6, margin: '8px 0 0' }}>
+                Visit the PaddleYard front desk counter and pay in cash. The staff will credit your account immediately.
+              </p>
+              <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', padding: '12px', marginTop: '16px', fontSize: '12px', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
+                📍 Front Desk — Open daily 7:00 AM – 11:00 PM
+              </div>
+            </div>
+          )}
+
+          {!selectedMethod && (
+            <div style={{ background: 'var(--color-card)', border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '48px 24px', textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
+              <Wallet size={36} color="var(--color-text-disabled)" style={{ margin: '0 auto 12px' }} />
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: 0 }}>
+                Select a payment method to continue
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .topup-main-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </div>
+  )
+}
