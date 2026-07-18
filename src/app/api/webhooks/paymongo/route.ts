@@ -93,12 +93,18 @@ function verifyPaymongoSignature(
     return false
   }
 
+  if (debug) {
+    console.log(`[Webhook Debug] Raw Signature Header: "${signatureHeader}"`)
+  }
+
   const parts = signatureHeader.split(',')
   let timestamp = ''
   let signature = ''
 
   for (const part of parts) {
-    const [key, val] = part.split('=')
+    const [rawKey, rawVal] = part.split('=')
+    const key = rawKey?.trim()
+    const val = rawVal?.trim()
     if (key === 't') timestamp = val
     if (key === 'li' || key === 'te') signature = val
   }
