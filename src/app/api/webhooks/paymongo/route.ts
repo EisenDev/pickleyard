@@ -8,11 +8,10 @@ export async function POST(req: Request) {
   const webhookSecret = process.env.PAYMONGO_WEBHOOK_SECRET || ''
 
   // Validate webhook signature
-  console.log(`[Webhook Debug] Signature Header: "${signatureHeader}"`)
-  console.log(`[Webhook Debug] Secret Key Length: ${webhookSecret.length}`)
-  const isVerified = verifyPaymongoSignature(rawBody, signatureHeader, webhookSecret, true)
+  const isVerified = verifyPaymongoSignature(rawBody, signatureHeader, webhookSecret, false)
   if (!isVerified) {
     console.error('Invalid signature on PayMongo Webhook call')
+    verifyPaymongoSignature(rawBody, signatureHeader, webhookSecret, true) // print diagnostics on fail
     return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 })
   }
 
