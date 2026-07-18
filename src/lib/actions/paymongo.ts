@@ -64,8 +64,8 @@ export async function createPaymongoSessionAction(
                 quantity: 1
               }
             ],
-            success_url: 'https://ca12-158-62-77-176.ngrok-free.app/dashboard/topup?success=true',
-            cancel_url: 'https://ca12-158-62-77-176.ngrok-free.app/dashboard/topup?cancel=true',
+            success_url: `${process.env.NEXTAUTH_URL || 'https://pickleyard.zeraynce.com'}/dashboard/topup?success=true`,
+            cancel_url: `${process.env.NEXTAUTH_URL || 'https://pickleyard.zeraynce.com'}/dashboard/topup?cancel=true`,
             description: `Top-up ₱${amount.toFixed(2)} for ${user.name}`,
             metadata: {
               userId: user.id,

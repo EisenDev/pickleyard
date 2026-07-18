@@ -91,7 +91,7 @@ function verifyPaymongoSignature(rawBody: string, signatureHeader: string, webho
   for (const part of parts) {
     const [key, val] = part.split('=')
     if (key === 't') timestamp = val
-    if (key === 'li') signature = val
+    if (key === 'li' || key === 'te') signature = val
   }
 
   if (!timestamp || !signature) return false
