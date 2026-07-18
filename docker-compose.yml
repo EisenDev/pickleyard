@@ -1,28 +1,6 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: pickleyard-db
-    restart: always
-    environment:
-      POSTGRES_USER: ${DB_USER:-avenor}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-avenor_dev_2026}
-      POSTGRES_DB: ${DB_NAME:-paddleyardv2}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   web:
     image: ghcr.io/eisendev/pickleyard:latest
     container_name: pickleyard-web
@@ -30,7 +8,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-avenor}:${DB_PASSWORD:-avenor_dev_2026}@postgres:5432/${DB_NAME:-paddleyardv2}?schema=public
+      DATABASE_URL: ${DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL}
       AUTH_SECRET: ${AUTH_SECRET}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-https://pickleyard.zeraynce.com}
       PAYMONGO_SECRET_KEY: ${PAYMONGO_SECRET_KEY}
@@ -42,9 +21,3 @@ services:
       resources:
         limits:
           memory: 512M
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-volumes:
-  postgres_data:
