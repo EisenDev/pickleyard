@@ -102,4 +102,4 @@ jobs:
             docker compose up -d
 
             # 5. Apply database schemas
-            docker compose exec -T web npx prisma db push --accept-data-loss
+            docker compose exec -T web npx prisma@5.22.0 db push --skip-generate --accept-data-loss
