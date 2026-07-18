@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const payload = JSON.parse(rawBody)
     const eventType = payload.data?.attributes?.type
 
-    if (eventType === 'checkout_session.payment.paid') {
+    if (eventType === 'checkout_session.payment.paid' || eventType === 'payment.paid') {
       const sessionObj = payload.data?.attributes?.data
       const metadata = sessionObj?.attributes?.metadata
       const paymentId = sessionObj?.id || 'PAYMENT'
