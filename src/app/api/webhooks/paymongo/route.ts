@@ -8,7 +8,9 @@ export async function POST(req: Request) {
   const webhookSecret = process.env.PAYMONGO_WEBHOOK_SECRET || ''
 
   // Validate webhook signature
-  const isVerified = verifyPaymongoSignature(rawBody, signatureHeader, webhookSecret)
+  console.log(`[Webhook Debug] Signature Header: "${signatureHeader}"`)
+  console.log(`[Webhook Debug] Secret Key Length: ${webhookSecret.length}`)
+  const isVerified = verifyPaymongoSignature(rawBody, signatureHeader, webhookSecret, true)
   if (!isVerified) {
     console.error('Invalid signature on PayMongo Webhook call')
     return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 })
@@ -81,8 +83,16 @@ export async function POST(req: Request) {
   }
 }
 
-function verifyPaymongoSignature(rawBody: string, signatureHeader: string, webhookSecret: string): boolean {
-  if (!signatureHeader || !webhookSecret) return false
+function verifyPaymongoSignature(
+  rawBody: string,
+  signatureHeader: string,
+  webhookSecret: string,
+  debug = false
+): boolean {
+  if (!signatureHeader || !webhookSecret) {
+    if (debug) console.log('[Webhook Debug] Missing signature header or secret key.')
+    return false
+  }
 
   const parts = signatureHeader.split(',')
   let timestamp = ''
@@ -94,13 +104,22 @@ function verifyPaymongoSignature(rawBody: string, signatureHeader: string, webho
     if (key === 'li' || key === 'te') signature = val
   }
 
-  if (!timestamp || !signature) return false
+  if (!timestamp || !signature) {
+    if (debug) console.log(`[Webhook Debug] Missing parsed timestamp ("${timestamp}") or signature ("${signature}")`)
+    return false
+  }
 
   const baseString = timestamp + '.' + rawBody
   const computedSignature = crypto
     .createHmac('sha256', webhookSecret)
     .update(baseString)
     .digest('hex')
+
+  if (debug) {
+    console.log(`[Webhook Debug] Parsed Signature: "${signature}"`)
+    console.log(`[Webhook Debug] Computed Signature: "${computedSignature}"`)
+    console.log(`[Webhook Debug] Match: ${computedSignature === signature}`)
+  }
 
   return computedSignature === signature
 }
