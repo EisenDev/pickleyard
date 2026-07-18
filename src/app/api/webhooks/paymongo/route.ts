@@ -106,7 +106,7 @@ function verifyPaymongoSignature(
     const key = rawKey?.trim()
     const val = rawVal?.trim()
     if (key === 't') timestamp = val
-    if (key === 'li' || key === 'te') signature = val
+    if ((key === 'li' || key === 'te') && val) signature = val
   }
 
   if (!timestamp || !signature) {
