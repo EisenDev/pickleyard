@@ -82,6 +82,7 @@ jobs:
                   DIRECT_URL: ${DIRECT_URL}
                   AUTH_SECRET: ${AUTH_SECRET}
                   AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
+                  AUTH_URL: ${AUTH_URL}
                   NEXTAUTH_URL: ${NEXTAUTH_URL:-https://pickleyard.zeraynce.com}
                   PAYMONGO_SECRET_KEY: ${PAYMONGO_SECRET_KEY}
                   PAYMONGO_WEBHOOK_SECRET: ${PAYMONGO_WEBHOOK_SECRET}
