@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { registerEventAction, createClubEventAction } from '@/lib/actions/event'
 import { ShieldCheck, ShieldAlert, Clock, MapPin, Users, Ticket, Plus, X, Calendar, PencilLine } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 // ── Pickleball-specific event types ──────────────────────────────────────────
 const EVENT_TYPES = [
@@ -53,6 +54,7 @@ const EMPTY_FORM = {
 }
 
 export function EventsClient({ events, userBalance, userRole }: EventsClientProps) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
   const isAdmin = userRole === 'ADMIN' || userRole === 'STAFF'
@@ -70,6 +72,7 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
         const result = await registerEventAction(eventId)
         if (result.success) {
           setMessage({ success: true, text: `Successfully registered for "${title}"!` })
+          router.refresh()
         } else {
           setMessage({ success: false, text: result.error })
         }
@@ -91,7 +94,7 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
       return
     }
 
-    const scheduledAt = `${form.scheduledDate}T${form.scheduledTime || '08:00'}`
+    const scheduledAt = `${form.scheduledDate}T${form.scheduledTime || '08:00'}:00+08:00`
     setCreateMsg(null)
     startCreateTransition(async () => {
       const result = await createClubEventAction({
@@ -106,6 +109,7 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
       if (result.success) {
         setCreateMsg({ success: true, text: 'Event published! It is now live on the Events page.' })
         setForm(EMPTY_FORM)
+        router.refresh()
         setTimeout(() => { setIsCreateOpen(false); setCreateMsg(null) }, 1800)
       } else {
         setCreateMsg({ success: false, text: result.error })

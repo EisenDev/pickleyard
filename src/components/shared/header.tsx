@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signOut } from 'next-auth/react'
 import { Search, Bell, Grid, ChevronDown, LogOut, User, Settings, Menu as MenuIcon } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 interface HeaderProps {
   user?: {
@@ -16,6 +18,11 @@ interface HeaderProps {
 
 export function Header({ user, onMenuClick }: HeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const pathname = usePathname()
+
+  useEffect(() => {
+    setDropdownOpen(false)
+  }, [pathname])
 
   const initials = user?.name
     ? user.name
@@ -149,44 +156,40 @@ export function Header({ user, onMenuClick }: HeaderProps) {
                 zIndex: 400,
               }}
             >
-              <button
+              <Link
+                href="/dashboard/profile"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
                   padding: '8px 12px',
-                  background: 'transparent',
-                  border: 'none',
                   fontSize: 13,
                   color: 'var(--color-text-primary)',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  width: '100%',
+                  textDecoration: 'none',
+                  fontWeight: 500,
                 }}
                 className="dropdown-item"
               >
                 <User size={14} strokeWidth={1.5} />
                 <span>My Profile</span>
-              </button>
-              <button
+              </Link>
+              <Link
+                href="/dashboard/settings"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
                   padding: '8px 12px',
-                  background: 'transparent',
-                  border: 'none',
                   fontSize: 13,
                   color: 'var(--color-text-primary)',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  width: '100%',
+                  textDecoration: 'none',
+                  fontWeight: 500,
                 }}
                 className="dropdown-item"
               >
                 <Settings size={14} strokeWidth={1.5} />
                 <span>Club Settings</span>
-              </button>
+              </Link>
               <div style={{ height: 1, background: 'var(--color-border)', margin: '4px 0' }} />
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}

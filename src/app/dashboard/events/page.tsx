@@ -14,9 +14,22 @@ export default async function EventsPage() {
   const isAdmin = user.role === 'ADMIN' || user.role === 'STAFF'
 
   // Admins see ALL events (so they can manage/review them).
-  // Players see events from start of today — avoids hiding same-day events.
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
+  // Players see events from start of today in Asia/Manila (local to the club).
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  })
+  const parts = formatter.formatToParts(now)
+  const y = parts.find(p => p.type === 'year')?.value || '2026'
+  const m = parts.find(p => p.type === 'month')?.value || '1'
+  const d = parts.find(p => p.type === 'day')?.value || '1'
+
+  // Construct ISO string for midnight Manila (+08:00)
+  const manilaMidnightISO = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T00:00:00+08:00`
+  const todayStart = new Date(manilaMidnightISO)
 
   const events = await db.clubEvent.findMany({
     where: isAdmin ? undefined : { scheduledAt: { gte: todayStart } },
