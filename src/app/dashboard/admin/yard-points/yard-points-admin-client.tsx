@@ -165,13 +165,13 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
       </div>
 
       {/* Tab Navigation */}
-      <div style={{ display: 'flex', gap: '4px', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: '4px', border: '1px solid var(--color-border)' }}>
+      <div className="admin-tabs-container" style={{ display: 'flex', gap: '4px', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: '4px', border: '1px solid var(--color-border)' }}>
         {([
           ['settings', '⚙️ Earning Rates'],
           ['products', '🛒 Shop Products'],
           ['redemptions', `📦 Redemptions${pendingRedemptions.length > 0 ? ` (${pendingRedemptions.length})` : ''}`],
         ] as const).map(([tab, label]) => (
-          <button key={tab} onClick={() => setActiveTab(tab)} style={{
+          <button key={tab} className="admin-tab-btn" onClick={() => setActiveTab(tab)} style={{
             flex: 1, height: '36px', border: 'none', borderRadius: 'var(--radius-md)',
             background: activeTab === tab ? 'var(--color-card)' : 'transparent',
             color: activeTab === tab ? 'var(--color-primary)' : 'var(--color-text-secondary)',
@@ -256,16 +256,16 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
       {/* ── Products Tab ─────────────────────────────────────────────────── */}
       {activeTab === 'products' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={openAddProduct}
-              style={{ height: '38px', padding: '0 20px', border: 'none', borderRadius: 'var(--radius-md)', background: 'var(--color-primary)', color: 'white', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: 'var(--shadow-primary-btn)' }}
-            >
-              <Plus size={15} /> Add Product
-            </button>
-          </div>
-
           <div style={{ background: 'var(--color-card)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '10px' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)' }}>Shop Catalog</h3>
+              <button
+                onClick={openAddProduct}
+                style={{ height: '34px', padding: '0 16px', border: 'none', borderRadius: 'var(--radius-md)', background: 'var(--color-primary)', color: 'white', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: 'var(--shadow-primary-btn)', whiteSpace: 'nowrap' }}
+              >
+                <Plus size={14} /> Add Product
+              </button>
+            </div>
             {products.length === 0 ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-text-disabled)' }}>
                 <p style={{ margin: 0 }}>No products yet. Click "Add Product" to create one.</p>
@@ -495,8 +495,24 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
 
       <style>{`
         @media (max-width: 640px) {
-          table { font-size: 12px !important; }
-          td, th { padding: 10px 12px !important; }
+          table { font-size: 11px !important; }
+          td, th { padding: 8px 10px !important; }
+          .admin-tabs-container {
+            overflow-x: auto !important;
+            white-space: nowrap !important;
+            display: flex !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+            padding: 3px !important;
+          }
+          .admin-tabs-container::-webkit-scrollbar {
+            display: none !important;
+          }
+          .admin-tab-btn {
+            flex: 0 0 auto !important;
+            padding: 0 14px !important;
+            font-size: 11px !important;
+          }
         }
       `}</style>
     </>

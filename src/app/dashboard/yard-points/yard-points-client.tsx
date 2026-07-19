@@ -267,7 +267,7 @@ export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, log
           </div>
 
           {/* Product Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+          <div className="products-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
             {filteredProducts.map(product => {
               const catInfo = CATEGORY_ICONS[product.category] || CATEGORY_ICONS.OTHER
               const CatIcon = catInfo.icon
@@ -276,7 +276,7 @@ export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, log
               const isRedeeming = redeemingId === product.id
 
               return (
-                <div key={product.id} style={{
+                <div key={product.id} className="product-card" style={{
                   background: 'var(--color-card)', border: '1px solid var(--color-border)',
                   borderRadius: 'var(--radius-xl)', overflow: 'hidden', display: 'flex', flexDirection: 'column',
                   boxShadow: 'var(--shadow-sm)', opacity: canAfford ? 1 : 0.65
@@ -284,12 +284,12 @@ export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, log
                   {/* Product Color Band */}
                   <div style={{ height: '4px', background: `linear-gradient(90deg, ${catInfo.color}, ${catInfo.color}80)` }} />
 
-                  <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                  <div className="product-card-body" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: catInfo.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <CatIcon size={20} color={catInfo.color} />
+                      <div className="product-card-cat-icon" style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: catInfo.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <CatIcon size={20} color={catInfo.color} className="cat-icon-svg" />
                       </div>
-                      <span style={{
+                      <span className="product-card-cat-badge" style={{
                         fontSize: '10px', fontWeight: 800, textTransform: 'uppercase',
                         color: catInfo.color, background: catInfo.bg, padding: '3px 8px',
                         borderRadius: 'var(--radius-full)', border: `1px solid ${catInfo.color}30`
@@ -299,29 +299,29 @@ export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, log
                     </div>
 
                     <div>
-                      <h4 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', margin: '0 0 4px' }}>{product.name}</h4>
+                      <h4 className="product-card-title" style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', margin: '0 0 4px' }}>{product.name}</h4>
                       {product.description && (
-                        <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.5 }}>{product.description}</p>
+                        <p className="product-card-desc" style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.5 }}>{product.description}</p>
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Star size={16} color="#f59e0b" fill="#f59e0b" />
-                        <span style={{ fontSize: '18px', fontWeight: 900, color: '#f59e0b' }}>
+                        <Star size={16} color="#f59e0b" fill="#f59e0b" className="star-icon-svg" />
+                        <span className="product-card-points" style={{ fontSize: '18px', fontWeight: 900, color: '#f59e0b' }}>
                           {product.pointsCost.toLocaleString()}
                         </span>
                         <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>YP</span>
                       </div>
                       {product.stock !== -1 && (
-                        <span style={{ fontSize: '11px', color: product.stock > 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>
+                        <span className="product-card-stock" style={{ fontSize: '11px', color: product.stock > 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>
                           {product.stock > 0 ? `${product.stock} left` : 'Out of stock'}
                         </span>
                       )}
                     </div>
 
                     {!canAfford && (
-                      <p style={{ fontSize: '11px', color: 'var(--color-text-disabled)', margin: 0 }}>
+                      <p className="product-card-needed" style={{ fontSize: '11px', color: 'var(--color-text-disabled)', margin: 0 }}>
                         Need {(product.pointsCost - yardPoints).toLocaleString()} more YP
                       </p>
                     )}
@@ -331,6 +331,7 @@ export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, log
                       <button
                         onClick={() => setConfirmRedeem(product.id)}
                         disabled={!canAfford || (product.stock === 0) || isPending}
+                        className="product-card-btn"
                         style={{
                           width: '100%', height: '38px', borderRadius: 'var(--radius-md)',
                           background: canAfford && product.stock !== 0 ? 'var(--color-primary)' : 'var(--color-surface)',
@@ -341,20 +342,20 @@ export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, log
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                         }}
                       >
-                        <Gift size={14} />
-                        {product.stock === 0 ? 'Out of Stock' : !canAfford ? 'Not Enough YP' : 'Redeem'}
+                        <Gift size={14} className="gift-icon-svg" />
+                        <span>{product.stock === 0 ? 'Out of Stock' : !canAfford ? 'Not Enough YP' : 'Redeem'}</span>
                       </button>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <p style={{ fontSize: '12px', fontWeight: 600, color: '#92400e', background: 'rgba(245,158,11,0.08)', borderRadius: 'var(--radius-sm)', padding: '8px', margin: 0, textAlign: 'center' }}>
-                          Spend {product.pointsCost.toLocaleString()} YP on {product.name}?
+                      <div className="product-card-confirm" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <p style={{ fontSize: '11px', fontWeight: 600, color: '#92400e', background: 'rgba(245,158,11,0.08)', borderRadius: 'var(--radius-sm)', padding: '8px', margin: 0, textAlign: 'center' }}>
+                          Spend {product.pointsCost.toLocaleString()} YP?
                         </p>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button onClick={() => setConfirmRedeem(null)} style={{ flex: 1, height: '34px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'white', fontSize: '12px', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => setConfirmRedeem(null)} className="product-card-confirm-cancel" style={{ flex: 1, height: '32px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'white', fontSize: '11px', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
                             Cancel
                           </button>
-                          <button onClick={() => handleRedeem(product.id)} disabled={isRedeeming} style={{ flex: 2, height: '34px', border: 'none', borderRadius: 'var(--radius-md)', background: 'var(--color-success)', color: 'white', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
-                            {isRedeeming ? 'Processing...' : '✅ Confirm Redeem'}
+                          <button onClick={() => handleRedeem(product.id)} disabled={isRedeeming} className="product-card-confirm-ok" style={{ flex: 1.5, height: '32px', border: 'none', borderRadius: 'var(--radius-md)', background: 'var(--color-success)', color: 'white', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                            {isRedeeming ? '...' : 'Confirm'}
                           </button>
                         </div>
                       </div>
@@ -465,8 +466,64 @@ export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, log
       )}
 
       <style>{`
-        @media (max-width: 600px) {
+        @media (max-width: 640px) {
           .yp-tier-row { flex-direction: column !important; gap: 8px !important; }
+          .products-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+          }
+          .product-card-body {
+            padding: 12px !important;
+            gap: 8px !important;
+          }
+          .product-card-cat-icon {
+            width: 32px !important;
+            height: 32px !important;
+          }
+          .cat-icon-svg {
+            width: 16px !important;
+            height: 16px !important;
+          }
+          .product-card-cat-badge {
+            font-size: 8px !important;
+            padding: 2px 6px !important;
+          }
+          .product-card-title {
+            font-size: 13px !important;
+            font-weight: 800 !important;
+            line-height: 1.25 !important;
+            margin-bottom: 2px !important;
+          }
+          .product-card-desc {
+            font-size: 10px !important;
+            line-height: 1.35 !important;
+            display: -webkit-box !important;
+            -webkit-line-clamp: 2 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+            height: 2.7em !important;
+          }
+          .star-icon-svg {
+            width: 13px !important;
+            height: 13px !important;
+          }
+          .product-card-points {
+            font-size: 14px !important;
+          }
+          .product-card-stock {
+            font-size: 9px !important;
+          }
+          .product-card-needed {
+            font-size: 9px !important;
+          }
+          .product-card-btn {
+            height: 32px !important;
+            font-size: 11px !important;
+          }
+          .gift-icon-svg {
+            width: 12px !important;
+            height: 12px !important;
+          }
         }
       `}</style>
     </>
