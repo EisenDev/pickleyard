@@ -179,11 +179,8 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }} className="animate-fade-up">
-        {/* Back and Header */}
+        {/* Header */}
         <div>
-          <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', textDecoration: 'none', marginBottom: '12px', fontWeight: 600 }}>
-            <ArrowLeft size={14} /> Dashboard
-          </Link>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
