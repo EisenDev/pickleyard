@@ -106,18 +106,8 @@ export function TopUpClient({ userBalance, userId }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }} className="animate-fade-up">
-      {/* Mobile Modal Backdrop */}
-      {selectedMethod && (
-        <div
-          onClick={() => setSelectedMethod(null)}
-          className="topup-amount-modal-backdrop open"
-        />
-      )}
-      {/* Back and Header */}
+      {/* Header */}
       <div>
-        <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', textDecoration: 'none', marginBottom: '12px', fontWeight: 600 }}>
-          <ArrowLeft size={14} /> Dashboard
-        </Link>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
@@ -202,7 +192,15 @@ export function TopUpClient({ userBalance, userId }: Props) {
         </div>
 
         {/* Right: Amount + Confirm */}
-        <div className={`topup-amount-section-container ${selectedMethod ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div 
+          className={`topup-amount-modal-wrapper ${selectedMethod ? 'open' : ''}`}
+          onClick={() => setSelectedMethod(null)}
+        >
+          <div 
+            className={`topup-amount-section-container ${selectedMethod ? 'open' : ''}`} 
+            style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
           {selectedMethod && (
             <div className="topup-amount-modal-close-btn" style={{ display: 'none', justifyContent: 'flex-end', width: '100%' }}>
               <button
@@ -359,46 +357,58 @@ export function TopUpClient({ userBalance, userId }: Props) {
           )}
         </div>
       </div>
+    </div>
 
       <style>{`
+        /* Desktop defaults */
+        .topup-amount-modal-wrapper {
+          display: block;
+        }
+
         @media (max-width: 900px) {
-          .topup-main-grid { grid-template-columns: 1fr !important; }
-          .topup-amount-section-container.open {
-            position: fixed !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: calc(100% - 32px) !important;
-            max-width: 420px !important;
-            z-index: 1100 !important;
-            display: flex !important;
-            background: var(--color-card) !important;
-            border: 1px solid var(--color-border) !important;
-            border-radius: var(--radius-xl) !important;
-            box-shadow: var(--shadow-xl) !important;
-            padding: 16px !important;
-            max-height: 85vh !important;
-            overflow-y: auto !important;
-            box-sizing: border-box !important;
+          .topup-main-grid { 
+            grid-template-columns: 1fr !important; 
           }
-          .topup-amount-section-container:not(.open) {
-            display: none !important;
-          }
-          .topup-amount-modal-close-btn {
-            display: flex !important;
-            justify-content: flex-end !important;
-            margin-bottom: -10px !important;
-          }
-          .topup-amount-modal-backdrop.open {
-            display: block !important;
+          
+          .topup-amount-modal-wrapper.open {
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             right: 0 !important;
             bottom: 0 !important;
-            background: rgba(0, 0, 0, 0.5) !important;
+            background: rgba(0, 0, 0, 0.40) !important;
             backdrop-filter: blur(4px) !important;
-            z-index: 1050 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 10000 !important;
+          }
+
+          .topup-amount-modal-wrapper:not(.open) {
+            display: none !important;
+          }
+
+          .topup-amount-section-container.open {
+            background: var(--color-card) !important;
+            border: 1px solid var(--color-border) !important;
+            border-radius: var(--radius-xl) !important;
+            padding: 24px !important;
+            max-width: 420px !important;
+            width: 90% !important;
+            box-shadow: var(--shadow-lg) !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 20px !important;
+            position: relative !important;
+            max-height: 85vh !important;
+            overflow-y: auto !important;
+            box-sizing: border-box !important;
+          }
+
+          .topup-amount-modal-close-btn {
+            display: flex !important;
+            justify-content: flex-end !important;
+            margin-bottom: -10px !important;
           }
         }
       `}</style>

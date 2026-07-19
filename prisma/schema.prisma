@@ -17,7 +17,7 @@ model User {
   image          String?
   hashedPassword String?
   duprRating     Float     @default(0.0)
-  credits        Decimal   @default(50.00) @db.Decimal(10, 2)
+  credits        Decimal   @default(0.00) @db.Decimal(10, 2)
   membership     String    @default("STANDARD") // STANDARD, VIP, PRO
   role           String    @default("PLAYER")   // PLAYER, ADMIN
   createdAt      DateTime  @default(now())

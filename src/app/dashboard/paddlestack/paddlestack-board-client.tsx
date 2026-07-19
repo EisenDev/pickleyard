@@ -164,11 +164,8 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }} className="animate-fade-up">
-      {/* Back and Header */}
+      {/* Header */}
       <div>
-        <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', textDecoration: 'none', marginBottom: '12px', fontWeight: 600 }}>
-          <ArrowLeft size={14} /> Dashboard
-        </Link>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -208,9 +205,9 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
       {/* Join/Leave Panel */}
       {userRole !== 'ADMIN' && (
         !userInQueue ? (
-          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '20px 24px', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', boxShadow: 'var(--shadow-sm)' }}>
-            <span style={{ fontSize: '14px', fontWeight: 750, color: 'var(--color-text-primary)' }}>Join queue as:</span>
-            <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="join-queue-panel" style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '20px 24px', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', boxShadow: 'var(--shadow-sm)' }}>
+            <span className="join-queue-label" style={{ fontSize: '14px', fontWeight: 750, color: 'var(--color-text-primary)' }}>Join queue as:</span>
+            <div className="join-queue-levels" style={{ display: 'flex', gap: '8px' }}>
               {(['NOVICE', 'INTERMEDIATE', 'ADVANCED'] as const).map(lvl => (
                 <button key={lvl} onClick={() => setSkillLevel(lvl)} style={{
                   padding: '6px 14px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
@@ -218,10 +215,10 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
                   background: skillLevel === lvl ? 'var(--color-primary)' : 'var(--color-card)',
                   color: skillLevel === lvl ? 'white' : 'var(--color-text-secondary)',
                   transition: 'all var(--duration-fast)'
-                }}>{lvl}</button>
+                }} className="join-queue-btn">{lvl}</button>
               ))}
             </div>
-            <button onClick={handleJoin} disabled={isPending} style={{
+            <button onClick={handleJoin} disabled={isPending} className="enter-queue-submit-btn" style={{
               background: 'var(--color-primary)', color: 'white', border: 'none',
               borderRadius: 'var(--radius-md)', height: 36, padding: '0 18px',
               fontSize: '13px', fontWeight: 700, cursor: 'pointer',
@@ -648,6 +645,37 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
           }
           .mobile-only-queue {
             display: block !important;
+          }
+          .join-queue-panel {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+            padding: 16px !important;
+          }
+          .join-queue-label {
+            font-size: 13px !important;
+            text-align: center !important;
+          }
+          .join-queue-levels {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 6px !important;
+            width: 100% !important;
+          }
+          .join-queue-btn {
+            padding: 8px 4px !important;
+            font-size: 11.5px !important;
+            text-align: center !important;
+            width: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          .enter-queue-submit-btn {
+            width: 100% !important;
+            height: 40px !important;
+            margin-top: 4px !important;
+            justify-content: center !important;
           }
         }
       `}</style>
