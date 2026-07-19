@@ -314,11 +314,6 @@ body {
   
   .main-layout-frame {
     margin-left: 0 !important;
-    padding-bottom: 60px !important;
-  }
-  
-  .mobile-bottom-nav {
-    display: grid !important;
   }
   
   .mobile-menu-btn {

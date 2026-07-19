@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from './sidebar'
 import { Header } from './header'
-import { BottomNavigation } from './bottom-navigation'
 
 interface DashboardLayoutClientProps {
   user?: {
@@ -71,9 +70,6 @@ export function DashboardLayoutClient({ user, children }: DashboardLayoutClientP
           {children}
         </main>
       </div>
-
-      {/* Mobile Bottom Navigation Bar */}
-      <BottomNavigation user={user} onMenuClick={toggleSidebar} />
     </div>
   )
 }
