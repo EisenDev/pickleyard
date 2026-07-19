@@ -11,9 +11,16 @@ export default async function EventsPage() {
   const user = await db.user.findUnique({ where: { email: session.user.email } })
   if (!user) return null
 
+  const isAdmin = user.role === 'ADMIN' || user.role === 'STAFF'
+
+  // Admins see ALL events (so they can manage/review them).
+  // Players see events from start of today — avoids hiding same-day events.
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
   const events = await db.clubEvent.findMany({
-    where: { scheduledAt: { gte: new Date() } },
-    orderBy: { scheduledAt: 'asc' }
+    where: isAdmin ? undefined : { scheduledAt: { gte: todayStart } },
+    orderBy: { scheduledAt: 'asc' },
   })
 
   const formattedEvents = events.map((e) => ({
