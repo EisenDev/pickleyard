@@ -67,7 +67,7 @@ export function EventsClient({ events: initialEvents, userBalance, userRole }: E
 
   const fetchRealtimeData = async () => {
     try {
-      const res = await fetch('/api/realtime')
+      const res = await fetch('/api/realtime?type=events')
       if (res.ok) {
         const data = await res.json()
         if (data.success) {
@@ -478,6 +478,13 @@ export function EventsClient({ events: initialEvents, userBalance, userRole }: E
                 <input
                   type="date"
                   value={form.scheduledDate}
+                  min={(() => {
+                    const d = new Date()
+                    const year = d.getFullYear()
+                    const month = String(d.getMonth() + 1).padStart(2, '0')
+                    const day = String(d.getDate()).padStart(2, '0')
+                    return `${year}-${month}-${day}`
+                  })()}
                   onChange={e => setForm(f => ({ ...f, scheduledDate: e.target.value }))}
                   style={{
                     width: '100%', height: '40px', padding: '0 10px',

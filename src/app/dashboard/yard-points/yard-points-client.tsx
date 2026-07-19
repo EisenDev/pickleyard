@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { redeemShopProductAction, claimDailyLoginAction } from '@/lib/actions/yardpoints'
 import { Star, Gift, Droplets, Zap, Clock, ShoppingBag, CheckCircle, XCircle, AlertCircle, ChevronRight, Trophy, Flame, Shield, Crown, Sparkles } from 'lucide-react'
@@ -56,7 +56,8 @@ interface Props {
 }
 
 export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, logs, products, redemptions, dailyClaimedToday }: Props) {
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
+  const [activeLoadingId, setActiveLoadingId] = useState<string | null>(null)
   const router = useRouter()
   const [notice, setNotice] = useState<{ success: boolean; text: string } | null>(null)
   const [redeemingId, setRedeemingId] = useState<string | null>(null)
@@ -66,14 +67,16 @@ export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, log
   const [shopFilter, setShopFilter] = useState<string>('ALL')
 
   // ── Real-Time Polling ───────────────────────────────────────────────
-  // Refresh server data every 30 seconds so Yard Points balance updates
+  // Refresh server data every 15 seconds so Yard Points balance updates
   // automatically (e.g. after admin records a match winner).
+  // Polling pauses when an action is in flight so buttons remain clickable.
   useEffect(() => {
+    if (activeLoadingId) return
     const interval = setInterval(() => {
       router.refresh()
-    }, 30000)
+    }, 15000)
     return () => clearInterval(interval)
-  }, [router])
+  }, [router, activeLoadingId])
 
   const currentTier = getTier(lifetimeYardPoints)
   const nextTier = getNextTier(lifetimeYardPoints)
@@ -86,30 +89,38 @@ export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, log
     setTimeout(() => setNotice(null), 5000)
   }
 
-  const handleClaimDaily = () => {
-    startTransition(async () => {
-      const res = await claimDailyLoginAction()
-      if (res.success) {
-        setClaimedToday(true)
-        showNotice(true, '🎉 Daily check-in claimed! +2 Yard Points added.')
-      } else {
-        showNotice(false, res.error || 'Could not claim daily reward.')
-      }
-    })
+  const handleClaimDaily = async () => {
+    if (activeLoadingId) return
+    setActiveLoadingId('daily')
+    setIsPending(true)
+    const res = await claimDailyLoginAction()
+    setIsPending(false)
+    setActiveLoadingId(null)
+    if (res.success) {
+      setClaimedToday(true)
+      showNotice(true, '🎉 Daily check-in claimed! +2 Yard Points added.')
+      router.refresh()
+    } else {
+      showNotice(false, res.error || 'Could not claim daily reward.')
+    }
   }
 
-  const handleRedeem = (productId: string) => {
-    startTransition(async () => {
-      setRedeemingId(productId)
-      const res = await redeemShopProductAction(productId)
-      setRedeemingId(null)
-      setConfirmRedeem(null)
-      if (res.success) {
-        showNotice(true, '✅ Redemption submitted! A staff member will hand it over shortly.')
-      } else {
-        showNotice(false, res.error || 'Redemption failed.')
-      }
-    })
+  const handleRedeem = async (productId: string) => {
+    if (activeLoadingId) return
+    setActiveLoadingId('redeem-' + productId)
+    setIsPending(true)
+    setRedeemingId(productId)
+    const res = await redeemShopProductAction(productId)
+    setIsPending(false)
+    setRedeemingId(null)
+    setConfirmRedeem(null)
+    setActiveLoadingId(null)
+    if (res.success) {
+      showNotice(true, '✅ Redemption submitted! A staff member will hand it over shortly.')
+      router.refresh()
+    } else {
+      showNotice(false, res.error || 'Redemption failed.')
+    }
   }
 
   const shopCategories = ['ALL', ...Array.from(new Set(products.map(p => p.category)))]

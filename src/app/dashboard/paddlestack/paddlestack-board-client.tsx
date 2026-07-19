@@ -92,7 +92,7 @@ export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialS
 
   const fetchRealtimeData = async () => {
     try {
-      const res = await fetch('/api/realtime')
+      const res = await fetch('/api/realtime?type=paddlestack')
       if (res.ok) {
         const data = await res.json()
         if (data.success) {

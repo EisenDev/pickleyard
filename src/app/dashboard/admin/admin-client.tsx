@@ -153,7 +153,7 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
 
   const fetchRealtimeData = async () => {
     try {
-      const res = await fetch('/api/realtime')
+      const res = await fetch('/api/realtime?type=paddlestack')
       if (res.ok) {
         const data = await res.json()
         if (data.success) {
@@ -250,7 +250,6 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
   } | null>(null)
   const [selectedWinners, setSelectedWinners] = useState<string[]>([]) // userId array, max 2
   const [confirmRecord, setConfirmRecord] = useState(false)
-  const [expiredCourtIds, setExpiredCourtIds] = useState<Set<string>>(new Set())
 
   const showNotice = (success: boolean, text: string) => {
     setKioskNotice({ success, text })
@@ -337,7 +336,7 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
   useEffect(() => {
     const interval = setInterval(async () => {
       await checkAndRotateExpiredMatchesAction()
-    }, 5000)
+    }, 30000) // Every 30s instead of 5s to reduce DB load
     return () => clearInterval(interval)
   }, [])
 
@@ -525,7 +524,6 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     setIsPending(false)
     setActiveLoadingId(null)
     if (res.success) {
-      setExpiredCourtIds(prev => { const next = new Set(prev); next.delete(recordWinnerModal.courtId); return next })
       setRecordWinnerModal(null)
       setConfirmRecord(false)
       showNotice(true, `✅ Match result recorded! Yard Points awarded to all players.`)
@@ -536,43 +534,38 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     }
   }
 
-  // Real-Time Court Timer Component
-  function ActiveTimer({ startTime, duration, courtId }: { startTime: Date; duration: number; courtId: string }) {
-    const [timeLeft, setTimeLeft] = useState(0)
+// Real-Time Court Game Timer (defined OUTSIDE AdminClient so it's stable across re-renders)
+function ActiveTimer({ startTime, duration }: { startTime: Date | string; duration: number }) {
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
+    const elapsed = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000)
+    return Math.max(0, duration - elapsed)
+  })
 
-    useEffect(() => {
-      const tick = () => {
-        const elapsed = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000)
-        const remaining = Math.max(0, duration - elapsed)
-        setTimeLeft(remaining)
+  useEffect(() => {
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000)
+      setTimeLeft(Math.max(0, duration - elapsed))
+    }
+    tick()
+    const timer = setInterval(tick, 1000)
+    return () => clearInterval(timer)
+  }, [startTime, duration])
 
-        if (remaining === 0) {
-          // Instead of auto-rotating, mark this court as needing winner recording
-          setExpiredCourtIds(prev => {
-            if (prev.has(courtId)) return prev
-            const next = new Set(prev)
-            next.add(courtId)
-            return next
-          })
-        }
-      }
+  const mins = Math.floor(timeLeft / 60)
+  const secs = timeLeft % 60
+  const timeStr = `${mins}:${String(secs).padStart(2, '0')}`
+  const isExpired = timeLeft === 0
 
-      tick()
-      const timer = setInterval(tick, 1000)
-      return () => clearInterval(timer)
-    }, [startTime, duration, courtId])
-
-    const mins = Math.floor(timeLeft / 60)
-    const secs = timeLeft % 60
-    const timeStr = `${mins}:${String(secs).padStart(2, '0')}`
-
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: 800, color: timeLeft < 120 ? 'var(--color-danger)' : 'var(--color-primary)' }}>
-        <Clock size={15} />
-        <span>{timeLeft === 0 ? "TIME'S UP" : timeStr}</span>
-      </div>
-    )
-  }
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: 800,
+      color: isExpired ? 'var(--color-danger)' : timeLeft < 120 ? 'var(--color-danger)' : 'var(--color-primary)'
+    }}>
+      <Clock size={15} />
+      <span>{isExpired ? "TIME'S UP" : timeStr}</span>
+    </div>
+  )
+}
 
 
   return (
@@ -658,6 +651,13 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
                 const isAvailable = court.status === 'AVAILABLE'
                 const isClosed = court.status === 'MAINTENANCE'
 
+                // Compute timer expiry from DB data (not from client-side state)
+                // This prevents "Record Winner" from showing while timer still runs
+                const isTimerExpired = isOccupied && court.gameStartedAt != null && (() => {
+                  const elapsed = Math.floor((Date.now() - new Date(court.gameStartedAt!).getTime()) / 1000)
+                  return elapsed >= court.gameDurationSecond
+                })()
+
                 return (
                   <div
                     key={court.id}
@@ -701,7 +701,7 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
                         )}
                       </div>
                       {isOccupied && court.gameStartedAt && (
-                        <ActiveTimer startTime={court.gameStartedAt} duration={court.gameDurationSecond} courtId={court.id} />
+                        <ActiveTimer startTime={court.gameStartedAt} duration={court.gameDurationSecond} />
                       )}
                       {isReady && (
                         <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -802,38 +802,38 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
                                   Start Match Timer
                                 </button>
                               </div>
+                            ) : isTimerExpired ? (
+                              // Timer expired → show Record Winner (ONLY when timer has truly expired per DB data)
+                              <button
+                                onClick={() => handleOpenRecordWinner(court.id, court.number)}
+                                disabled={isPending}
+                                style={{
+                                  width: '100%', height: '40px', border: 'none', borderRadius: 'var(--radius-md)',
+                                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                  color: 'white',
+                                  fontSize: '13px', fontWeight: 800, cursor: 'pointer',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                  marginTop: '8px', boxShadow: '0 0 12px rgba(245,158,11,0.5)',
+                                  animation: 'pulse-danger 1.5s infinite alternate'
+                                }}
+                              >
+                                <Trophy size={15} />
+                                Record Winner & Award Points
+                              </button>
                             ) : (
-                              expiredCourtIds.has(court.id) ? (
-                                <button
-                                  onClick={() => handleOpenRecordWinner(court.id, court.number)}
-                                  disabled={isPending}
-                                  style={{
-                                    width: '100%', height: '40px', border: 'none', borderRadius: 'var(--radius-md)',
-                                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                                    color: 'white',
-                                    fontSize: '13px', fontWeight: 800, cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                    marginTop: '8px', boxShadow: '0 0 12px rgba(245,158,11,0.5)',
-                                    animation: 'pulse-danger 1.5s infinite alternate'
-                                  }}
-                                >
-                                  <Trophy size={15} />
-                                  Record Winner & Award Points
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleEndMatch(court.id)}
-                                  disabled={isPending}
-                                  style={{
-                                    width: '100%', height: '36px', border: 'none', borderRadius: 'var(--radius-md)',
-                                    background: 'var(--color-danger-subtle)', color: 'var(--color-danger)',
-                                    fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px'
-                                  }}
-                                >
-                                  <Power size={13} />
-                                  Force End Match & Re-queue
-                                </button>
-                              )
+                              // Game still running → show Force End button only
+                              <button
+                                onClick={() => handleEndMatch(court.id)}
+                                disabled={isPending}
+                                style={{
+                                  width: '100%', height: '36px', border: 'none', borderRadius: 'var(--radius-md)',
+                                  background: 'var(--color-danger-subtle)', color: 'var(--color-danger)',
+                                  fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px'
+                                }}
+                              >
+                                <Power size={13} />
+                                Force End Match & Re-queue
+                              </button>
                             )}
                           </>
                         )
