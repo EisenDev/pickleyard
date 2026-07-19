@@ -104,12 +104,12 @@ export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, log
   const filteredProducts = shopFilter === 'ALL' ? products : products.filter(p => p.category === shopFilter)
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '4px 0 32px' }}>
       {/* Notice Banner */}
       {notice && (
         <div style={{
           padding: '12px 16px', borderRadius: 'var(--radius-lg)', fontSize: '13px', fontWeight: 650,
-          display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px',
+          display: 'flex', alignItems: 'center', gap: '8px',
           background: notice.success ? 'var(--color-success-subtle)' : 'var(--color-danger-subtle)',
           color: notice.success ? 'var(--color-success)' : 'var(--color-danger)',
           border: `1.5px solid ${notice.success ? '#bbf7d0' : '#fecaca'}`,
@@ -526,6 +526,6 @@ export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, log
           }
         }
       `}</style>
-    </>
+    </div>
   )
 }

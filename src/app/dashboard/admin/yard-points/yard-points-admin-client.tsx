@@ -64,6 +64,32 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
     })
   }
 
+  // ── System Default Rates ──────────────────────────────────────────────────
+  const DEFAULT_RATES: Record<string, string> = {
+    yp_novice_participation: '20',
+    yp_intermediate_participation: '35',
+    yp_advanced_participation: '50',
+    yp_win_bonus: '15',
+    yp_daily_login: '2',
+    yp_topup_500: '75',
+    yp_topup_1000: '180',
+    yp_topup_2000: '450',
+    yp_topup_5000: '1350',
+  }
+
+  const handleResetSettings = () => {
+    if (!confirm('Are you sure you want to reset all rates to system default rates?')) return
+    setSettings(prev => ({
+      ...prev,
+      ...DEFAULT_RATES
+    }))
+    startTransition(async () => {
+      const res = await updateYardPointsSettingsAction(DEFAULT_RATES)
+      if (res.success) showNotice(true, '✅ Settings reset to system defaults successfully!')
+      else showNotice(false, res.error || 'Failed to reset settings.')
+    })
+  }
+
   // ── Product Form ──────────────────────────────────────────────────────────
   const openAddProduct = () => {
     setProductForm({ name: '', description: '', category: 'DRINK', pointsCost: 600, stock: -1, isActive: true })
@@ -117,26 +143,26 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
 
   // ── Settings Fields Config ─────────────────────────────────────────────────
   const earningFields = [
-    { key: 'yp_novice_participation',      label: 'Novice Participation (per game)', suffix: 'YP' },
-    { key: 'yp_intermediate_participation', label: 'Intermediate Participation (per game)', suffix: 'YP' },
-    { key: 'yp_advanced_participation',    label: 'Advanced Participation (per game)', suffix: 'YP' },
-    { key: 'yp_win_bonus',                 label: 'Win Bonus (added on top)', suffix: 'YP' },
-    { key: 'yp_daily_login',               label: 'Daily Login Reward', suffix: 'YP' },
+    { key: 'yp_novice_participation',      label: 'Novice Participation (per game)', suffix: 'YP', def: '20' },
+    { key: 'yp_intermediate_participation', label: 'Intermediate Participation (per game)', suffix: 'YP', def: '35' },
+    { key: 'yp_advanced_participation',    label: 'Advanced Participation (per game)', suffix: 'YP', def: '50' },
+    { key: 'yp_win_bonus',                 label: 'Win Bonus (added on top)', suffix: 'YP', def: '15' },
+    { key: 'yp_daily_login',               label: 'Daily Login Reward', suffix: 'YP', def: '2' },
   ]
   const topupFields = [
-    { key: 'yp_topup_500',  label: '₱500 Top-up Reward',   suffix: 'YP' },
-    { key: 'yp_topup_1000', label: '₱1,000 Top-up Reward', suffix: 'YP' },
-    { key: 'yp_topup_2000', label: '₱2,000 Top-up Reward', suffix: 'YP' },
-    { key: 'yp_topup_5000', label: '₱5,000 Top-up Reward', suffix: 'YP' },
+    { key: 'yp_topup_500',  label: '₱500 Top-up Reward',   suffix: 'YP', def: '75' },
+    { key: 'yp_topup_1000', label: '₱1,000 Top-up Reward', suffix: 'YP', def: '180' },
+    { key: 'yp_topup_2000', label: '₱2,000 Top-up Reward', suffix: 'YP', def: '450' },
+    { key: 'yp_topup_5000', label: '₱5,000 Top-up Reward', suffix: 'YP', def: '1350' },
   ]
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '4px 0 32px' }}>
       {/* Notice */}
       {notice && (
         <div style={{
           padding: '12px 16px', borderRadius: 'var(--radius-lg)', fontSize: '13px', fontWeight: 650,
-          display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px',
+          display: 'flex', alignItems: 'center', gap: '8px',
           background: notice.success ? 'var(--color-success-subtle)' : 'var(--color-danger-subtle)',
           color: notice.success ? 'var(--color-success)' : 'var(--color-danger)',
           border: `1.5px solid ${notice.success ? '#bbf7d0' : '#fecaca'}`,
@@ -184,70 +210,97 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
 
       {/* ── Settings Tab ─────────────────────────────────────────────────── */}
       {activeTab === 'settings' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-          {/* Earning Rates Card */}
-          <div style={{ background: 'var(--color-card)', borderRadius: 'var(--radius-xl)', padding: '24px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Star size={16} color="#f59e0b" fill="#f59e0b" /> Open Play & Login Rates
-            </h3>
-            {earningFields.map(field => (
-              <div key={field.key}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px' }}>
-                  {field.label}
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="number"
-                    value={settings[field.key] || ''}
-                    onChange={e => setSettings(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    style={{ flex: 1, height: '38px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0 12px', fontSize: '15px', fontWeight: 700, color: 'var(--color-text-primary)', background: 'var(--color-surface)' }}
-                    min={0}
-                  />
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#f59e0b', minWidth: '28px' }}>{field.suffix}</span>
-                </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Two-column grid for settings cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+
+            {/* Earning Rates Card */}
+            <div style={{ background: 'var(--color-card)', borderRadius: 'var(--radius-xl)', padding: '24px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Star size={16} color="#f59e0b" fill="#f59e0b" /> Open Play &amp; Login Rates
+                </h3>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)' }}>Points awarded per match by skill level.</p>
               </div>
-            ))}
+              {earningFields.map(field => (
+                <div key={field.key}>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px' }}>
+                    {field.label}
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="number"
+                      value={settings[field.key] || ''}
+                      onChange={e => setSettings(prev => ({ ...prev, [field.key]: e.target.value }))}
+                      style={{ flex: 1, height: '40px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0 12px', fontSize: '15px', fontWeight: 700, color: 'var(--color-text-primary)', background: 'var(--color-surface)' }}
+                      min={0}
+                    />
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#f59e0b', minWidth: '28px' }}>{field.suffix}</span>
+                  </div>
+                  <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--color-text-disabled)' }}>System default: <strong>{field.def} YP</strong></p>
+                </div>
+              ))}
+            </div>
+
+            {/* Top-up Rates Card */}
+            <div style={{ background: 'var(--color-card)', borderRadius: 'var(--radius-xl)', padding: '24px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Gift size={16} color="#10b981" /> Top-up Reward Rates
+                </h3>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                  Points awarded when a player tops up their wallet at or above these amounts.
+                </p>
+              </div>
+              {topupFields.map(field => (
+                <div key={field.key}>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px' }}>
+                    {field.label}
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="number"
+                      value={settings[field.key] || ''}
+                      onChange={e => setSettings(prev => ({ ...prev, [field.key]: e.target.value }))}
+                      style={{ flex: 1, height: '40px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0 12px', fontSize: '15px', fontWeight: 700, color: 'var(--color-text-primary)', background: 'var(--color-surface)' }}
+                      min={0}
+                    />
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#f59e0b', minWidth: '28px' }}>{field.suffix}</span>
+                  </div>
+                  <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--color-text-disabled)' }}>System default: <strong>{field.def} YP</strong></p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Top-up Rates Card */}
-          <div style={{ background: 'var(--color-card)', borderRadius: 'var(--radius-xl)', padding: '24px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Gift size={16} color="#10b981" /> Top-up Reward Rates
-            </h3>
-            <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-              Points awarded when a player tops up their wallet at or above these amounts.
-            </p>
-            {topupFields.map(field => (
-              <div key={field.key}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px' }}>
-                  {field.label}
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="number"
-                    value={settings[field.key] || ''}
-                    onChange={e => setSettings(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    style={{ flex: 1, height: '38px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0 12px', fontSize: '15px', fontWeight: 700, color: 'var(--color-text-primary)', background: 'var(--color-surface)' }}
-                    min={0}
-                  />
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#f59e0b', minWidth: '28px' }}>{field.suffix}</span>
-                </div>
-              </div>
-            ))}
-
+          {/* Action buttons row — full width below both cards */}
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button
               onClick={handleSaveSettings}
               disabled={isPending}
               style={{
-                height: '42px', border: 'none', borderRadius: 'var(--radius-md)',
+                flex: 1, minWidth: '180px', height: '44px', border: 'none', borderRadius: 'var(--radius-md)',
                 background: 'var(--color-primary)', color: 'white',
-                fontSize: '14px', fontWeight: 700, cursor: 'pointer', marginTop: '8px',
+                fontSize: '14px', fontWeight: 700, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                boxShadow: 'var(--shadow-primary-btn)'
+                boxShadow: 'var(--shadow-primary-btn)', transition: 'opacity 120ms'
               }}
             >
               <Save size={15} />
-              {isPending ? 'Saving...' : 'Save All Settings'}
+              {isPending ? 'Saving…' : 'Save All Settings'}
+            </button>
+            <button
+              onClick={handleResetSettings}
+              disabled={isPending}
+              style={{
+                flex: 1, minWidth: '180px', height: '44px', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+                background: 'var(--color-surface)', color: 'var(--color-text-secondary)',
+                fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                transition: 'all 120ms'
+              }}
+            >
+              ↩ Reset to Defaults
             </button>
           </div>
         </div>
@@ -515,6 +568,6 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
           }
         }
       `}</style>
-    </>
+    </div>
   )
 }
