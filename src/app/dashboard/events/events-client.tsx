@@ -200,23 +200,35 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
             {events.map((e) => {
               const fullyBooked = e.registeredCount >= e.capacity
+              const isPast = new Date(e.scheduledAt) < new Date()
               const typeStyle = getTypeStyle(e.type)
               return (
                 <div key={e.id} style={{
-                  background: 'var(--color-card)', border: '1px solid var(--color-border)',
+                  background: 'var(--color-card)', border: `1px solid ${isPast ? 'var(--color-border)' : 'var(--color-border)'}`,
                   borderRadius: 'var(--radius-xl)', overflow: 'hidden',
                   boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column',
+                  opacity: isPast ? 0.75 : 1,
                 }}>
                   <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                      <span style={{
-                        fontSize: '10px', fontWeight: 700, textTransform: 'uppercase',
-                        color: typeStyle.color, background: typeStyle.bg,
-                        padding: '3px 9px', borderRadius: 'var(--radius-xs)',
-                        border: `1px solid ${typeStyle.color}33`, flexShrink: 0
-                      }}>
-                        {typeStyle.label?.replace('✏  ', '')}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: '10px', fontWeight: 700, textTransform: 'uppercase',
+                          color: typeStyle.color, background: typeStyle.bg,
+                          padding: '3px 9px', borderRadius: 'var(--radius-xs)',
+                          border: `1px solid ${typeStyle.color}33`, flexShrink: 0
+                        }}>
+                          {typeStyle.label?.replace('✏  ', '')}
+                        </span>
+                        {isPast && (
+                          <span style={{
+                            fontSize: '9px', fontWeight: 800, textTransform: 'uppercase',
+                            color: '#6b7280', background: 'rgba(107,114,128,0.10)',
+                            padding: '3px 7px', borderRadius: 'var(--radius-xs)',
+                            border: '1px solid rgba(107,114,128,0.20)', flexShrink: 0
+                          }}>PAST</span>
+                        )}
+                      </div>
                       <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-primary)', flexShrink: 0 }}>
                         {e.price === 0 ? 'Free' : `₱${e.price.toFixed(2)}`}
                       </span>

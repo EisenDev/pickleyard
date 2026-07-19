@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { EventsClient } from './events-client'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default async function EventsPage() {
   const session = await auth()
@@ -11,29 +12,10 @@ export default async function EventsPage() {
   const user = await db.user.findUnique({ where: { email: session.user.email } })
   if (!user) return null
 
-  const isAdmin = user.role === 'ADMIN' || user.role === 'STAFF'
-
-  // Admins see ALL events (so they can manage/review them).
-  // Players see events from start of today in Asia/Manila (local to the club).
-  const now = new Date()
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-  })
-  const parts = formatter.formatToParts(now)
-  const y = parts.find(p => p.type === 'year')?.value || '2026'
-  const m = parts.find(p => p.type === 'month')?.value || '1'
-  const d = parts.find(p => p.type === 'day')?.value || '1'
-
-  // Construct ISO string for midnight Manila (+08:00)
-  const manilaMidnightISO = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T00:00:00+08:00`
-  const todayStart = new Date(manilaMidnightISO)
-
+  // Show ALL events to everyone — no date filtering.
+  // Past events are shown with a "PAST" badge in the UI.
   const events = await db.clubEvent.findMany({
-    where: isAdmin ? undefined : { scheduledAt: { gte: todayStart } },
-    orderBy: { scheduledAt: 'asc' },
+    orderBy: { scheduledAt: 'desc' },
   })
 
   const formattedEvents = events.map((e) => ({
@@ -56,3 +38,4 @@ export default async function EventsPage() {
     />
   )
 }
+
