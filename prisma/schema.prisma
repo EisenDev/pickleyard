@@ -143,6 +143,7 @@ model ClubEvent {
   price           Decimal  @db.Decimal(10, 2)
   capacity        Int
   registeredCount Int      @default(0)
+  type            String   @default("CLINIC")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

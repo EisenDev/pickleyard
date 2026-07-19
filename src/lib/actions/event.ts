@@ -74,3 +74,46 @@ export async function registerEventAction(eventId: string): Promise<RegisterResu
     return { success: false, error: error.message || 'Failed to register for event.' }
   }
 }
+
+export type CreateEventInput = {
+  title: string
+  description: string
+  scheduledAt: string
+  location: string
+  price: number
+  capacity: number
+  type: string
+}
+
+export async function createClubEventAction(data: CreateEventInput): Promise<RegisterResult> {
+  const session = await auth()
+  if (!session?.user?.email) {
+    return { success: false, error: 'Unauthorized.' }
+  }
+
+  const admin = await db.user.findUnique({ where: { email: session.user.email } })
+  if (admin?.role !== 'ADMIN' && admin?.role !== 'STAFF') {
+    return { success: false, error: 'Access denied. Admins and staff only.' }
+  }
+
+  try {
+    await db.clubEvent.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        scheduledAt: new Date(data.scheduledAt),
+        location: data.location,
+        price: data.price,
+        capacity: data.capacity,
+        type: data.type,
+      },
+    })
+
+    revalidatePath('/dashboard/events')
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/admin')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to create event.' }
+  }
+}

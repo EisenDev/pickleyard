@@ -8,19 +8,14 @@ export default async function EventsPage() {
   const session = await auth()
   if (!session?.user?.email) return null
 
-  // Fetch current user details
-  const user = await db.user.findUnique({
-    where: { email: session.user.email }
-  })
+  const user = await db.user.findUnique({ where: { email: session.user.email } })
   if (!user) return null
 
-  // Fetch active/upcoming club events
   const events = await db.clubEvent.findMany({
     where: { scheduledAt: { gte: new Date() } },
     orderBy: { scheduledAt: 'asc' }
   })
 
-  // Format database types to frontend schema
   const formattedEvents = events.map((e) => ({
     id: e.id,
     title: e.title,
@@ -29,8 +24,15 @@ export default async function EventsPage() {
     location: e.location,
     price: Number(e.price),
     capacity: e.capacity,
-    registeredCount: e.registeredCount
+    registeredCount: e.registeredCount,
+    type: e.type ?? 'CLINIC',
   }))
 
-  return <EventsClient events={formattedEvents} userBalance={Number(user.credits)} />
+  return (
+    <EventsClient
+      events={formattedEvents}
+      userBalance={Number(user.credits)}
+      userRole={user.role}
+    />
+  )
 }
