@@ -229,3 +229,44 @@ body {
   display: inline-block;
   flex-shrink: 0;
 }
+
+/* Custom styles for html5-qrcode premium layout */
+#qr-reader {
+  font-family: inherit !important;
+  color: var(--color-text-primary) !important;
+  background: var(--color-card) !important;
+  border: none !important;
+}
+#qr-reader button {
+  background: var(--color-primary) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  padding: 8px 16px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  margin: 6px !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+#qr-reader select {
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text-primary) !important;
+  padding: 6px 12px !important;
+  border-radius: var(--radius-md) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  outline: none !important;
+  margin: 6px !important;
+}
+#qr-reader a {
+  color: var(--color-primary) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
+#qr-reader img {
+  display: none !important;
+}
+

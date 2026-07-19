@@ -90,11 +90,11 @@ export default async function OpenPlayPage() {
           )}
 
           {/* QR Code Graphic Container */}
-          <div style={{ position: 'relative', width: '160px', height: '160px' }}>
+          <div style={{ position: 'relative', width: '240px', height: '240px' }}>
             <div
               style={{
-                width: '160px',
-                height: '160px',
+                width: '240px',
+                height: '240px',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-md)',
                 background: 'white',
@@ -108,12 +108,20 @@ export default async function OpenPlayPage() {
                 boxSizing: 'border-box'
               }}
             >
-              <div style={{
-                width: '100%', height: '100%',
-                backgroundImage: 'radial-gradient(var(--color-primary) 30%, transparent 30%), radial-gradient(var(--color-primary) 30%, transparent 30%)',
-                backgroundSize: '10px 10px',
-                backgroundPosition: '0 0, 5px 5px'
-              }} />
+              {isQueued && userQueue?.qrId ? (
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${userQueue.qrId}`}
+                  alt="Open Play QR Pass"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              ) : (
+                <div style={{
+                  width: '100%', height: '100%',
+                  backgroundImage: 'radial-gradient(var(--color-primary) 30%, transparent 30%), radial-gradient(var(--color-primary) 30%, transparent 30%)',
+                  backgroundSize: '10px 10px',
+                  backgroundPosition: '0 0, 5px 5px'
+                }} />
+              )}
             </div>
 
             {/* Overlay button if NOT queued */}
@@ -148,8 +156,8 @@ export default async function OpenPlayPage() {
             <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
               {user.name}
             </h3>
-            <span style={{ fontSize: '11px', color: 'var(--color-text-disabled)', fontFamily: 'var(--font-mono)' }}>
-              ID: {user.id.substring(0, 12).toUpperCase()}
+            <span style={{ fontSize: '11.5px', color: isQueued ? 'var(--color-success)' : 'var(--color-text-disabled)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+              {isQueued ? `QR ID: ${userQueue.qrId}` : 'QR ID: Inactive'}
             </span>
           </div>
 

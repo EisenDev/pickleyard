@@ -85,6 +85,8 @@ export async function scanCheckinAction(
         }
       } else {
         // Create new active lobby queue entry
+        const { randomBytes } = await import('crypto')
+        const qrId = 'OPQ-' + randomBytes(4).toString('hex').toUpperCase()
         await tx.paddleStack.create({
           data: {
             userId: user.id,
@@ -92,7 +94,8 @@ export async function scanCheckinAction(
             status: 'WAITING',
             joinedAt: new Date(),
             checkedInAt: new Date(),
-            sessionExpiresAt
+            sessionExpiresAt,
+            qrId
           }
         })
       }
@@ -144,6 +147,8 @@ export async function forceEnterQueueAction(
         return { success: false, error: 'User is already in active queue.' }
       }
     } else {
+      const { randomBytes } = await import('crypto')
+      const qrId = 'OPQ-' + randomBytes(4).toString('hex').toUpperCase()
       await db.paddleStack.create({
         data: {
           userId,
@@ -151,7 +156,8 @@ export async function forceEnterQueueAction(
           status: 'WAITING',
           joinedAt: new Date(),
           checkedInAt: new Date(),
-          sessionExpiresAt
+          sessionExpiresAt,
+          qrId
         }
       })
     }

@@ -32,6 +32,7 @@ interface StackEntry {
   joinedAt: string
   checkedInAt: string | null
   sessionExpiresAt: string | null
+  qrId: string | null
 }
 
 interface UserListItem {
@@ -242,6 +243,55 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
     const timer = setInterval(() => setTicks(t => t + 1), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  // Real QR Camera Scanner Lifecycle
+  useEffect(() => {
+    if (!isScannerOpen) return
+
+    let html5QrcodeScanner: any = null
+
+    import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
+      const container = document.getElementById('qr-reader')
+      if (container) {
+        container.innerHTML = ''
+      }
+
+      html5QrcodeScanner = new Html5QrcodeScanner(
+        'qr-reader',
+        { 
+          fps: 10, 
+          qrbox: { width: 180, height: 180 },
+          aspectRatio: 1.0
+        },
+        /* verbose= */ false
+      )
+
+      html5QrcodeScanner.render(
+        (decodedText: string) => {
+          setScanText(decodedText)
+          
+          try {
+            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+            const osc = audioCtx.createOscillator()
+            const gain = audioCtx.createGain()
+            osc.connect(gain)
+            gain.connect(audioCtx.destination)
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime)
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime)
+            osc.start()
+            osc.stop(audioCtx.currentTime + 0.08)
+          } catch (e) {}
+        },
+        () => {}
+      )
+    }).catch(console.error)
+
+    return () => {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear().catch(console.error)
+      }
+    }
+  }, [isScannerOpen])
 
   // Auto trigger check-in rotation & session expiry check periodically
   useEffect(() => {
@@ -1018,25 +1068,15 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
               </p>
             </div>
 
-            {/* Mock Camera QR Frame */}
+            {/* Real Camera QR Scanner Frame */}
             <div style={{
-              width: '100%', height: '200px', background: '#000', borderRadius: 'var(--radius-lg)',
-              position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center'
+              width: '100%',
+              borderRadius: 'var(--radius-lg)',
+              overflow: 'hidden',
+              background: '#000',
+              border: '1px solid var(--color-border)'
             }}>
-              {/* Scan Overlay grids */}
-              <div style={{
-                width: '120px', height: '120px', border: '2px solid var(--color-primary)',
-                position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 0 1000px rgba(0, 0, 0, 0.5)'
-              }}>
-                <div style={{
-                  position: 'absolute', width: '100%', height: '2px', background: 'var(--color-primary)',
-                  boxShadow: '0 0 8px var(--color-primary)', animation: 'laser 2s infinite linear'
-                }} />
-              </div>
-              <span style={{ position: 'absolute', bottom: '16px', fontSize: '11px', color: '#aaa', fontWeight: 600 }}>
-                [ Looking for QR Code... ]
-              </span>
+              <div id="qr-reader" style={{ width: '100%', border: 'none' }} />
             </div>
 
             {/* Input Member's QR ID */}
@@ -1169,9 +1209,13 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
                   )
                 }
 
-                const matchedScanUser = users.find(u => 
-                  u.id.substring(0, 12).toLowerCase() === scanText.trim().toLowerCase()
+                const activeQueueEntry = stacks.find(s => 
+                  s.qrId?.toLowerCase() === scanText.trim().toLowerCase() && 
+                  ['PENDING', 'WAITING', 'PLAYING', 'MATCHED'].includes(s.status)
                 )
+                const matchedScanUser = activeQueueEntry 
+                  ? users.find(u => u.id === activeQueueEntry.userId)
+                  : null
 
                 return (
                   <div style={{ marginTop: '4px' }}>

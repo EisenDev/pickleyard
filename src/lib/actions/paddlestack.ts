@@ -44,13 +44,18 @@ export async function joinPaddleStackAction(
       return { success: false, error: 'You are already in the stack queue!' }
     }
 
+    // Generate random unique QR ID for the session
+    const { randomBytes } = await import('crypto')
+    const qrId = 'OPQ-' + randomBytes(4).toString('hex').toUpperCase()
+
     // Create stack queue item in PENDING status (Unpaid/unscanned)
     await db.paddleStack.create({
       data: {
         userId: user.id,
         skillLevel,
         status: 'PENDING',
-        joinedAt: new Date()
+        joinedAt: new Date(),
+        qrId
       }
     })
 
