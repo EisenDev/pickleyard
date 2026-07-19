@@ -23,11 +23,16 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  yardPoints     Int       @default(0)
+  lifetimeYardPoints Int   @default(0)
+
   accounts     Account[]
   sessions     Session[]
   bookings     Booking[]
   paddleStacks PaddleStack[]
   transactions Transaction[]
+  yardPointLogs YardPointLog[]
+  redemptions   RedemptionRequest[]
 
   @@map("users")
 }
@@ -169,4 +174,49 @@ model SystemSetting {
   value String
 
   @@map("system_settings")
+}
+
+model YardPointLog {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int      // Positive for earning, negative for spending
+  reason    String   // OPEN_PLAY_PARTICIPATION, OPEN_PLAY_WIN, TOPUP, REDEMPTION, DAILY_LOGIN, SPECIAL_EVENT
+  details   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("yard_point_logs")
+}
+
+model ShopProduct {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  category    String   // DRINK, VOUCHER, COURT_TIME, MERCHANDISE, OTHER
+  pointsCost  Int
+  stock       Int      @default(-1) // -1 for unlimited
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  redemptions RedemptionRequest[]
+
+  @@map("shop_products")
+}
+
+model RedemptionRequest {
+  id              String   @id @default(cuid())
+  userId          String
+  productId       String
+  pointsDeducted  Int
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  notes           String?  @db.Text // Extra info (e.g. Voucher Code or rejection reason)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product         ShopProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("redemption_requests")
 }

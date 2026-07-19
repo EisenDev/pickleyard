@@ -3,6 +3,7 @@
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
+import { awardTopUpPoints } from './yardpoints'
 
 export type TopUpResult =
   | { success: true }
@@ -14,8 +15,8 @@ export async function topUpCreditsAction(amount: number): Promise<TopUpResult> {
     return { success: false, error: 'Unauthorized.' }
   }
 
-  if (amount <= 0 || amount > 1000) {
-    return { success: false, error: 'Please choose an amount between $10 and $1000.' }
+  if (amount <= 0 || amount > 10000) { // Support larger top-up limits
+    return { success: false, error: 'Please choose a valid amount.' }
   }
 
   const userEmail = session.user.email
@@ -42,9 +43,13 @@ export async function topUpCreditsAction(amount: number): Promise<TopUpResult> {
           reference: `TOPUP-ONLINE-${new Date().getTime().toString().substring(8)}`
         }
       })
+
+      // Award loyalty points
+      await awardTopUpPoints(tx, user.id, amount)
     })
 
     revalidatePath('/dashboard/transactions')
+    revalidatePath('/dashboard/yard-points')
     revalidatePath('/dashboard')
     return { success: true }
 

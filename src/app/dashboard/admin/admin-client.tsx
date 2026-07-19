@@ -9,9 +9,10 @@ import {
   startMatchTimerAction,
   endMatchEarlyAction,
   checkAndRotateExpiredMatchesAction,
-  creditUserCashAction
+  creditUserCashAction,
+  recordMatchResultAction
 } from '@/lib/actions/admin'
-import { Users, Clock, ShieldCheck, ShieldAlert, X, Search, UserCheck, Play, Award, Zap, Power, Volume2, QrCode, Trash2, Camera, AlertTriangle, Calendar, RefreshCw, DollarSign } from 'lucide-react'
+import { Users, Clock, ShieldCheck, ShieldAlert, X, Search, UserCheck, Play, Award, Zap, Power, Volume2, QrCode, Trash2, Camera, AlertTriangle, Calendar, RefreshCw, DollarSign, Star, Trophy } from 'lucide-react'
 
 interface Court {
   id: string
@@ -211,6 +212,16 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
   const [adminMessage, setAdminMessage] = useState<{ success: boolean; text: string } | null>(null)
   const [modalSkillLevel, setModalSkillLevel] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('INTERMEDIATE')
   const [kioskNotice, setKioskNotice] = useState<{ success: boolean; text: string } | null>(null)
+
+  // ── Record Winner Modal State ─────────────────────────────────────────────
+  const [recordWinnerModal, setRecordWinnerModal] = useState<{
+    courtId: string
+    courtNumber: number
+    players: StackEntry[]
+  } | null>(null)
+  const [selectedWinners, setSelectedWinners] = useState<string[]>([]) // userId array, max 2
+  const [confirmRecord, setConfirmRecord] = useState(false)
+  const [expiredCourtIds, setExpiredCourtIds] = useState<Set<string>>(new Set())
 
   const showNotice = (success: boolean, text: string) => {
     setKioskNotice({ success, text })
@@ -433,8 +444,39 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
     })
   }
 
+  const handleOpenRecordWinner = (courtId: string, courtNumber: number) => {
+    const players = stacks.filter(s => s.courtId === courtId && (s.status === 'PLAYING' || s.status === 'MATCHED'))
+    setRecordWinnerModal({ courtId, courtNumber, players })
+    setSelectedWinners([])
+    setConfirmRecord(false)
+  }
+
+  const toggleWinnerSelection = (userId: string) => {
+    setSelectedWinners(prev => {
+      if (prev.includes(userId)) return prev.filter(id => id !== userId)
+      if (prev.length >= 2) return prev // already 2 selected
+      return [...prev, userId]
+    })
+  }
+
+  const handleConfirmRecordWinner = () => {
+    if (!recordWinnerModal || selectedWinners.length !== 2) return
+    startTransition(async () => {
+      const res = await recordMatchResultAction(recordWinnerModal.courtId, selectedWinners)
+      if (res.success) {
+        setExpiredCourtIds(prev => { const next = new Set(prev); next.delete(recordWinnerModal.courtId); return next })
+        setRecordWinnerModal(null)
+        setConfirmRecord(false)
+        showNotice(true, `✅ Match result recorded! Yard Points awarded to all players.`)
+      } else {
+        showNotice(false, res.error || 'Failed to record result.')
+        setRecordWinnerModal(null)
+      }
+    })
+  }
+
   // Real-Time Court Timer Component
-  function ActiveTimer({ startTime, duration }: { startTime: Date; duration: number }) {
+  function ActiveTimer({ startTime, duration, courtId }: { startTime: Date; duration: number; courtId: string }) {
     const [timeLeft, setTimeLeft] = useState(0)
 
     useEffect(() => {
@@ -444,8 +486,12 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
         setTimeLeft(remaining)
 
         if (remaining === 0) {
-          startTransition(async () => {
-            await checkAndRotateExpiredMatchesAction()
+          // Instead of auto-rotating, mark this court as needing winner recording
+          setExpiredCourtIds(prev => {
+            if (prev.has(courtId)) return prev
+            const next = new Set(prev)
+            next.add(courtId)
+            return next
           })
         }
       }
@@ -453,7 +499,7 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
       tick()
       const timer = setInterval(tick, 1000)
       return () => clearInterval(timer)
-    }, [startTime, duration])
+    }, [startTime, duration, courtId])
 
     const mins = Math.floor(timeLeft / 60)
     const secs = timeLeft % 60
@@ -462,11 +508,10 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: 800, color: timeLeft < 120 ? 'var(--color-danger)' : 'var(--color-primary)' }}>
         <Clock size={15} />
-        <span>{timeLeft === 0 ? 'Rotated' : timeStr}</span>
+        <span>{timeLeft === 0 ? "TIME'S UP" : timeStr}</span>
       </div>
     )
   }
-
 
 
   return (
@@ -591,7 +636,7 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
                         )}
                       </div>
                       {isOccupied && court.gameStartedAt && (
-                        <ActiveTimer startTime={court.gameStartedAt} duration={court.gameDurationSecond} />
+                        <ActiveTimer startTime={court.gameStartedAt} duration={court.gameDurationSecond} courtId={court.id} />
                       )}
                       {isReady && (
                         <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -693,18 +738,37 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
                                 </button>
                               </div>
                             ) : (
-                              <button
-                                onClick={() => handleEndMatch(court.id)}
-                                disabled={isPending}
-                                style={{
-                                  width: '100%', height: '36px', border: 'none', borderRadius: 'var(--radius-md)',
-                                  background: 'var(--color-danger-subtle)', color: 'var(--color-danger)',
-                                  fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px'
-                                }}
-                              >
-                                <Power size={13} />
-                                Force End Match & Re-queue
-                              </button>
+                              expiredCourtIds.has(court.id) ? (
+                                <button
+                                  onClick={() => handleOpenRecordWinner(court.id, court.number)}
+                                  disabled={isPending}
+                                  style={{
+                                    width: '100%', height: '40px', border: 'none', borderRadius: 'var(--radius-md)',
+                                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                    color: 'white',
+                                    fontSize: '13px', fontWeight: 800, cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    marginTop: '8px', boxShadow: '0 0 12px rgba(245,158,11,0.5)',
+                                    animation: 'pulse-danger 1.5s infinite alternate'
+                                  }}
+                                >
+                                  <Trophy size={15} />
+                                  Record Winner & Award Points
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleEndMatch(court.id)}
+                                  disabled={isPending}
+                                  style={{
+                                    width: '100%', height: '36px', border: 'none', borderRadius: 'var(--radius-md)',
+                                    background: 'var(--color-danger-subtle)', color: 'var(--color-danger)',
+                                    fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px'
+                                  }}
+                                >
+                                  <Power size={13} />
+                                  Force End Match & Re-queue
+                                </button>
+                              )
                             )}
                           </>
                         )
@@ -1624,6 +1688,146 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
                 )
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Record Winner Modal ─────────────────────────────────────────────── */}
+      {recordWinnerModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--color-card)', borderRadius: 'var(--radius-xl)', padding: '28px',
+            width: '100%', maxWidth: '480px', boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
+            border: '1.5px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '20px'
+          }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Trophy size={20} color="#f59e0b" />
+                  <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
+                    Record Match Result
+                  </h2>
+                </div>
+                <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '4px 0 0' }}>
+                  Court {recordWinnerModal.courtNumber} — Select the 2 winners. All 4 players earn Yard Points.
+                </p>
+              </div>
+              <button onClick={() => { setRecordWinnerModal(null); setConfirmRecord(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Player Selection */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-disabled)', textTransform: 'uppercase', margin: 0 }}>
+                Select 2 Winners ({selectedWinners.length}/2 selected)
+              </p>
+              {recordWinnerModal.players.map((player) => {
+                const isSelected = selectedWinners.includes(player.userId)
+                const isDisabled = !isSelected && selectedWinners.length >= 2
+                const skillColors: Record<string, string> = { NOVICE: '#10b981', INTERMEDIATE: '#f59e0b', ADVANCED: '#6366f1' }
+                const skillColor = skillColors[player.skillLevel] || '#6366f1'
+                const participationYP = player.skillLevel === 'ADVANCED' ? 50 : player.skillLevel === 'INTERMEDIATE' ? 35 : 20
+                const totalYP = isSelected ? participationYP + 15 : participationYP
+
+                return (
+                  <button
+                    key={player.userId}
+                    onClick={() => toggleWinnerSelection(player.userId)}
+                    disabled={isDisabled}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '12px 14px', borderRadius: 'var(--radius-md)',
+                      border: `2px solid ${isSelected ? '#f59e0b' : isDisabled ? 'var(--color-border)' : 'var(--color-border)'}`,
+                      background: isSelected ? 'rgba(245,158,11,0.08)' : isDisabled ? 'var(--color-surface)' : 'var(--color-surface)',
+                      cursor: isDisabled ? 'not-allowed' : 'pointer',
+                      opacity: isDisabled ? 0.5 : 1,
+                      textAlign: 'left', width: '100%', transition: 'all 120ms'
+                    }}
+                  >
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%', background: isSelected ? '#f59e0b' : 'var(--color-border)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 120ms'
+                    }}>
+                      {isSelected ? <Trophy size={16} color="white" /> : <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-secondary)' }}>P</span>}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{player.userName}</div>
+                      <div style={{ fontSize: '11px', color: skillColor, fontWeight: 600 }}>{player.skillLevel}</div>
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 800, color: isSelected ? '#f59e0b' : 'var(--color-text-secondary)', textAlign: 'right' }}>
+                      <div>+{totalYP} YP</div>
+                      {isSelected && <div style={{ fontSize: '10px', color: '#10b981' }}>+15 WIN BONUS</div>}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* YP Summary */}
+            {selectedWinners.length === 2 && !confirmRecord && (
+              <div style={{ background: 'var(--color-success-subtle)', borderRadius: 'var(--radius-md)', padding: '12px 14px', border: '1px solid #bbf7d0' }}>
+                <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--color-success)' }}>
+                  ✅ Ready to record. All 4 players earn participation YP. Winners get +15 bonus.
+                </p>
+              </div>
+            )}
+
+            {/* Confirmation Step */}
+            {!confirmRecord ? (
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => { setRecordWinnerModal(null); setConfirmRecord(false) }}
+                  style={{ flex: 1, height: '40px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'white', color: 'var(--color-text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setConfirmRecord(true)}
+                  disabled={selectedWinners.length !== 2}
+                  style={{
+                    flex: 2, height: '40px', border: 'none', borderRadius: 'var(--radius-md)',
+                    background: selectedWinners.length === 2 ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'var(--color-border)',
+                    color: 'white', fontSize: '13px', fontWeight: 800, cursor: selectedWinners.length === 2 ? 'pointer' : 'not-allowed',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                  }}
+                >
+                  <Trophy size={15} />
+                  Record & Remove Players
+                </button>
+              </div>
+            ) : (
+              <div style={{ background: 'rgba(245,158,11,0.08)', border: '1.5px solid #f59e0b', borderRadius: 'var(--radius-md)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#92400e', textAlign: 'center' }}>
+                  ⚠️ Confirm? This will record the result, award Yard Points to all 4 players, and move them back to the lobby queue.
+                </p>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => setConfirmRecord(false)}
+                    style={{ flex: 1, height: '40px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'white', color: 'var(--color-text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    onClick={handleConfirmRecordWinner}
+                    disabled={isPending}
+                    style={{
+                      flex: 2, height: '40px', border: 'none', borderRadius: 'var(--radius-md)',
+                      background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                      color: 'white', fontSize: '13px', fontWeight: 800, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      boxShadow: '0 4px 12px rgba(245,158,11,0.4)'
+                    }}
+                  >
+                    {isPending ? 'Recording...' : '✅ Confirm & Award Points'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

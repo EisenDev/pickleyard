@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { BookingStatus, SkillLevel } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import bcrypt from 'bcryptjs'
+import { awardTopUpPoints } from './yardpoints'
 
 // Helper check for admin role
 async function checkAdmin() {
@@ -366,6 +367,95 @@ export async function endMatchEarlyAction(courtId: string): Promise<ActionState>
   }
 }
 
+// 6b. Record match result and award Yard Points to players
+export async function recordMatchResultAction(
+  courtId: string,
+  winnerUserIds: string[] // exactly 2 user IDs (the winners)
+): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized.' }
+
+  if (!winnerUserIds || winnerUserIds.length !== 2) {
+    return { success: false, error: 'Exactly 2 winners must be selected.' }
+  }
+
+  try {
+    await db.$transaction(async (tx) => {
+      // 1. Find all 4 players currently playing on this court
+      const activePlayers = await tx.paddleStack.findMany({
+        where: { courtId, status: { in: ['MATCHED', 'PLAYING'] } },
+        include: { user: true }
+      })
+
+      if (activePlayers.length === 0) {
+        throw new Error('No active players found on this court.')
+      }
+
+      // 2. Get points settings
+      const settings = await tx.systemSetting.findMany()
+      const getSetting = (key: string, def: number) => {
+        const s = settings.find((x: any) => x.key === key)
+        return s ? parseInt(s.value) : def
+      }
+
+      const WIN_BONUS = getSetting('yp_win_bonus', 15)
+
+      // 3. Award points to all players (participation based on skill level)
+      for (const entry of activePlayers) {
+        const skillLevel = entry.skillLevel
+        const isWinner = winnerUserIds.includes(entry.userId)
+
+        const participationKey = `yp_${skillLevel.toLowerCase()}_participation`
+        const participationPoints = getSetting(participationKey, skillLevel === 'ADVANCED' ? 50 : skillLevel === 'INTERMEDIATE' ? 35 : 20)
+        const totalPoints = participationPoints + (isWinner ? WIN_BONUS : 0)
+
+        // Update user yard points
+        await tx.user.update({
+          where: { id: entry.userId },
+          data: {
+            yardPoints: { increment: totalPoints },
+            lifetimeYardPoints: { increment: totalPoints }
+          }
+        })
+
+        // Log the points
+        await tx.yardPointLog.create({
+          data: {
+            userId: entry.userId,
+            amount: totalPoints,
+            reason: isWinner ? 'OPEN_PLAY_WIN' : 'OPEN_PLAY_PARTICIPATION',
+            details: `${skillLevel} match – ${isWinner ? `Winner bonus: +${WIN_BONUS} YP` : 'Participation'} (Court ${courtId.slice(-4)})`
+          }
+        })
+      }
+
+      // 4. Re-queue all players (move back to WAITING at the back of the queue)
+      const ids = activePlayers.map(p => p.id)
+      await tx.paddleStack.updateMany({
+        where: { id: { in: ids } },
+        data: {
+          status: 'WAITING',
+          courtId: null,
+          joinedAt: new Date() // Back of the queue
+        }
+      })
+
+      // 5. Free the court
+      await tx.court.update({
+        where: { id: courtId },
+        data: { status: 'AVAILABLE', gameStartedAt: null }
+      })
+    })
+
+    revalidatePath('/dashboard/admin')
+    revalidatePath('/dashboard/paddlestack')
+    revalidatePath('/dashboard/yard-points')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to record match result.' }
+  }
+}
+
 // 7. Auto check and rotate expired matches automatically + auto queue next match in READY state
 export async function checkAndRotateExpiredMatchesAction(): Promise<ActionState> {
   try {
@@ -667,10 +757,14 @@ export async function creditUserCashAction(
           reference: `CASH-${new Date().getTime()}`
         }
       })
+
+      // Award loyalty points
+      await awardTopUpPoints(tx, user.id, amount)
     })
 
     revalidatePath('/dashboard/admin')
     revalidatePath('/dashboard/admin/users')
+    revalidatePath('/dashboard/yard-points')
     return { success: true }
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to top up balance.' }

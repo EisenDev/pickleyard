@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { User, Award, QrCode, Camera, ArrowLeft } from 'lucide-react'
-import Link from 'next/link'
+import { User, Award, QrCode, Camera } from 'lucide-react'
 
 interface Props {
   user: {
@@ -34,19 +33,12 @@ export function ProfileClient({ user }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: 820 }} className="animate-fade-up">
-      {/* Back and Header */}
+      {/* Header */}
       <div>
-        <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', textDecoration: 'none', marginBottom: '12px', fontWeight: 600 }}>
-          <ArrowLeft size={14} /> Dashboard
-        </Link>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', margin: 0 }}>My Profile</h1>
-            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px', margin: '4px 0 0' }}>
-              Manage your personal details, membership tier, and digital club pass.
-            </p>
-          </div>
-        </div>
+        <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', margin: 0 }}>My Profile</h1>
+        <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px', margin: '4px 0 0' }}>
+          Manage your personal details, membership tier, and digital club pass.
+        </p>
       </div>
 
       {/* Tabs */}
