@@ -43,7 +43,8 @@ interface EventsClientProps {
 const EMPTY_FORM = {
   title: '',
   description: '',
-  scheduledAt: '',
+  scheduledDate: '',
+  scheduledTime: '08:00',
   location: '',
   price: '',
   capacity: '',
@@ -81,7 +82,7 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
       ? (form.customType.trim() || '').toUpperCase().replace(/\s+/g, '_')
       : form.type
 
-    if (!form.title || !form.scheduledAt || !form.location || !form.capacity) {
+    if (!form.title || !form.scheduledDate || !form.location || !form.capacity) {
       setCreateMsg({ success: false, text: 'Please fill in all required fields.' })
       return
     }
@@ -90,12 +91,13 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
       return
     }
 
+    const scheduledAt = `${form.scheduledDate}T${form.scheduledTime || '08:00'}`
     setCreateMsg(null)
     startCreateTransition(async () => {
       const result = await createClubEventAction({
         title: form.title,
         description: form.description,
-        scheduledAt: form.scheduledAt,
+        scheduledAt,
         location: form.location,
         price: parseFloat(form.price) || 0,
         capacity: parseInt(form.capacity) || 1,
@@ -127,15 +129,17 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              {/* Balance badge */}
-              <div style={{
-                background: 'var(--color-card)', border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)', padding: '8px 16px',
-                display: 'flex', alignItems: 'center', gap: '10px', boxShadow: 'var(--shadow-sm)'
-              }}>
-                <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Your Balance:</span>
-                <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-primary)' }}>₱{userBalance.toFixed(2)}</span>
-              </div>
+              {/* Balance badge — hidden for admin/staff */}
+              {!isAdmin && (
+                <div style={{
+                  background: 'var(--color-card)', border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)', padding: '8px 16px',
+                  display: 'flex', alignItems: 'center', gap: '10px', boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Your Balance:</span>
+                  <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-primary)' }}>₱{userBalance.toFixed(2)}</span>
+                </div>
+              )}
 
               {/* Admin Create Event button */}
               {isAdmin && (
@@ -420,16 +424,16 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
               />
             </div>
 
-            {/* Date/Time + Location */}
+            {/* Date + Location row */}
             <div className="modal-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Date &amp; Time *
+                  Date *
                 </label>
                 <input
-                  type="datetime-local"
-                  value={form.scheduledAt}
-                  onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))}
+                  type="date"
+                  value={form.scheduledDate}
+                  onChange={e => setForm(f => ({ ...f, scheduledDate: e.target.value }))}
                   style={{
                     width: '100%', height: '40px', padding: '0 10px',
                     borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
@@ -440,21 +444,39 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
               </div>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Location *
+                  Time *
                 </label>
                 <input
-                  type="text"
-                  placeholder="e.g. Court 2"
-                  value={form.location}
-                  onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
+                  type="time"
+                  value={form.scheduledTime}
+                  onChange={e => setForm(f => ({ ...f, scheduledTime: e.target.value }))}
                   style={{
-                    width: '100%', height: '40px', padding: '0 12px',
+                    width: '100%', height: '40px', padding: '0 10px',
                     borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
                     background: 'var(--color-surface)', color: 'var(--color-text-primary)',
                     fontSize: '13px', outline: 'none', boxSizing: 'border-box',
                   }}
                 />
               </div>
+            </div>
+
+            {/* Location */}
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Location *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Court 2"
+                value={form.location}
+                onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
+                style={{
+                  width: '100%', height: '40px', padding: '0 12px',
+                  borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                  fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+                }}
+              />
             </div>
 
             {/* Price + Capacity */}

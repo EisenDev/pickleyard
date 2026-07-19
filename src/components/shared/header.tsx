@@ -40,6 +40,8 @@ export function Header({ user, onMenuClick }: HeaderProps) {
         justifyContent: 'space-between',
         padding: '0 var(--spacing-page-x)',
         marginRight: 0,
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
       }}
     >
       {/* Hamburger Menu (mobile only) */}
@@ -87,25 +89,30 @@ export function Header({ user, onMenuClick }: HeaderProps) {
               src={user.image}
               alt={user.name || 'User'}
               style={{
-                width: 28,
-                height: 28,
+                width: 36,
+                height: 36,
                 borderRadius: 'var(--radius-full)',
                 objectFit: 'cover',
+                border: '2px solid var(--color-primary)',
+                boxShadow: '0 0 0 2px var(--color-primary-subtle)',
               }}
             />
           ) : (
             <div
               style={{
-                width: 28,
-                height: 28,
+                width: 36,
+                height: 36,
                 borderRadius: 'var(--radius-full)',
                 background: 'var(--color-primary-subtle)',
                 color: 'var(--color-primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 12,
-                fontWeight: 600,
+                fontSize: 13,
+                fontWeight: 800,
+                border: '2px solid var(--color-primary)',
+                boxShadow: '0 0 0 2px var(--color-primary-subtle)',
+                flexShrink: 0,
               }}
             >
               {initials}

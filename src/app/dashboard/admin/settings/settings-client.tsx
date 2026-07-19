@@ -95,11 +95,8 @@ export function SettingsClient({ initialSettings, courts }: Props) {
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div>
-        <Link href="/dashboard/admin" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', textDecoration: 'none', marginBottom: '12px', fontWeight: 600 }}>
-          <ArrowLeft size={14} /> Back to Kiosk
-        </Link>
         <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
-          ⚙️ Time & Cost Control Panel
+          Time & Cost Control Panel
         </h1>
         <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
           Configure club reservation parameters, hourly pricing, open play rotational timers, and session expirations.
