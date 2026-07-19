@@ -212,7 +212,7 @@ export default async function OpenPlayPage() {
                     gap: '6px'
                   }}>
                     <ShieldCheck size={12} />
-                    On queue in {userQueue.skillLevel.toLowerCase()} queue
+                    Already in the Lobby
                   </span>
                 )}
               </div>

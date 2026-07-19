@@ -111,7 +111,6 @@ export function TopUpClient({ userBalance, userId }: Props) {
         <div
           onClick={() => setSelectedMethod(null)}
           className="topup-amount-modal-backdrop open"
-          style={{ display: 'none' }}
         />
       )}
       {/* Back and Header */}

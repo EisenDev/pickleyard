@@ -145,69 +145,6 @@ export function Sidebar({ user, isOpen }: SidebarProps) {
           )
         })}
       </nav>
-      {/* Bottom items (Settings, Logout) wrapper */}
-      <div className="sidebar-bottom-items" style={{ display: 'flex', flexDirection: 'column' }}>
-        {/* Divider */}
-        <div style={{ height: 1, background: 'var(--color-border)', margin: '0 8px' }} />
-
-        {/* Bottom items */}
-        <div style={{ padding: '8px 8px 4px' }}>
-          {bottomItems.map((item) => {
-          const isActive = pathname === item.href
-          const Icon = item.icon
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '0 12px',
-                height: 36,
-                borderRadius: 'var(--radius-md)',
-                textDecoration: 'none',
-                fontSize: 14,
-                fontWeight: isActive ? 600 : 500,
-                color: isActive ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                background: isActive ? 'var(--color-primary-subtle)' : 'transparent',
-              }}
-              className="sidebar-item"
-            >
-              <Icon size={16} strokeWidth={1.5} />
-              <span>{item.label}</span>
-            </Link>
-          )
-        })}
-        
-        {/* Logout action item */}
-        <button
-          onClick={() => signOut({ callbackUrl: '/' })}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '0 12px',
-            height: 36,
-            width: '100%',
-            borderRadius: 'var(--radius-md)',
-            border: 'none',
-            background: 'transparent',
-            textDecoration: 'none',
-            fontSize: 14,
-            fontWeight: 500,
-            color: 'var(--color-text-secondary)',
-            textAlign: 'left',
-            cursor: 'pointer',
-            transition: 'color 120ms, background 120ms',
-          }}
-          className="sidebar-item"
-        >
-          <LogOut size={16} strokeWidth={1.5} />
-          <span>Logout</span>
-        </button>
-      </div>
-    </div>
 
       {/* Lobby Check-in Status */}
       <div style={{ padding: '8px 12px 16px' }}>
