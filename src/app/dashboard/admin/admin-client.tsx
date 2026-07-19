@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   scanCheckinAction,
@@ -138,7 +138,8 @@ function ClockCountdown({ sessionExpiresAt }: { sessionExpiresAt: Date | string 
 export function AdminClient({ courts: initialCourts, stacks: initialStacks, users, bookings, expiryHours, opStartHour, opEndHour }: Props) {
   const [courts, setCourts] = useState<Court[]>(initialCourts)
   const [stacks, setStacks] = useState<StackEntry[]>(initialStacks)
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
+  const [activeLoadingId, setActiveLoadingId] = useState<string | null>(null)
   const router = useRouter()
 
   // Keep state in sync with server component props
@@ -341,12 +342,16 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
   }, [])
 
   // ── Real-Time Polling ─────────────────────────────────────────────────────
-  // Fetch dynamic stack and court status every 2 seconds from API to avoid caching and UI stutters.
+  // Pause polling whenever a modal is open or an action is executing so that
+  // mid-click DOM re-renders never swallow the user's button presses.
   useEffect(() => {
+    if (activeLoadingId || isCheckinModalOpen || isScannerOpen || !!assigningMatch || !!recordWinnerModal) {
+      return // no interval started – no cleanup needed
+    }
     fetchRealtimeData()
     const interval = setInterval(fetchRealtimeData, 2000)
     return () => clearInterval(interval)
-  }, [])
+  }, [activeLoadingId, isCheckinModalOpen, isScannerOpen, assigningMatch, recordWinnerModal])
 
   // Filter users for scanner manual selector
   const filteredScanUsers = users.filter(u =>
@@ -388,103 +393,113 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     setIsCheckinModalOpen(true)
   }
 
-  const handleChargeCheckin = () => {
-    if (!selectedUser) return
-    startTransition(async () => {
-      const res = await scanCheckinAction(selectedUser.id, modalSkillLevel)
-      if (res.success) {
-        setAdminMessage({ success: true, text: 'Member checked in successfully. ₱150 fee debited!' })
-        fetchRealtimeData()
-        setTimeout(() => {
-          setIsCheckinModalOpen(false)
-          setIsScannerOpen(false)
-          setScanText('')
-        }, 1200)
-      } else {
-        setAdminMessage({ success: false, text: res.error || 'Check-in failed.' })
-      }
-    })
+  const handleChargeCheckin = async () => {
+    if (!selectedUser || activeLoadingId) return
+    setActiveLoadingId('checkin')
+    setIsPending(true)
+    const res = await scanCheckinAction(selectedUser.id, modalSkillLevel)
+    setIsPending(false)
+    setActiveLoadingId(null)
+    if (res.success) {
+      setAdminMessage({ success: true, text: 'Member checked in successfully. ₱150 fee debited!' })
+      fetchRealtimeData()
+      setTimeout(() => { setIsCheckinModalOpen(false); setIsScannerOpen(false); setScanText('') }, 1200)
+    } else {
+      setAdminMessage({ success: false, text: res.error || 'Check-in failed.' })
+    }
   }
 
-  const handleForceQueue = () => {
-    if (!selectedUser) return
-    startTransition(async () => {
-      const res = await forceEnterQueueAction(selectedUser.id, modalSkillLevel)
-      if (res.success) {
-        setAdminMessage({ success: true, text: 'Member entered queue manually (No charge).' })
-        fetchRealtimeData()
-        setTimeout(() => {
-          setIsCheckinModalOpen(false)
-          setIsScannerOpen(false)
-          setScanText('')
-        }, 1200)
-      } else {
-        setAdminMessage({ success: false, text: res.error || 'Operation failed.' })
-      }
-    })
+  const handleForceQueue = async () => {
+    if (!selectedUser || activeLoadingId) return
+    setActiveLoadingId('forcequeue')
+    setIsPending(true)
+    const res = await forceEnterQueueAction(selectedUser.id, modalSkillLevel)
+    setIsPending(false)
+    setActiveLoadingId(null)
+    if (res.success) {
+      setAdminMessage({ success: true, text: 'Member entered queue manually (No charge).' })
+      fetchRealtimeData()
+      setTimeout(() => { setIsCheckinModalOpen(false); setIsScannerOpen(false); setScanText('') }, 1200)
+    } else {
+      setAdminMessage({ success: false, text: res.error || 'Operation failed.' })
+    }
   }
 
-  const handleRemoveQueue = (userId: string) => {
-    startTransition(async () => {
-      const res = await removePlayerFromQueueAction(userId)
-      if (res.success) {
-        showNotice(true, 'Member successfully removed from the active queue.')
-        fetchRealtimeData()
-        setIsCheckinModalOpen(false)
-      } else {
-        setAdminMessage({ success: false, text: res.error || 'Failed to remove player.' })
-      }
-    })
+  const handleRemoveQueue = async (userId: string) => {
+    if (activeLoadingId) return
+    setActiveLoadingId('remove-' + userId)
+    setIsPending(true)
+    const res = await removePlayerFromQueueAction(userId)
+    setIsPending(false)
+    setActiveLoadingId(null)
+    if (res.success) {
+      showNotice(true, 'Member successfully removed from the active queue.')
+      fetchRealtimeData()
+      setIsCheckinModalOpen(false)
+    } else {
+      setAdminMessage({ success: false, text: res.error || 'Failed to remove player.' })
+    }
   }
 
-  const handleStartMatch = (courtId: string, level: 'NOVICE' | 'INTERMEDIATE' | 'ADVANCED') => {
-    startTransition(async () => {
-      const res = await assignMatchToCourtAction(courtId, level)
-      if (res.success) {
-        showNotice(true, 'Successfully assigned matched players to Court.')
-        fetchRealtimeData()
-      } else {
-        showNotice(false, res.error || 'Failed to assign match.')
-      }
-    })
+  const handleStartMatch = async (courtId: string, level: 'NOVICE' | 'INTERMEDIATE' | 'ADVANCED') => {
+    if (activeLoadingId) return
+    setActiveLoadingId('startmatch-' + courtId)
+    setIsPending(true)
+    const res = await assignMatchToCourtAction(courtId, level)
+    setIsPending(false)
+    setActiveLoadingId(null)
+    if (res.success) {
+      showNotice(true, 'Successfully assigned matched players to Court.')
+      fetchRealtimeData()
+    } else {
+      showNotice(false, res.error || 'Failed to assign match.')
+    }
   }
 
-  const handleManualAssign = (courtId: string) => {
-    if (!assigningMatch) return
-    startTransition(async () => {
-      const res = await assignMatchToCourtAction(courtId, assigningMatch.skillLevel)
-      if (res.success) {
-        setAssigningMatch(null)
-        showNotice(true, 'Successfully assigned matched players to Court.')
-        fetchRealtimeData()
-      } else {
-        showNotice(false, res.error || 'Failed to assign match.')
-      }
-    })
+  const handleManualAssign = async (courtId: string) => {
+    if (!assigningMatch || activeLoadingId) return
+    setActiveLoadingId('assign-' + courtId)
+    setIsPending(true)
+    const res = await assignMatchToCourtAction(courtId, assigningMatch.skillLevel)
+    setIsPending(false)
+    setActiveLoadingId(null)
+    if (res.success) {
+      setAssigningMatch(null)
+      showNotice(true, 'Successfully assigned matched players to Court.')
+      fetchRealtimeData()
+    } else {
+      showNotice(false, res.error || 'Failed to assign match.')
+    }
   }
 
-  const handleStartTimer = (courtId: string) => {
-    startTransition(async () => {
-      const res = await startMatchTimerAction(courtId)
-      if (res.success) {
-        showNotice(true, 'Match timer started!')
-        fetchRealtimeData()
-      } else {
-        showNotice(false, res.error || 'Failed to start timer.')
-      }
-    })
+  const handleStartTimer = async (courtId: string) => {
+    if (activeLoadingId) return
+    setActiveLoadingId('timer-' + courtId)
+    setIsPending(true)
+    const res = await startMatchTimerAction(courtId)
+    setIsPending(false)
+    setActiveLoadingId(null)
+    if (res.success) {
+      showNotice(true, 'Match timer started!')
+      fetchRealtimeData()
+    } else {
+      showNotice(false, res.error || 'Failed to start timer.')
+    }
   }
 
-  const handleEndMatch = (courtId: string) => {
-    startTransition(async () => {
-      const res = await endMatchEarlyAction(courtId)
-      if (res.success) {
-        showNotice(true, 'Match ended early. Players rotated back to queue.')
-        fetchRealtimeData()
-      } else {
-        showNotice(false, res.error || 'Failed to end match.')
-      }
-    })
+  const handleEndMatch = async (courtId: string) => {
+    if (activeLoadingId) return
+    setActiveLoadingId('end-' + courtId)
+    setIsPending(true)
+    const res = await endMatchEarlyAction(courtId)
+    setIsPending(false)
+    setActiveLoadingId(null)
+    if (res.success) {
+      showNotice(true, 'Match ended early. Players rotated back to queue.')
+      fetchRealtimeData()
+    } else {
+      showNotice(false, res.error || 'Failed to end match.')
+    }
   }
 
   const handleOpenRecordWinner = (courtId: string, courtNumber: number) => {
@@ -497,26 +512,28 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
   const toggleWinnerSelection = (userId: string) => {
     setSelectedWinners(prev => {
       if (prev.includes(userId)) return prev.filter(id => id !== userId)
-      if (prev.length >= 2) return prev // already 2 selected
+      if (prev.length >= 2) return prev
       return [...prev, userId]
     })
   }
 
-  const handleConfirmRecordWinner = () => {
-    if (!recordWinnerModal || selectedWinners.length !== 2) return
-    startTransition(async () => {
-      const res = await recordMatchResultAction(recordWinnerModal.courtId, selectedWinners)
-      if (res.success) {
-        setExpiredCourtIds(prev => { const next = new Set(prev); next.delete(recordWinnerModal.courtId); return next })
-        setRecordWinnerModal(null)
-        setConfirmRecord(false)
-        showNotice(true, `✅ Match result recorded! Yard Points awarded to all players.`)
-        fetchRealtimeData()
-      } else {
-        showNotice(false, res.error || 'Failed to record result.')
-        setRecordWinnerModal(null)
-      }
-    })
+  const handleConfirmRecordWinner = async () => {
+    if (!recordWinnerModal || selectedWinners.length !== 2 || activeLoadingId) return
+    setActiveLoadingId('recordwinner-' + recordWinnerModal.courtId)
+    setIsPending(true)
+    const res = await recordMatchResultAction(recordWinnerModal.courtId, selectedWinners)
+    setIsPending(false)
+    setActiveLoadingId(null)
+    if (res.success) {
+      setExpiredCourtIds(prev => { const next = new Set(prev); next.delete(recordWinnerModal.courtId); return next })
+      setRecordWinnerModal(null)
+      setConfirmRecord(false)
+      showNotice(true, `✅ Match result recorded! Yard Points awarded to all players.`)
+      fetchRealtimeData()
+    } else {
+      showNotice(false, res.error || 'Failed to record result.')
+      setRecordWinnerModal(null)
+    }
   }
 
   // Real-Time Court Timer Component
@@ -1290,19 +1307,19 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
                         <button
                           type="button"
                           disabled={isPending || parsedAmt <= 0}
-                          onClick={() => {
-                            startTransition(async () => {
-                              const res = await creditUserCashAction(matchedScanUser.id, parsedAmt)
-                              if (res.success) {
-                                setAdminMessage({ success: true, text: `Successfully credited ₱${parsedAmt.toFixed(2)} cash to ${matchedScanUser.name}!` })
-                                setTimeout(() => {
-                                  setIsScannerOpen(false)
-                                  setScanText('')
-                                }, 1500)
-                              } else {
-                                setAdminMessage({ success: false, text: res.error || 'Failed to credit cash.' })
-                              }
-                            })
+                          onClick={async () => {
+                            if (activeLoadingId) return
+                            setActiveLoadingId('cashcredit')
+                            setIsPending(true)
+                            const res = await creditUserCashAction(matchedScanUser.id, parsedAmt)
+                            setIsPending(false)
+                            setActiveLoadingId(null)
+                            if (res.success) {
+                              setAdminMessage({ success: true, text: `Successfully credited ₱${parsedAmt.toFixed(2)} cash to ${matchedScanUser.name}!` })
+                              setTimeout(() => { setIsScannerOpen(false); setScanText('') }, 1500)
+                            } else {
+                              setAdminMessage({ success: false, text: res.error || 'Failed to credit cash.' })
+                            }
                           }}
                           style={{
                             width: '100%', height: '36px', background: 'var(--color-primary)',
