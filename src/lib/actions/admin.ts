@@ -381,14 +381,17 @@ export async function recordMatchResultAction(
 
   try {
     await db.$transaction(async (tx) => {
-      // 1. Find all 4 players currently playing on this court
+      // 1. Find all 4 players currently on this court (MATCHED or PLAYING)
       const activePlayers = await tx.paddleStack.findMany({
-        where: { courtId, status: { in: ['MATCHED', 'PLAYING'] } },
+        where: {
+          courtId,
+          status: { in: ['MATCHED', 'PLAYING'] }
+        },
         include: { user: true }
       })
 
       if (activePlayers.length === 0) {
-        throw new Error('No active players found on this court.')
+        throw new Error('No active players found on this court. The match may have already been processed.')
       }
 
       // 2. Get points settings
@@ -532,43 +535,11 @@ export async function checkAndRotateExpiredMatchesAction(): Promise<ActionState>
       }
     }
 
-    // 2. Rotate expired court matches
-    for (const court of occupiedCourts) {
-      if (!court.gameStartedAt) continue
-
-      const elapsedMs = now.getTime() - court.gameStartedAt.getTime()
-      const durationMs = (court.gameDurationSecond || 900) * 1000
-
-      if (elapsedMs >= durationMs) {
-        // Match expired! Rotate players out to the end of the queue
-        await db.$transaction(async (tx) => {
-          const players = await tx.paddleStack.findMany({
-            where: { courtId: court.id, status: 'PLAYING' }
-          })
-
-          if (players.length > 0) {
-            const ids = players.map(p => p.id)
-            await tx.paddleStack.updateMany({
-              where: { id: { in: ids } },
-              data: {
-                status: 'WAITING',
-                courtId: null,
-                joinedAt: new Date() // Appends to the back of the queue
-              }
-            })
-          }
-
-          await tx.court.update({
-            where: { id: court.id },
-            data: {
-              status: 'AVAILABLE',
-              gameStartedAt: null
-            }
-          })
-        })
-        rotationsPerformed++
-      }
-    }
+    // 2. Court match timer expiry — intentionally NOT auto-rotating here.
+    //    When a match timer expires the admin page shows a "Record Winner & Award Points" button.
+    //    The court and players are ONLY cleared when staff records the winner (recordMatchResultAction)
+    //    or explicitly force-ends the match (endMatchEarlyAction).
+    //    Auto-rotating here would cause players to disappear from courts before the winner is recorded.
 
     if (rotationsPerformed > 0) {
       revalidatePath('/dashboard/admin')

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   scanCheckinAction,
   forceEnterQueueAction,
@@ -136,6 +137,7 @@ function ClockCountdown({ sessionExpiresAt }: { sessionExpiresAt: Date | string 
 
 export function AdminClient({ courts, stacks, users, bookings, expiryHours, opStartHour, opEndHour }: Props) {
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   // Helper: Get availability status for a court today based on bookings and operational hours
   const getAvailabilityStatus = (courtId: string) => {
@@ -311,6 +313,16 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
     }, 5000)
     return () => clearInterval(interval)
   }, [])
+
+  // ── Real-Time Polling ─────────────────────────────────────────────────────
+  // Refresh server data every 10 seconds so courts, queue, and scores stay
+  // up-to-date without requiring a manual page reload.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh()
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [router])
 
   // Filter users for scanner manual selector
   const filteredScanUsers = users.filter(u =>
@@ -542,11 +554,15 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
         {/* Header and Scan Button */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
               Staff Kiosk Control Panel
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', padding: '2px 8px', borderRadius: '999px', letterSpacing: '0.04em' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'liveBlip 1.4s ease-in-out infinite' }} />
+                LIVE
+              </span>
             </h1>
             <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: 4, margin: '4px 0 0' }}>
-              Check in lobby players, scan QR passes, and oversee the automated 2v2 court rotation.
+              Check in lobby players, scan QR passes, and oversee the automated 2v2 court rotation. Auto-refreshes every 10s.
             </p>
           </div>
           <button
@@ -1845,6 +1861,10 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
         @keyframes pulse-danger {
           0% { box-shadow: 0 0 0 0px rgba(239, 68, 68, 0.4); }
           100% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        }
+        @keyframes liveBlip {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.3; transform: scale(0.75); }
         }
         @media (max-width: 900px) {
           .admin-grid { grid-template-columns: 1fr !important; gap: 20px !important; }

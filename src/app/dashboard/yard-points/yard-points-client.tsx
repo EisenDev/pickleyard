@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { redeemShopProductAction, claimDailyLoginAction } from '@/lib/actions/yardpoints'
 import { Star, Gift, Droplets, Zap, Clock, ShoppingBag, CheckCircle, XCircle, AlertCircle, ChevronRight, Trophy, Flame, Shield, Crown, Sparkles } from 'lucide-react'
 
@@ -56,12 +57,23 @@ interface Props {
 
 export function YardPointsClient({ userName, yardPoints, lifetimeYardPoints, logs, products, redemptions, dailyClaimedToday }: Props) {
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
   const [notice, setNotice] = useState<{ success: boolean; text: string } | null>(null)
   const [redeemingId, setRedeemingId] = useState<string | null>(null)
   const [confirmRedeem, setConfirmRedeem] = useState<string | null>(null)
   const [claimedToday, setClaimedToday] = useState(dailyClaimedToday)
   const [activeTab, setActiveTab] = useState<'shop' | 'history' | 'redemptions'>('shop')
   const [shopFilter, setShopFilter] = useState<string>('ALL')
+
+  // ── Real-Time Polling ───────────────────────────────────────────────
+  // Refresh server data every 30 seconds so Yard Points balance updates
+  // automatically (e.g. after admin records a match winner).
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh()
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [router])
 
   const currentTier = getTier(lifetimeYardPoints)
   const nextTier = getNextTier(lifetimeYardPoints)
