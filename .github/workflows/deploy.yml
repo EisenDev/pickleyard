@@ -61,6 +61,8 @@ jobs:
           host: 20.198.217.229
           username: azureuser
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 45s
+          command_timeout: 10m
           script: |
             # 1. Create project folder if not exists
             mkdir -p ~/pickleyard
