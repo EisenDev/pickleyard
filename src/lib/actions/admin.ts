@@ -403,14 +403,19 @@ export async function recordMatchResultAction(
 
       const WIN_BONUS = getSetting('yp_win_bonus', 15)
 
-      // 3. Award points to all players (participation based on skill level)
+      // 3. Award points to all players (winners get full points, losers get 15% of winners' points)
       for (const entry of activePlayers) {
         const skillLevel = entry.skillLevel
         const isWinner = winnerUserIds.includes(entry.userId)
 
         const participationKey = `yp_${skillLevel.toLowerCase()}_participation`
         const participationPoints = getSetting(participationKey, skillLevel === 'ADVANCED' ? 50 : skillLevel === 'INTERMEDIATE' ? 35 : 20)
-        const totalPoints = participationPoints + (isWinner ? WIN_BONUS : 0)
+        
+        // Winners get participation points + win bonus
+        const winnerPoints = participationPoints + WIN_BONUS
+        
+        // Losers get 15% of winners' points, rounded to the nearest integer
+        const totalPoints = isWinner ? winnerPoints : Math.round(winnerPoints * 0.15)
 
         // Update user yard points
         await tx.user.update({
@@ -427,7 +432,7 @@ export async function recordMatchResultAction(
             userId: entry.userId,
             amount: totalPoints,
             reason: isWinner ? 'OPEN_PLAY_WIN' : 'OPEN_PLAY_PARTICIPATION',
-            details: `${skillLevel} match – ${isWinner ? `Winner bonus: +${WIN_BONUS} YP` : 'Participation'} (Court ${courtId.slice(-4)})`
+            details: `${skillLevel} match – ${isWinner ? `Winner (earned ${totalPoints} YP)` : `Participation / Loser (earned 15% of winners' points: ${totalPoints} YP)`} (Court ${courtId.slice(-4)})`
           }
         })
       }

@@ -315,12 +315,12 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
   }, [])
 
   // ── Real-Time Polling ─────────────────────────────────────────────────────
-  // Refresh server data every 10 seconds so courts, queue, and scores stay
+  // Refresh server data every 3 seconds so courts, queue, and scores stay
   // up-to-date without requiring a manual page reload.
   useEffect(() => {
     const interval = setInterval(() => {
       router.refresh()
-    }, 10000)
+    }, 3000)
     return () => clearInterval(interval)
   }, [router])
 
@@ -562,7 +562,7 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
               </span>
             </h1>
             <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: 4, margin: '4px 0 0' }}>
-              Check in lobby players, scan QR passes, and oversee the automated 2v2 court rotation. Auto-refreshes every 10s.
+              Check in lobby players, scan QR passes, and oversee the automated 2v2 court rotation. Auto-refreshes every 3s.
             </p>
           </div>
           <button

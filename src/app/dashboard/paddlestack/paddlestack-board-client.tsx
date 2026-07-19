@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { joinPaddleStackAction, leavePaddleStackAction } from '@/lib/actions/paddlestack'
 import { checkAndRotateExpiredMatchesAction } from '@/lib/actions/admin'
 import { Clock, Users, ShieldCheck, ShieldAlert, ArrowLeft } from 'lucide-react'
@@ -71,6 +72,7 @@ function PlayerCountdown({ sessionExpiresAt }: { sessionExpiresAt: string }) {
 }
 
 export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole, userCredits, expiryHours }: Props) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
   const [skillLevel, setSkillLevel] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('INTERMEDIATE')
@@ -82,6 +84,16 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
     const timer = setInterval(() => setTicks(t => t + 1), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  // ── Real-Time Polling ───────────────────────────────────────────────
+  // Refresh the Paddle Stack Board every 3 seconds so users see
+  // court status, waiting queue position, and ready states instantly.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh()
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [router])
 
   // Auto trigger rotation check periodically
   useEffect(() => {

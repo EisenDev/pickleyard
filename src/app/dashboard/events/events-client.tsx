@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { registerEventAction, createClubEventAction } from '@/lib/actions/event'
 import { ShieldCheck, ShieldAlert, Clock, MapPin, Users, Ticket, Plus, X, Calendar, PencilLine } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -58,6 +58,16 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
   const isAdmin = userRole === 'ADMIN' || userRole === 'STAFF'
+
+  // ── Real-Time Polling ───────────────────────────────────────────────
+  // Refresh the Events page every 5 seconds so users see newly created
+  // events and updated registration counts automatically.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [router])
 
   // Create Event modal state
   const [isCreateOpen, setIsCreateOpen] = useState(false)
