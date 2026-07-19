@@ -34,6 +34,7 @@ const adminNavItems = [
   { href: '/dashboard/admin', label: 'Kiosk Control', icon: ShieldCheck },
   { href: '/dashboard/paddlestack', label: 'Paddle Stack Board', icon: Layers },
   { href: '/dashboard/bookings', label: 'Booking Monitor', icon: Calendar },
+  { href: '/dashboard/events', label: 'Club Events', icon: Award },
   { href: '/dashboard/transactions', label: 'Transaction Ledger', icon: CreditCard },
   { href: '/dashboard/admin/users', label: 'User Management', icon: Users },
   { href: '/dashboard/admin/settings', label: 'Time & Cost Control', icon: Settings },
