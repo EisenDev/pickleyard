@@ -135,9 +135,35 @@ function ClockCountdown({ sessionExpiresAt }: { sessionExpiresAt: Date | string 
   return <span>{hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}</span>
 }
 
-export function AdminClient({ courts, stacks, users, bookings, expiryHours, opStartHour, opEndHour }: Props) {
+export function AdminClient({ courts: initialCourts, stacks: initialStacks, users, bookings, expiryHours, opStartHour, opEndHour }: Props) {
+  const [courts, setCourts] = useState<Court[]>(initialCourts)
+  const [stacks, setStacks] = useState<StackEntry[]>(initialStacks)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+
+  // Keep state in sync with server component props
+  useEffect(() => {
+    setCourts(initialCourts)
+  }, [initialCourts])
+
+  useEffect(() => {
+    setStacks(initialStacks)
+  }, [initialStacks])
+
+  const fetchRealtimeData = async () => {
+    try {
+      const res = await fetch('/api/realtime')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success) {
+          setCourts(data.courts)
+          setStacks(data.stacks)
+        }
+      }
+    } catch (e) {
+      console.error('Realtime fetch error:', e)
+    }
+  }
 
   // Helper: Get availability status for a court today based on bookings and operational hours
   const getAvailabilityStatus = (courtId: string) => {
@@ -315,14 +341,12 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
   }, [])
 
   // ── Real-Time Polling ─────────────────────────────────────────────────────
-  // Refresh server data every 3 seconds so courts, queue, and scores stay
-  // up-to-date without requiring a manual page reload.
+  // Fetch dynamic stack and court status every 2 seconds from API to avoid caching and UI stutters.
   useEffect(() => {
-    const interval = setInterval(() => {
-      router.refresh()
-    }, 3000)
+    fetchRealtimeData()
+    const interval = setInterval(fetchRealtimeData, 2000)
     return () => clearInterval(interval)
-  }, [router])
+  }, [])
 
   // Filter users for scanner manual selector
   const filteredScanUsers = users.filter(u =>
@@ -370,6 +394,7 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
       const res = await scanCheckinAction(selectedUser.id, modalSkillLevel)
       if (res.success) {
         setAdminMessage({ success: true, text: 'Member checked in successfully. ₱150 fee debited!' })
+        fetchRealtimeData()
         setTimeout(() => {
           setIsCheckinModalOpen(false)
           setIsScannerOpen(false)
@@ -387,6 +412,7 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
       const res = await forceEnterQueueAction(selectedUser.id, modalSkillLevel)
       if (res.success) {
         setAdminMessage({ success: true, text: 'Member entered queue manually (No charge).' })
+        fetchRealtimeData()
         setTimeout(() => {
           setIsCheckinModalOpen(false)
           setIsScannerOpen(false)
@@ -403,6 +429,7 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
       const res = await removePlayerFromQueueAction(userId)
       if (res.success) {
         showNotice(true, 'Member successfully removed from the active queue.')
+        fetchRealtimeData()
         setIsCheckinModalOpen(false)
       } else {
         setAdminMessage({ success: false, text: res.error || 'Failed to remove player.' })
@@ -415,6 +442,7 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
       const res = await assignMatchToCourtAction(courtId, level)
       if (res.success) {
         showNotice(true, 'Successfully assigned matched players to Court.')
+        fetchRealtimeData()
       } else {
         showNotice(false, res.error || 'Failed to assign match.')
       }
@@ -428,6 +456,7 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
       if (res.success) {
         setAssigningMatch(null)
         showNotice(true, 'Successfully assigned matched players to Court.')
+        fetchRealtimeData()
       } else {
         showNotice(false, res.error || 'Failed to assign match.')
       }
@@ -439,6 +468,7 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
       const res = await startMatchTimerAction(courtId)
       if (res.success) {
         showNotice(true, 'Match timer started!')
+        fetchRealtimeData()
       } else {
         showNotice(false, res.error || 'Failed to start timer.')
       }
@@ -450,6 +480,7 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
       const res = await endMatchEarlyAction(courtId)
       if (res.success) {
         showNotice(true, 'Match ended early. Players rotated back to queue.')
+        fetchRealtimeData()
       } else {
         showNotice(false, res.error || 'Failed to end match.')
       }
@@ -480,6 +511,7 @@ export function AdminClient({ courts, stacks, users, bookings, expiryHours, opSt
         setRecordWinnerModal(null)
         setConfirmRecord(false)
         showNotice(true, `✅ Match result recorded! Yard Points awarded to all players.`)
+        fetchRealtimeData()
       } else {
         showNotice(false, res.error || 'Failed to record result.')
         setRecordWinnerModal(null)

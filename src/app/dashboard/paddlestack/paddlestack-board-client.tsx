@@ -71,13 +71,39 @@ function PlayerCountdown({ sessionExpiresAt }: { sessionExpiresAt: string }) {
   )
 }
 
-export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole, userCredits, expiryHours }: Props) {
+export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialStacks, currentUserId, userRole, userCredits, expiryHours }: Props) {
   const router = useRouter()
+  const [courts, setCourts] = useState<Court[]>(initialCourts)
+  const [stacks, setStacks] = useState<StackEntry[]>(initialStacks)
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
   const [skillLevel, setSkillLevel] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('INTERMEDIATE')
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
   const [activeQueueTab, setActiveQueueTab] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('NOVICE')
+
+  // Keep state in sync with server component props
+  useEffect(() => {
+    setCourts(initialCourts)
+  }, [initialCourts])
+
+  useEffect(() => {
+    setStacks(initialStacks)
+  }, [initialStacks])
+
+  const fetchRealtimeData = async () => {
+    try {
+      const res = await fetch('/api/realtime')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success) {
+          setCourts(data.courts)
+          setStacks(data.stacks)
+        }
+      }
+    } catch (e) {
+      console.error('Realtime fetch error:', e)
+    }
+  }
 
   const [ticks, setTicks] = useState(0)
   useEffect(() => {
@@ -86,14 +112,13 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
   }, [])
 
   // ── Real-Time Polling ───────────────────────────────────────────────
-  // Refresh the Paddle Stack Board every 3 seconds so users see
+  // Refresh the Paddle Stack Board every 2 seconds so users see
   // court status, waiting queue position, and ready states instantly.
   useEffect(() => {
-    const interval = setInterval(() => {
-      router.refresh()
-    }, 3000)
+    fetchRealtimeData()
+    const interval = setInterval(fetchRealtimeData, 2000)
     return () => clearInterval(interval)
-  }, [router])
+  }, [])
 
   // Auto trigger rotation check periodically
   useEffect(() => {
@@ -150,10 +175,12 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
     setMessage(null)
     startTransition(async () => {
       const result = await joinPaddleStackAction(skillLevel)
-      setMessage(result.success
-        ? { success: true, text: 'You successfully entered the paddle stack queue!' }
-        : { success: false, text: result.error }
-      )
+      if (result.success) {
+        setMessage({ success: true, text: 'You successfully entered the paddle stack queue!' })
+        fetchRealtimeData()
+      } else {
+        setMessage({ success: false, text: result.error })
+      }
     })
   }
 
@@ -166,10 +193,12 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
     setMessage(null)
     startTransition(async () => {
       const result = await leavePaddleStackAction()
-      setMessage(result.success
-        ? { success: true, text: 'You left the queue.' }
-        : { success: false, text: result.error }
-      )
+      if (result.success) {
+        setMessage({ success: true, text: 'You left the queue.' })
+        fetchRealtimeData()
+      } else {
+        setMessage({ success: false, text: result.error })
+      }
     })
   }
 

@@ -53,21 +53,40 @@ const EMPTY_FORM = {
   customType: '',
 }
 
-export function EventsClient({ events, userBalance, userRole }: EventsClientProps) {
+export function EventsClient({ events: initialEvents, userBalance, userRole }: EventsClientProps) {
   const router = useRouter()
+  const [events, setEvents] = useState<ClubEvent[]>(initialEvents)
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
   const isAdmin = userRole === 'ADMIN' || userRole === 'STAFF'
 
+  // Keep state in sync with server component props
+  useEffect(() => {
+    setEvents(initialEvents)
+  }, [initialEvents])
+
+  const fetchRealtimeData = async () => {
+    try {
+      const res = await fetch('/api/realtime')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success) {
+          setEvents(data.events)
+        }
+      }
+    } catch (e) {
+      console.error('Realtime fetch error:', e)
+    }
+  }
+
   // ── Real-Time Polling ───────────────────────────────────────────────
-  // Refresh the Events page every 5 seconds so users see newly created
+  // Refresh the Events page every 3 seconds so users see newly created
   // events and updated registration counts automatically.
   useEffect(() => {
-    const interval = setInterval(() => {
-      router.refresh()
-    }, 5000)
+    fetchRealtimeData()
+    const interval = setInterval(fetchRealtimeData, 3000)
     return () => clearInterval(interval)
-  }, [router])
+  }, [])
 
   // Create Event modal state
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -82,7 +101,7 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
         const result = await registerEventAction(eventId)
         if (result.success) {
           setMessage({ success: true, text: `Successfully registered for "${title}"!` })
-          router.refresh()
+          fetchRealtimeData()
         } else {
           setMessage({ success: false, text: result.error })
         }
@@ -119,7 +138,7 @@ export function EventsClient({ events, userBalance, userRole }: EventsClientProp
       if (result.success) {
         setCreateMsg({ success: true, text: 'Event published! It is now live on the Events page.' })
         setForm(EMPTY_FORM)
-        router.refresh()
+        fetchRealtimeData()
         setTimeout(() => { setIsCreateOpen(false); setCreateMsg(null) }, 1800)
       } else {
         setCreateMsg({ success: false, text: result.error })
