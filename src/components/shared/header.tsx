@@ -42,8 +42,8 @@ export function Header({ user, onMenuClick }: HeaderProps) {
         marginRight: 0,
       }}
     >
-      {/* Search Input */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, maxWidth: 320 }}>
+      {/* Hamburger Menu (mobile only) */}
+      <div style={{ display: 'flex', alignItems: 'center' }}>
         {onMenuClick && (
           <button
             onClick={onMenuClick}
@@ -63,146 +63,66 @@ export function Header({ user, onMenuClick }: HeaderProps) {
             <MenuIcon size={20} strokeWidth={1.5} />
           </button>
         )}
-        <div style={{ position: 'relative', width: '100%' }}>
-          <Search
-            size={16}
-            color="var(--color-text-secondary)"
-            style={{
-              position: 'absolute',
-              left: 12,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              pointerEvents: 'none',
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Search courts, events..."
-            style={{
-              width: '100%',
-              height: 32,
-              padding: '0 36px 0 36px',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: 13,
-              fontFamily: 'var(--font-sans)',
-              color: 'var(--color-text-primary)',
-              transition: 'border-color var(--duration-fast), background var(--duration-fast)',
-            }}
-            className="search-input"
-          />
-        </div>
       </div>
 
-      {/* Right Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {/* Quick check-in indicator */}
-        <div
-          style={{
-            fontSize: '11px',
-            fontWeight: 600,
-            background: 'var(--color-accent-subtle)',
-            color: 'var(--color-accent-hover)',
-            padding: '4px 10px',
-            borderRadius: 'var(--radius-full)',
-            border: '1px solid rgba(244, 124, 0, 0.2)',
-          }}
-        >
-          Check-in QR Ready
-        </div>
-
-        {/* Notifications */}
+      {/* User Profile Menu */}
+      <div style={{ position: 'relative' }}>
         <button
+          onClick={() => setDropdownOpen(!dropdownOpen)}
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 'var(--radius-sm)',
-            border: 'none',
-            background: 'transparent',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            gap: 8,
+            background: 'transparent',
+            border: 'none',
             cursor: 'pointer',
-            color: 'var(--color-text-secondary)',
-            position: 'relative',
+            padding: '4px 8px',
+            borderRadius: 'var(--radius-md)',
             transition: 'background var(--duration-fast)',
           }}
-          className="header-icon-btn"
+          className="user-menu-btn"
         >
-          <Bell size={16} strokeWidth={1.5} />
-          <span
-            style={{
-              position: 'absolute',
-              top: 6,
-              right: 8,
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: 'var(--color-accent)',
-            }}
-          />
-        </button>
-
-        {/* Divider */}
-        <div style={{ width: 1, height: 20, background: 'var(--color-border)', margin: '0 4px' }} />
-
-        {/* User Profile Menu */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: 'var(--radius-md)',
-              transition: 'background var(--duration-fast)',
-            }}
-            className="user-menu-btn"
-          >
-            {user?.image ? (
-              <img
-                src={user.image}
-                alt={user.name || 'User'}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 'var(--radius-full)',
-                  objectFit: 'cover',
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 'var(--radius-full)',
-                  background: 'var(--color-primary-subtle)',
-                  color: 'var(--color-primary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
-              >
-                {initials}
-              </div>
-            )}
-            <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>
-                {user?.name || 'Player'}
-              </span>
-              <span style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginTop: -2, textTransform: 'capitalize' }}>
-                {user?.role?.toLowerCase() || 'member'}
-              </span>
+          {user?.image ? (
+            <img
+              src={user.image}
+              alt={user.name || 'User'}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 'var(--radius-full)',
+                objectFit: 'cover',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 'var(--radius-full)',
+                background: 'var(--color-primary-subtle)',
+                color: 'var(--color-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {initials}
             </div>
+          )}
+          <div className="header-user-info" style={{ textAlign: 'left', display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+              {user?.name || 'Player'}
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginTop: -2, textTransform: 'capitalize' }}>
+              {user?.role?.toLowerCase() || 'member'}
+            </span>
+          </div>
+          <span className="header-user-chevron" style={{ display: 'inline-flex', alignItems: 'center' }}>
             <ChevronDown size={14} color="var(--color-text-secondary)" />
-          </button>
+          </span>
+        </button>
 
           {dropdownOpen && (
             <div
@@ -284,7 +204,6 @@ export function Header({ user, onMenuClick }: HeaderProps) {
             </div>
           )}
         </div>
-      </div>
 
       <style>{`
         .search-input:focus {
@@ -303,6 +222,14 @@ export function Header({ user, onMenuClick }: HeaderProps) {
         }
         .dropdown-item-danger:hover {
           background: var(--color-danger-subtle) !important;
+        }
+        @media (max-width: 768px) {
+          .header-user-info {
+            display: none !important;
+          }
+          .header-user-chevron {
+            display: none !important;
+          }
         }
       `}</style>
     </header>
