@@ -319,6 +319,10 @@ body {
   .mobile-menu-btn {
     display: inline-flex !important;
   }
+  
+  .sidebar-bottom-items {
+    display: none !important;
+  }
 }
 
 

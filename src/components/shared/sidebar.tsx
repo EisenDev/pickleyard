@@ -145,13 +145,14 @@ export function Sidebar({ user, isOpen }: SidebarProps) {
           )
         })}
       </nav>
+      {/* Bottom items (Settings, Logout) wrapper */}
+      <div className="sidebar-bottom-items" style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Divider */}
+        <div style={{ height: 1, background: 'var(--color-border)', margin: '0 8px' }} />
 
-      {/* Divider */}
-      <div style={{ height: 1, background: 'var(--color-border)', margin: '0 8px' }} />
-
-      {/* Bottom items */}
-      <div style={{ padding: '8px 8px 4px' }}>
-        {bottomItems.map((item) => {
+        {/* Bottom items */}
+        <div style={{ padding: '8px 8px 4px' }}>
+          {bottomItems.map((item) => {
           const isActive = pathname === item.href
           const Icon = item.icon
           return (
@@ -206,6 +207,7 @@ export function Sidebar({ user, isOpen }: SidebarProps) {
           <span>Logout</span>
         </button>
       </div>
+    </div>
 
       {/* Lobby Check-in Status */}
       <div style={{ padding: '8px 12px 16px' }}>

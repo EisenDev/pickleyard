@@ -314,65 +314,111 @@ export default async function DashboardPage() {
         {/* Right Column (2fr) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {/* Lobby Check-in QR Card */}
-          <div className="content-card" style={{ borderLeft: '3px solid var(--color-primary)' }}>
-            <div className="card-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <QrCode size={16} color="var(--color-primary)" />
-                <h3 style={{ fontSize: '14px', fontWeight: 750, margin: 0 }}>Lobby Kiosk Check-In</h3>
-              </div>
-              <span
-                style={{
-                  background: 'var(--color-primary-subtle)',
-                  color: 'var(--color-primary)',
-                  fontSize: '9px',
-                  fontWeight: 800,
-                  padding: '2px 6px',
-                  borderRadius: 'var(--radius-xs)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                QR ACTIVE
-              </span>
-            </div>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.4, margin: 0 }}>
-              Scan your personal check-in ID below at the lobby counter to check in.
-            </p>
-            <div style={{
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-md)',
-              padding: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
-              {/* QR Block representation */}
-              <div style={{
-                width: '120px',
-                height: '120px',
-                background: 'white',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '8px'
-              }}>
+          {(() => {
+            const userQueue = user.paddleStacks[0]
+            const isQueued = !!userQueue
+            return (
+              <div className="content-card" style={{ borderLeft: '3px solid var(--color-primary)' }}>
+                <div className="card-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <QrCode size={16} color="var(--color-primary)" />
+                    <h3 style={{ fontSize: '14px', fontWeight: 750, margin: 0 }}>Lobby Kiosk Check-In</h3>
+                  </div>
+                  <span
+                    style={{
+                      background: isQueued ? 'var(--color-primary-subtle)' : 'var(--color-border)',
+                      color: isQueued ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      fontSize: '9px',
+                      fontWeight: 800,
+                      padding: '2px 6px',
+                      borderRadius: 'var(--radius-xs)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    {isQueued ? 'QR ACTIVE' : 'INACTIVE'}
+                  </span>
+                </div>
+                <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.4, margin: 0 }}>
+                  Scan your personal check-in ID below at the lobby counter to check in.
+                </p>
                 <div style={{
-                  width: '100%', height: '100%',
-                  backgroundImage: 'radial-gradient(var(--color-primary) 30%, transparent 30%), radial-gradient(var(--color-primary) 30%, transparent 30%)',
-                  backgroundSize: '8px 8px',
-                  backgroundPosition: '0 0, 4px 4px'
-                }} />
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '12px',
+                  position: 'relative'
+                }}>
+                  <div style={{ position: 'relative', width: '120px', height: '120px' }}>
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      background: 'white',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '8px',
+                      opacity: isQueued ? 1 : 0.25,
+                      filter: isQueued ? 'none' : 'blur(4px)',
+                      transition: 'all var(--duration-normal)',
+                      boxSizing: 'border-box'
+                    }}>
+                      {isQueued && userQueue?.qrId ? (
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${userQueue.qrId}`} 
+                          alt="Lobby Kiosk QR Pass" 
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                        />
+                      ) : (
+                        <div style={{
+                          width: '100%', height: '100%',
+                          backgroundImage: 'radial-gradient(var(--color-primary) 30%, transparent 30%), radial-gradient(var(--color-primary) 30%, transparent 30%)',
+                          backgroundSize: '8px 8px',
+                          backgroundPosition: '0 0, 4px 4px'
+                        }} />
+                      )}
+                    </div>
+                    {!isQueued && (
+                      <div style={{
+                        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <Link
+                          href="/dashboard/paddlestack"
+                          style={{
+                            background: 'var(--color-primary)',
+                            color: 'white',
+                            padding: '4px 8px',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '9px',
+                            fontWeight: 700,
+                            textDecoration: 'none',
+                            boxShadow: 'var(--shadow-sm)',
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          Join Queue
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{user.name}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--color-text-disabled)', fontFamily: 'var(--font-mono)' }}>
+                      QR ID: {isQueued ? userQueue.qrId : 'Inactive'}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{user.name}</div>
-                <div style={{ fontSize: '10px', color: 'var(--color-text-disabled)', fontFamily: 'var(--font-mono)' }}>ID: {user.id.substring(0, 12).toUpperCase()}</div>
-              </div>
-            </div>
-          </div>
+            )
+          })()}
 
           {/* Join an Event / Clinic promo card */}
           <div className="content-card">

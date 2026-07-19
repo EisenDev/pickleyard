@@ -75,6 +75,7 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
   const [skillLevel, setSkillLevel] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('INTERMEDIATE')
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
+  const [activeQueueTab, setActiveQueueTab] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('NOVICE')
 
   const [ticks, setTicks] = useState(0)
   useEffect(() => {
@@ -244,7 +245,7 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
       )}
 
       {/* Court Grid Board */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
+      <div className="court-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
         {courts.map(court => {
           const playersHere = stacksByCourtId(court.id)
           const hasPlayers = playersHere.length > 0
@@ -275,17 +276,17 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
                   alignItems: 'center',
                   borderBottom: '1px solid var(--color-border)'
                 }}>
-                  <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-disabled)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="court-card-title" style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-disabled)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     🚧 Court {court.number}
                   </span>
-                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-disabled)' }}>
+                  <span className="court-card-timer" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-disabled)' }}>
                     Closed
                   </span>
                 </div>
 
                 {/* Body */}
                 <div style={{ padding: '12px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Court close</span>
+                  <span className="court-card-title" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Court close</span>
                   <span style={{ fontSize: '10px', color: 'var(--color-text-disabled)', maxWidth: '180px' }}>Not active for stacks</span>
                 </div>
               </div>
@@ -316,13 +317,13 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
                 borderBottom: '1px solid var(--color-border)'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 800, color: (court.status === 'OCCUPIED' || court.status === 'READY') ? 'white' : 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="court-card-title" style={{ fontSize: '13px', fontWeight: 800, color: (court.status === 'OCCUPIED' || court.status === 'READY') ? 'white' : 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     🏓 Court {court.number}
                   </span>
                   {playersHere[0]?.skillLevel && (
-                    <span style={{
+                    <span className="court-card-badge" style={{
                       fontSize: '8px',
-                      fontWeight: 850,
+                      fontWeight: 855,
                       background: (court.status === 'OCCUPIED' || court.status === 'READY') ? 'rgba(255,255,255,0.2)' : playersHere[0].skillLevel === 'ADVANCED' ? 'rgba(99,102,241,0.1)' : playersHere[0].skillLevel === 'INTERMEDIATE' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)',
                       color: (court.status === 'OCCUPIED' || court.status === 'READY') ? 'white' : playersHere[0].skillLevel === 'ADVANCED' ? '#6366f1' : playersHere[0].skillLevel === 'INTERMEDIATE' ? '#d97706' : '#10b981',
                       border: `1px solid ${(court.status === 'OCCUPIED' || court.status === 'READY') ? 'rgba(255,255,255,0.3)' : playersHere[0].skillLevel === 'ADVANCED' ? 'rgba(99,102,241,0.2)' : playersHere[0].skillLevel === 'INTERMEDIATE' ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}`,
@@ -335,7 +336,7 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
                     </span>
                   )}
                 </div>
-                <span style={{ fontSize: '10px', fontWeight: 700, color: (court.status === 'OCCUPIED' || court.status === 'READY') ? 'rgba(255,255,255,0.8)' : 'var(--color-text-disabled)' }}>
+                <span className="court-card-timer" style={{ fontSize: '10px', fontWeight: 700, color: (court.status === 'OCCUPIED' || court.status === 'READY') ? 'rgba(255,255,255,0.8)' : 'var(--color-text-disabled)' }}>
                   {court.status === 'OCCUPIED' && court.gameStartedAt ? (
                     <ActiveTimer startTime={court.gameStartedAt} duration={court.gameDurationSecond} />
                   ) : court.status === 'READY' ? (
@@ -351,17 +352,17 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
                 {hasPlayers ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {playersHere.map((player, idx) => (
-                      <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                        <div style={{
+                      <div key={player.id} className="court-card-player-item" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                        <div className="court-card-player-avatar" style={{
                           width: 26, height: 26, borderRadius: '50%',
                           background: player.userId === currentUserId ? 'var(--color-primary)' : 'var(--color-secondary)',
-                          color: 'white', fontSize: '11px', fontWeight: 850,
+                          color: 'white', fontSize: '11px', fontWeight: 855,
                           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                         }}>
                           {getInitials(player.userName)}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div className="court-card-player-name" style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {player.userName}
                           </div>
                         </div>
@@ -384,7 +385,9 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
       {/* Waiting Queue Lanes */}
       <div>
         <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '16px', marginTop: '8px' }}>Waiting Queue Stacks</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }} className="queue-grid">
+        
+        {/* DESKTOP ONLY VIEW: 3 lanes */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }} className="queue-grid desktop-only-queue">
           {[
             { label: 'Novice Queue', color: '#10b981', items: noviceQueue },
             { label: 'Intermediate Queue', color: '#f59e0b', items: intermediateQueue },
@@ -479,11 +482,173 @@ export function PaddleStackBoardClient({ courts, stacks, currentUserId, userRole
             </div>
           ))}
         </div>
+
+        {/* MOBILE ONLY VIEW: Tabs system */}
+        <div className="mobile-only-queue" style={{ display: 'none' }}>
+          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+              {[
+                { type: 'NOVICE', label: 'Novice', color: '#10b981', items: noviceQueue },
+                { type: 'INTERMEDIATE', label: 'Inter.', color: '#f59e0b', items: intermediateQueue },
+                { type: 'ADVANCED', label: 'Advance', color: '#6366f1', items: advancedQueue }
+              ].map(tab => {
+                const isActive = activeQueueTab === tab.type
+                return (
+                  <button
+                    key={tab.type}
+                    type="button"
+                    onClick={() => setActiveQueueTab(tab.type as any)}
+                    style={{
+                      padding: '12px 6px',
+                      border: 'none',
+                      background: isActive ? 'var(--color-card)' : 'transparent',
+                      color: isActive ? tab.color : 'var(--color-text-secondary)',
+                      fontWeight: isActive ? 800 : 600,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      borderBottom: isActive ? `3.5px solid ${tab.color}` : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <span>{tab.label}</span>
+                    <span style={{ 
+                      fontSize: '9px', 
+                      background: isActive ? tab.color : 'var(--color-border)', 
+                      color: isActive ? 'white' : 'var(--color-text-secondary)', 
+                      padding: '1px 6px', 
+                      borderRadius: 'var(--radius-full)',
+                      fontWeight: 700
+                    }}>
+                      {tab.items.length}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div style={{ 
+              padding: '12px', 
+              maxHeight: '400px', 
+              overflowY: 'auto', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '8px'
+            }}>
+              {(() => {
+                const activeLane = [
+                  { type: 'NOVICE', color: '#10b981', items: noviceQueue },
+                  { type: 'INTERMEDIATE', color: '#f59e0b', items: intermediateQueue },
+                  { type: 'ADVANCED', color: '#6366f1', items: advancedQueue }
+                ].find(l => l.type === activeQueueTab)!
+
+                if (activeLane.items.length === 0) {
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 80, gap: '6px' }}>
+                      <Users size={18} color="var(--color-text-disabled)" />
+                      <span style={{ fontSize: '11px', color: 'var(--color-text-disabled)' }}>Queue is empty</span>
+                    </div>
+                  )
+                }
+
+                return activeLane.items.map((p, idx) => {
+                  const joinedTime = new Date(p.joinedAt).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                  })
+                  const limitTime = p.sessionExpiresAt ? new Date(p.sessionExpiresAt).getTime() : 0
+                  const isLowTime = p.sessionExpiresAt && (limitTime - Date.now() < 45 * 60 * 1000)
+                  const isPendingScan = p.status === 'PENDING'
+
+                  return (
+                    <div key={p.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '10px 12px',
+                      background: isPendingScan ? '#fef2f2' : isLowTime ? 'var(--color-danger-subtle)' : 'var(--color-surface)',
+                      borderRadius: 'var(--radius-md)',
+                      border: `1.5px solid ${isPendingScan ? '#ef4444' : isLowTime ? 'var(--color-danger)' : 'var(--color-border)'}`,
+                      boxShadow: (isPendingScan || isLowTime) ? '0 0 8px rgba(239, 68, 68, 0.12)' : 'none'
+                    }}>
+                      <div style={{
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: isPendingScan ? '#fee2e2' : 'var(--color-border)',
+                        color: isPendingScan ? '#ef4444' : 'var(--color-text-secondary)',
+                        fontSize: '11px', fontWeight: 800,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                      }}>
+                        {idx + 1}
+                      </div>
+                      <div style={{
+                        width: 30, height: 30, borderRadius: '50%',
+                        background: 'linear-gradient(135deg, var(--color-primary-subtle), var(--color-surface))',
+                        color: isPendingScan ? '#ef4444' : 'var(--color-primary)',
+                        fontSize: '12px', fontWeight: 800,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: `1.5px solid ${isPendingScan ? '#ef4444' : activeLane.color}`,
+                        flexShrink: 0
+                      }}>
+                        {getInitials(p.userName)}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: isPendingScan ? '#b91c1c' : 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                          <span>{p.userName}</span>
+                          {p.sessionExpiresAt && <PlayerCountdown sessionExpiresAt={p.sessionExpiresAt} />}
+                        </div>
+                        <div style={{ fontSize: '10px', color: isPendingScan ? '#ef4444' : 'var(--color-text-disabled)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={10} />
+                          <span>{isPendingScan ? '🔴 UNPAID - PENDING SCAN' : `Joined: ${joinedTime}`}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              })()}
+            </div>
+          </div>
+        </div>
       </div>
 
       <style>{`
         @media (max-width: 900px) {
-          .queue-grid { grid-template-columns: 1fr !important; }
+          .court-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+          }
+          .court-card-title {
+            font-size: 11px !important;
+          }
+          .court-card-badge {
+            font-size: 7px !important;
+            padding: 1px 4px !important;
+          }
+          .court-card-timer {
+            font-size: 9px !important;
+          }
+          .court-card-player-item {
+            padding: 4px 6px !important;
+            gap: 6px !important;
+          }
+          .court-card-player-avatar {
+            width: 20px !important;
+            height: 20px !important;
+            font-size: 9px !important;
+          }
+          .court-card-player-name {
+            font-size: 11px !important;
+          }
+          .desktop-only-queue {
+            display: none !important;
+          }
+          .mobile-only-queue {
+            display: block !important;
+          }
         }
       `}</style>
       </div>

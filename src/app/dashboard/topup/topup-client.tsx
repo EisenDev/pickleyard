@@ -106,6 +106,14 @@ export function TopUpClient({ userBalance, userId }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }} className="animate-fade-up">
+      {/* Mobile Modal Backdrop */}
+      {selectedMethod && (
+        <div
+          onClick={() => setSelectedMethod(null)}
+          className="topup-amount-modal-backdrop open"
+          style={{ display: 'none' }}
+        />
+      )}
       {/* Back and Header */}
       <div>
         <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', textDecoration: 'none', marginBottom: '12px', fontWeight: 600 }}>
@@ -195,7 +203,27 @@ export function TopUpClient({ userBalance, userId }: Props) {
         </div>
 
         {/* Right: Amount + Confirm */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className={`topup-amount-section-container ${selectedMethod ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {selectedMethod && (
+            <div className="topup-amount-modal-close-btn" style={{ display: 'none', justifyContent: 'flex-end', width: '100%' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedMethod(null)}
+                style={{
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  padding: '6px 12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: 'var(--color-text-secondary)'
+                }}
+              >
+                ✕ Close
+              </button>
+            </div>
+          )}
           {selectedMethod && selectedMethod !== 'voucher' && (
             <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '16px', margin: '0 0 16px' }}>
@@ -336,6 +364,43 @@ export function TopUpClient({ userBalance, userId }: Props) {
       <style>{`
         @media (max-width: 900px) {
           .topup-main-grid { grid-template-columns: 1fr !important; }
+          .topup-amount-section-container.open {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: calc(100% - 32px) !important;
+            max-width: 420px !important;
+            z-index: 1100 !important;
+            display: flex !important;
+            background: var(--color-card) !important;
+            border: 1px solid var(--color-border) !important;
+            border-radius: var(--radius-xl) !important;
+            box-shadow: var(--shadow-xl) !important;
+            padding: 16px !important;
+            max-height: 85vh !important;
+            overflow-y: auto !important;
+            box-sizing: border-box !important;
+          }
+          .topup-amount-section-container:not(.open) {
+            display: none !important;
+          }
+          .topup-amount-modal-close-btn {
+            display: flex !important;
+            justify-content: flex-end !important;
+            margin-bottom: -10px !important;
+          }
+          .topup-amount-modal-backdrop.open {
+            display: block !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(0, 0, 0, 0.5) !important;
+            backdrop-filter: blur(4px) !important;
+            z-index: 1050 !important;
+          }
         }
       `}</style>
     </div>
