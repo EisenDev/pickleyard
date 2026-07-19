@@ -49,9 +49,10 @@ interface SidebarProps {
     email?: string | null
     role?: string | null
   }
+  isOpen?: boolean
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, isOpen }: SidebarProps) {
   const pathname = usePathname()
 
   const activeNavItems = (user?.role === 'ADMIN' || user?.role === 'STAFF')
@@ -66,18 +67,10 @@ export function Sidebar({ user }: SidebarProps) {
 
   return (
     <aside
+      className={`sidebar-container ${isOpen ? 'open' : ''}`}
       style={{
-        width: 'var(--sidebar-width)',
         background: 'var(--color-surface)',
         borderRight: '1px solid var(--color-border)',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        height: '100vh',
-        zIndex: 200,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
       }}
     >
       {/* Logo */}

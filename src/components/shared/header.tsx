@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { signOut } from 'next-auth/react'
-import { Search, Bell, Grid, ChevronDown, LogOut, User, Settings } from 'lucide-react'
+import { Search, Bell, Grid, ChevronDown, LogOut, User, Settings, Menu as MenuIcon } from 'lucide-react'
 
 interface HeaderProps {
   user?: {
@@ -11,9 +11,10 @@ interface HeaderProps {
     image?: string | null
     role?: string | null
   }
+  onMenuClick?: () => void
 }
 
-export function Header({ user }: HeaderProps) {
+export function Header({ user, onMenuClick }: HeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   const initials = user?.name
@@ -42,7 +43,26 @@ export function Header({ user }: HeaderProps) {
       }}
     >
       {/* Search Input */}
-      <div style={{ display: 'flex', alignItems: 'center', flex: 1, maxWidth: 320 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, maxWidth: 320 }}>
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--color-text-primary)',
+              padding: '6px',
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 'var(--radius-sm)'
+            }}
+            className="mobile-menu-btn"
+          >
+            <MenuIcon size={20} strokeWidth={1.5} />
+          </button>
+        )}
         <div style={{ position: 'relative', width: '100%' }}>
           <Search
             size={16}
