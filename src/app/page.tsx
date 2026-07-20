@@ -10,16 +10,11 @@ import {
   Clock,
   ClipboardCheck,
   CheckCircle2,
-  Play,
   Menu,
   X,
-  Sparkles,
   MapPin,
-  ArrowRight,
-  TrendingUp,
-  Award,
-  Users
 } from 'lucide-react'
+
 // Isolated component so useSearchParams doesn't block static prerendering of LandingPage
 function OAuthErrorHandler({ onError }: { onError: (msg: string) => void }) {
   const searchParams = useSearchParams()
@@ -32,7 +27,6 @@ function OAuthErrorHandler({ onError }: { onError: (msg: string) => void }) {
   }, [searchParams])
   return null
 }
-
 
 export default function LandingPage() {
   const [isSignInOpen, setIsSignInOpen] = useState(false)
@@ -51,54 +45,10 @@ export default function LandingPage() {
       .catch(err => console.error(err))
   }, [])
 
-  const features = [
-    {
-      icon: Calendar,
-      title: 'Real-time Availability',
-      desc: 'See open courts in real-time and book instantly without phone calls.',
-    },
-    {
-      icon: CreditCard,
-      title: 'Secure Payments',
-      desc: 'Pay safely and securely through verified automated payment options.',
-    },
-    {
-      icon: Clock,
-      title: 'Easy Booking',
-      desc: 'Choose your preferred court, date, and hour slot in just a few taps.',
-    },
-    {
-      icon: ClipboardCheck,
-      title: 'Manage Bookings',
-      desc: 'View, reschedule, or cancel your bookings anytime from your portal.',
-    },
-  ]
-
-  const courts = [
-    {
-      name: 'Indoor Courts',
-      tag: 'All-Weather Play',
-      image: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=600',
-      features: ['Climate controlled', 'Premium cushion floors', 'High-definition lighting']
-    },
-    {
-      name: 'Outdoor Courts',
-      tag: 'Scenic & Fresh',
-      image: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&q=80&w=600',
-      features: ['Pro-tournament nets', 'Windbreaker fences', 'Spectator seating']
-    },
-    {
-      name: 'Rooftop Courts',
-      tag: 'Skyline Views',
-      image: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=600',
-      features: ['Panoramic city views', 'Lounge access', 'Night play ready']
-    }
-  ]
-
   return (
     <div style={{ background: 'var(--color-bg-primary)', minHeight: '100vh', overflowX: 'hidden' }}>
       {/* Navigation Header */}
-      <header className="header-container animate-fade-in">
+      <header className="header-container">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 44, height: 44, objectFit: 'contain' }} />
           <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em' }}>
@@ -111,7 +61,6 @@ export default function LandingPage() {
           <Link href="#courts" className="nav-link">Courts</Link>
           <Link href="#features" className="nav-link">Why PaddleYard</Link>
           <Link href="#how-it-works" className="nav-link">How It Works</Link>
-          <Link href="#pricing" className="nav-link">Pricing</Link>
         </nav>
 
         {/* Desktop Actions */}
@@ -130,9 +79,10 @@ export default function LandingPage() {
                   fontSize: 14,
                   color: 'var(--color-text-secondary)',
                   cursor: 'pointer',
-                  fontWeight: 500,
+                  fontWeight: 650,
+                  transition: 'color var(--duration-fast)'
                 }}
-                className="login-btn"
+                className="login-btn-link"
               >
                 Log in
               </button>
@@ -160,7 +110,6 @@ export default function LandingPage() {
             <Link href="#courts" onClick={() => setMobileMenuOpen(false)} className="nav-link-mobile">Courts</Link>
             <Link href="#features" onClick={() => setMobileMenuOpen(false)} className="nav-link-mobile">Why PaddleYard</Link>
             <Link href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="nav-link-mobile">How It Works</Link>
-            <Link href="#pricing" onClick={() => setMobileMenuOpen(false)} className="nav-link-mobile">Pricing</Link>
             <div style={{ height: 1, background: 'var(--color-border)', margin: '10px 0' }} />
             {session ? (
               <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="get-started-btn" style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 44 }}>
@@ -200,96 +149,75 @@ export default function LandingPage() {
         <div className="hero-container">
           {/* Left Hero Content */}
           <div className="hero-left-content animate-fade-up">
-            <div
-              style={{
-                alignSelf: 'flex-start',
-                background: 'var(--color-accent-subtle)',
-                color: 'var(--color-text-primary)',
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                padding: '4px 12px',
-                borderRadius: 'var(--radius-full)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                border: '1px solid rgba(138, 226, 52, 0.4)'
-              }}
-            >
-              <Sparkles size={12} style={{ color: '#76D11B' }} />
-              <span>Play More. Wait Less.</span>
+            <div className="badge-courts">
+              <span className="badge-courts-dot" />
+              <span>INDOOR COURTS. ALL DAY.</span>
             </div>
 
             <h1 className="hero-title">
               Book Your<br />
               Pickleball Court<br />
-              <span className="title-accent">In Just a Few Clicks</span>
+              <span className="title-accent-success">Play More.</span>
             </h1>
 
-            <p
-              style={{
-                fontSize: 16,
-                color: 'var(--color-text-secondary)',
-                lineHeight: 1.6,
-                maxWidth: 480,
-              }}
-              className="hero-subtitle"
-            >
-              Find available courts, choose your time, and play your game. Fast, easy, and secure court booking for pickleball players.
+            <p className="hero-subtitle">
+              Premium indoor pickleball courts. Easy booking. Real-time availability.
             </p>
 
             <div className="hero-actions">
               {session ? (
                 <>
                   <Link href="/dashboard/bookings" className="get-started-btn hero-cta-btn">
-                    Book a Court
+                    Book a Court 📅
                   </Link>
                   <Link href="/dashboard/bookings" className="sec-btn hero-cta-btn">
                     <span>View Courts</span>
-                    <MapPin size={14} style={{ marginLeft: 6, color: 'var(--color-text-secondary)' }} />
+                    <MapPin size={14} style={{ marginLeft: 6 }} />
                   </Link>
                 </>
               ) : (
                 <>
                   <Link href="/signup" className="get-started-btn hero-cta-btn">
-                    Book a Court
+                    Book a Court 📅
                   </Link>
                   <button className="sec-btn hero-cta-btn" onClick={() => setIsSignInOpen(true)}>
                     <span>View Courts</span>
-                    <MapPin size={14} style={{ marginLeft: 6, color: 'var(--color-text-secondary)' }} />
+                    <MapPin size={14} style={{ marginLeft: 6 }} />
                   </button>
                 </>
               )}
             </div>
 
-            {/* User stars verification proof */}
+            {/* Rating Stars proof */}
             <div className="user-proof">
               <div className="avatars-row">
-                <span className="avatar-circle" style={{ background: '#E2E8F0', backgroundImage: 'url(https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&fit=crop&q=60)', backgroundSize: 'cover' }}></span>
-                <span className="avatar-circle" style={{ background: '#CBD5E1', backgroundImage: 'url(https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&fit=crop&q=60)', backgroundSize: 'cover' }}></span>
-                <span className="avatar-circle" style={{ background: '#94A3B8', backgroundImage: 'url(https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&fit=crop&q=60)', backgroundSize: 'cover' }}></span>
-                <span className="avatar-circle" style={{ background: '#64748B', backgroundImage: 'url(https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&fit=crop&q=60)', backgroundSize: 'cover' }}></span>
+                <span className="avatar-circle" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&fit=crop&q=60)' }}></span>
+                <span className="avatar-circle" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&fit=crop&q=60)' }}></span>
+                <span className="avatar-circle" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&fit=crop&q=60)' }}></span>
+                <span className="avatar-circle" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&fit=crop&q=60)' }}></span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>⭐️⭐️⭐️⭐️⭐️</span>
-                <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 500 }}>4.9/5 from 500+ active players</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>★★★★★</span>
+                <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 600 }}>Trusted by 500+ players</span>
               </div>
             </div>
           </div>
 
-          {/* Right Hero / Visual Mockup */}
+          {/* Right Hero / Visual Image (Bigger) */}
           <div className="hero-right-visual animate-fade-up">
             <div 
               className="court-visual-canvas" 
               style={{ 
-                backgroundImage: 'url(https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=800)', 
+                backgroundImage: 'url(https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=1200)', 
                 backgroundSize: 'cover', 
                 backgroundPosition: 'center',
-                position: 'relative'
+                position: 'relative',
+                borderRadius: 'var(--radius-xl)',
+                overflow: 'hidden',
+                boxShadow: 'var(--shadow-lg)'
               }}
             >
-              {/* Floating Active Card Mockup */}
+              {/* Floating Active Next Available Card Mockup */}
               <div className="hero-card next-available-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="badge-pill">
@@ -298,58 +226,25 @@ export default function LandingPage() {
                   </span>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12 }}>
-                  <div className="court-num-badge">2</div>
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--color-text-primary)' }}>
                       Today, May 25
                     </div>
-                    <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 2 }}>
-                      6:00 PM – 7:00 PM • Court 2
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                      6:00 PM – 7:00 PM
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-disabled)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <MapPin size={10} />
+                      <span>Court 2</span>
                     </div>
                   </div>
                 </div>
                 {session ? (
-                  <Link
-                    href="/dashboard/bookings"
-                    style={{
-                      width: '100%',
-                      height: 38,
-                      background: 'var(--color-primary)',
-                      border: 'none',
-                      borderRadius: 'var(--radius-lg)',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: 'white',
-                      cursor: 'pointer',
-                      marginTop: 12,
-                      boxShadow: 'var(--shadow-primary-btn)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      textDecoration: 'none'
-                    }}
-                    className="book-now-floating-btn"
-                  >
+                  <Link href="/dashboard/bookings" className="book-now-floating-btn">
                     Book Now
                   </Link>
                 ) : (
-                  <button
-                    onClick={() => setIsSignInOpen(true)}
-                    style={{
-                      width: '100%',
-                      height: 38,
-                      background: 'var(--color-primary)',
-                      border: 'none',
-                      borderRadius: 'var(--radius-lg)',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: 'white',
-                      cursor: 'pointer',
-                      marginTop: 12,
-                      boxShadow: 'var(--shadow-primary-btn)'
-                    }}
-                    className="book-now-floating-btn"
-                  >
+                  <button onClick={() => setIsSignInOpen(true)} className="book-now-floating-btn">
                     Book Now
                   </button>
                 )}
@@ -361,57 +256,39 @@ export default function LandingPage() {
 
       {/* Features Grid */}
       <section id="features" className="features-section">
-        <div style={{ textAlign: 'center', marginBottom: 56, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-secondary)' }}>
-            WHY PADDLEYARD?
-          </span>
-          <h2 style={{ fontSize: 32, fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em' }}>
-            Everything you need in{' '}
-            <span style={{ color: 'var(--color-secondary)' }}>one simple platform</span>
-          </h2>
-          <p style={{ fontSize: 15, color: 'var(--color-text-secondary)', maxWidth: 500, margin: '0 auto', lineHeight: 1.5 }}>
-            Ditch the phone calls and physical logs. PaddleYard automates court assignments, player queues, and check-ins.
-          </p>
-        </div>
-
-        <div className="features-grid">
-          {features.map((f, i) => {
+        <div className="features-container-grid">
+          {[
+            {
+              title: 'Real-time Availability',
+              desc: 'See open courts in real-time and book instantly.',
+              icon: Calendar
+            },
+            {
+              title: 'Easy & Secure Payments',
+              desc: 'Pay safely and securely through PayMongo.',
+              icon: CreditCard
+            },
+            {
+              title: 'Indoor Premium Courts',
+              desc: 'High-quality indoor courts built for the best experience.',
+              icon: Clock
+            },
+            {
+              title: 'Manage Bookings',
+              desc: 'View, reschedule, or cancel your bookings anytime.',
+              icon: ClipboardCheck
+            }
+          ].map((f, i) => {
             const Icon = f.icon
             return (
-              <div
-                key={i}
-                style={{
-                  background: 'var(--color-card)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-xl)',
-                  padding: 28,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 16,
-                  boxShadow: 'var(--shadow-sm)',
-                  textAlign: 'left'
-                }}
-                className="feature-item-card"
-              >
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 'var(--radius-lg)',
-                    background: 'var(--color-primary-subtle)',
-                    color: 'var(--color-primary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px solid var(--color-primary-muted)'
-                  }}
-                >
+              <div key={i} className="feature-item-card">
+                <div className="feature-icon-wrapper">
                   <Icon size={20} />
                 </div>
-                <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--color-text-primary)' }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
                   {f.title}
                 </h3>
-                <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: 0 }}>
                   {f.desc}
                 </p>
               </div>
@@ -420,92 +297,150 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Courts Carousel / Cards Section */}
-      <section id="courts" className="courts-section">
-        <div className="courts-container">
-          <div className="courts-header">
-            <span className="courts-eyebrow">PREMIUM COURTS</span>
-            <h2 className="courts-title">Great Experience. Beautiful Facilities.</h2>
-            <p className="courts-desc">We partner with the best facilities to bring you top-quality courts that meet your game.</p>
+      {/* Our Indoor Courts */}
+      <section id="courts" className="courts-showcase-section">
+        <div className="courts-showcase-container">
+          <div className="courts-showcase-left animate-fade-up">
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#10b981', display: 'block', marginBottom: '8px' }}>
+              Our Indoor Courts
+            </span>
+            <h2 className="courts-showcase-title">Built for Every Pickleball Player</h2>
+            <p className="courts-showcase-desc">
+              Clean, safe, and fully indoor courts so you can play your best, no matter the weather.
+            </p>
             
-            <ul className="courts-bullet-list">
-              {['Well-maintained pro courts', 'Clean and comfortable facilities', 'Night play lighting ready', 'Ample secure parking space'].map((bullet) => (
-                <li key={bullet} className="courts-bullet-item">
-                  <CheckCircle2 size={16} className="bullet-check-icon" />
+            <ul className="courts-showcase-list">
+              {[
+                'Climate-controlled environment',
+                'Professional court flooring',
+                'Bright LED lighting',
+                'Comfortable lounge & rest areas'
+              ].map((bullet) => (
+                <li key={bullet} className="courts-showcase-item">
+                  <CheckCircle2 size={16} style={{ color: '#10b981', flexShrink: 0 }} />
                   <span>{bullet}</span>
                 </li>
               ))}
             </ul>
 
-            <Link href={session ? "/dashboard/bookings" : "/signup"} className="get-started-btn" style={{ marginTop: 24, alignSelf: 'flex-start' }}>
-              Explore Courts
+            <Link href={session ? "/dashboard/bookings" : "/signup"} className="explore-btn">
+              Explore Courts →
             </Link>
           </div>
 
-          <div className="courts-visual-grid">
-            {courts.map((court, idx) => (
-              <div key={idx} className="court-image-card">
-                <div className="court-img-wrap">
-                  <img src={court.image} alt={court.name} className="court-img" />
-                  <span className="court-img-tag">{court.tag}</span>
+          <div className="courts-showcase-right">
+            {[
+              {
+                id: '1',
+                name: 'Court 1',
+                image: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=600'
+              },
+              {
+                id: '2',
+                name: 'Court 2',
+                image: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&q=80&w=600'
+              },
+              {
+                id: '3',
+                name: 'Court 3',
+                image: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=600'
+              }
+            ].map((court, idx) => (
+              <div key={idx} className="showcase-card">
+                <div className="showcase-img-container">
+                  <img src={court.image} alt={court.name} className="showcase-img" />
+                  <div className="showcase-number">{court.id}</div>
                 </div>
-                <div className="court-info">
-                  <h3 className="court-name">{court.name}</h3>
-                  <div className="court-features-row">
-                    {court.features.map(f => (
-                      <span key={f} className="court-feat-badge">{f}</span>
-                    ))}
+                <div className="showcase-footer">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Calendar size={13} style={{ color: 'var(--color-text-secondary)' }} />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>{court.name}</span>
                   </div>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Indoor Court</span>
                 </div>
               </div>
             ))}
           </div>
         </div>
+        
+        {/* Carousel indicators */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '24px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-border)' }} />
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-border)' }} />
+        </div>
       </section>
 
       {/* How it Works Section */}
       <section id="how-it-works" className="how-section">
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-secondary)' }}>
-            HOW IT WORKS
+        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            How It Works
           </span>
-          <h2 style={{ fontSize: 32, fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', marginTop: 10 }}>
+          <h2 style={{ fontSize: 32, fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', marginTop: '8px', margin: '8px 0 0' }}>
             Book in 3 Simple Steps
           </h2>
         </div>
 
-        <div className="steps-grid">
+        <div className="steps-container-grid">
           {[
-            { step: '1', title: 'Choose a Court', desc: 'Browse available courts near you and check current stack occupancy.' },
-            { step: '2', title: 'Pick a Time', desc: 'Select your preferred date, hour block, and court category.' },
-            { step: '3', title: 'Book & Pay', desc: 'Confirm your booking, pay securely with points or cards, and lock in the slot.' }
-          ].map((item, index) => (
-            <div key={index} className="step-card">
-              <div className="step-num">{item.step}</div>
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--color-text-primary)', marginTop: 16 }}>{item.title}</h3>
-              <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginTop: 8 }}>{item.desc}</p>
+            {
+              step: '1',
+              title: 'Choose a Court',
+              desc: 'Pick your preferred indoor court.',
+              icon: Calendar
+            },
+            {
+              step: '2',
+              title: 'Pick a Time',
+              desc: 'Select the date and time you want.',
+              icon: Clock
+            },
+            {
+              step: '3',
+              title: 'Book & Play',
+              desc: 'Confirm, pay, and you\'re all set!',
+              icon: CreditCard
+            }
+          ].map((item, idx) => (
+            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '20px' }} className="step-arrow-wrapper">
+              <div className="step-card">
+                <div className="step-icon-badge">
+                  <item.icon size={20} />
+                  <div className="step-number-pill">{item.step}</div>
+                </div>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--color-text-primary)', margin: '14px 0 4px 0' }}>{item.title}</h3>
+                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.4, margin: 0 }}>{item.desc}</p>
+              </div>
+              {idx < 2 && (
+                <span className="step-arrow">→</span>
+              )}
             </div>
           ))}
         </div>
       </section>
 
-      {/* CTA Ready banner */}
+      {/* CTA Ready Banner */}
       <section className="cta-banner-section">
         <div className="cta-banner-container">
-          <h2 className="cta-banner-title">
-            Ready to Play?<br />
-            Join Smarter & Book Courts Instantly.
-          </h2>
-          <p className="cta-banner-desc">
-            PaddleYard simplifies scheduling for players and management for club staff. Sign up today and hit the court.
-          </p>
-          <Link href={session ? "/dashboard/bookings" : "/signup"} className="get-started-btn hero-cta-btn" style={{ background: 'var(--color-primary-hover)' }}>
-            Book Your Court Now
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }} className="banner-details-row">
+            <div className="paddle-ball-badge">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M5.5 2C3.57 2 2 3.57 2 5.5S3.57 9 5.5 9c1.47 0 2.73-.91 3.25-2.2L13 11l-3.8 3.8a2.5 2.5 0 0 0-3.2 3.2l-3 3a1 1 0 1 0 1.4 1.4l3-3a2.5 2.5 0 0 0 3.2-3.2L14.4 13l4.2 4.2c1.29.52 2.2 1.78 2.2 3.25 0 1.93-1.57 3.5-3.5 3.5S13.8 22.43 13.8 20.5a1 1 0 1 0-2 0c0 3.03 2.47 5.5 5.5 5.5s5.5-2.47 5.5-5.5c0-1.47-.91-2.73-2.2-3.25L16.4 13l3.8-3.8a2.5 2.5 0 0 0 3.2-3.2l3-3a1 1 0 1 0-1.4-1.4l-3 3a2.5 2.5 0 0 0-3.2 3.2L14.8 11 10.6 6.8C10.08 5.51 9.17 4.25 7.68 3.2L5.5 2z"/>
+              </svg>
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>Ready to Play?</h2>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>Book your court now and enjoy the game!</p>
+            </div>
+          </div>
+          <Link href={session ? "/dashboard/bookings" : "/signup"} className="banner-cta-button">
+            Book Your Court Now →
           </Link>
         </div>
       </section>
 
-      {/* Complete Footer */}
+      {/* Footer */}
       <footer className="footer-section">
         <div className="footer-grid">
           {/* Logo & Description */}
@@ -513,11 +448,11 @@ export default function LandingPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 36, height: 36, objectFit: 'contain' }} />
               <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-text-primary)' }}>
-                PaddleYard
+                PickleYard
               </span>
             </div>
-            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-              Premium pickleball booking portal for checking timers, joining player queues, and scheduling games seamlessly.
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: 0, textAlign: 'left' }}>
+              Premium indoor pickleball courts. Play more, every day.
             </p>
             {/* Social Icons */}
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
@@ -539,67 +474,37 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Navigation */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>Facilities</h4>
+          {/* Quick Links */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>Quick Links</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-              <a href="#courts" className="footer-link">Indoor Courts</a>
-              <a href="#courts" className="footer-link">Outdoor Courts</a>
-              <a href="#courts" className="footer-link">Rooftop Arenas</a>
-              <a href="#" className="footer-link">Pro Shop</a>
+              <a href="#courts" className="footer-link">Courts</a>
+              <a href="#" className="footer-link">Pricing</a>
+              <a href="#how-it-works" className="footer-link">How It Works</a>
+              <a href="#" className="footer-link">About Us</a>
+              <a href="#" className="footer-link">Contact</a>
             </div>
           </div>
 
           {/* Support */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>Support</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>Support</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
               <a href="#" className="footer-link">Help Center</a>
-              <a href="#" className="footer-link">Contact Us</a>
-              <a href="#" className="footer-link">Court Rules</a>
-              <a href="#" className="footer-link">Pricing Matrix</a>
-            </div>
-          </div>
-
-          {/* Club Info */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>Club Info</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-              <a href="#" className="footer-link">About Us</a>
-              <a href="#" className="footer-link">Membership Plans</a>
+              <a href="#" className="footer-link">Terms & Conditions</a>
               <a href="#" className="footer-link">Privacy Policy</a>
-              <a href="#" className="footer-link">Terms of Service</a>
             </div>
           </div>
 
-          {/* Quick Booking */}
-          <div className="footer-cta-card">
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1.3 }}>
-              Ready to claim your court?
-            </h4>
-            <Link
-              href={session ? "/dashboard/bookings" : "/signup"}
-              style={{
-                background: 'var(--color-primary)',
-                color: 'white',
-                borderRadius: 'var(--radius-lg)',
-                padding: '10px 20px',
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: 'none',
-                boxShadow: 'var(--shadow-primary-btn)',
-                display: 'block',
-                width: '100%',
-                textAlign: 'center',
-                transition: 'background var(--duration-fast)',
-              }}
-              className="get-started-btn"
-            >
-              Book Now
-            </Link>
-            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block', marginTop: 4 }}>
-              Check availability instantly.
-            </span>
+          {/* Follow Us */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>Follow Us</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+              <a href="#" className="footer-link">Facebook</a>
+              <a href="#" className="footer-link">Instagram</a>
+              <a href="#" className="footer-link">TikTok</a>
+              <a href="#" className="footer-link">YouTube</a>
+            </div>
           </div>
         </div>
 
@@ -610,9 +515,11 @@ export default function LandingPage() {
             fontSize: 12,
             color: 'var(--color-text-secondary)',
             marginTop: 32,
+            borderTop: '1px solid var(--color-border)',
+            paddingTop: 16
           }}
         >
-          © 2026 PaddleYard. All rights reserved.
+          © 2026 PickleYard. All rights reserved.
         </div>
       </footer>
 
@@ -677,7 +584,7 @@ export default function LandingPage() {
         .nav-link {
           text-decoration: none;
           font-size: 14px;
-          font-weight: 500;
+          font-weight: 600;
           color: var(--color-text-secondary);
           transition: color var(--duration-fast);
         }
@@ -692,8 +599,8 @@ export default function LandingPage() {
           color: var(--color-text-primary);
         }
 
-        .login-btn:hover {
-          color: var(--color-text-primary);
+        .login-btn-link:hover {
+          color: var(--color-text-primary) !important;
         }
 
         .get-started-btn {
@@ -736,11 +643,11 @@ export default function LandingPage() {
         /* Hero Layout */
         .hero-section {
           background-color: var(--color-bg-primary);
-          min-height: 85vh;
+          min-height: 80vh;
           display: flex;
           align-items: center;
           padding-top: 60px;
-          padding-bottom: 60px;
+          padding-bottom: 80px;
           position: relative;
           overflow: hidden;
           border-bottom: 1px solid var(--color-border);
@@ -752,8 +659,8 @@ export default function LandingPage() {
           padding: 0 48px;
           width: 100%;
           display: grid;
-          grid-template-columns: 1.05fr 0.95fr;
-          gap: 40px;
+          grid-template-columns: 1fr 1fr;
+          gap: 60px;
           align-items: center;
           position: relative;
           z-index: 10;
@@ -767,28 +674,49 @@ export default function LandingPage() {
           z-index: 10;
         }
 
+        .badge-courts {
+          align-self: flex-start;
+          background: var(--color-primary-subtle);
+          color: var(--color-primary);
+          font-size: 11px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          padding: 6px 14px;
+          border-radius: var(--radius-full);
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          border: 1px solid var(--color-primary-muted);
+        }
+        .badge-courts-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #10B981;
+        }
+
         .hero-title {
-          font-size: 52px;
+          font-size: 58px;
           font-weight: 800;
           color: var(--color-text-primary);
           line-height: 1.1;
           letter-spacing: -0.025em;
+          text-align: left;
+          margin: 0;
         }
-        .title-accent {
-          color: var(--color-secondary);
-          position: relative;
-          display: inline-block;
+        .title-accent-success {
+          color: #10B981;
         }
-        .title-accent::after {
-          content: '';
-          position: absolute;
-          bottom: 2px;
-          left: 0;
-          width: 100%;
-          height: 4px;
-          background: var(--color-accent);
-          border-radius: var(--radius-full);
-          z-index: -1;
+
+        .hero-subtitle {
+          font-size: 16px;
+          color: var(--color-text-secondary);
+          line-height: 1.6;
+          max-width: 480px;
+          text-align: left;
+          margin: 0;
+          font-weight: 500;
         }
 
         .hero-actions {
@@ -811,11 +739,13 @@ export default function LandingPage() {
           align-items: center;
         }
         .avatar-circle {
-          width: 32px;
-          height: 32px;
+          width: 36px;
+          height: 36px;
           border-radius: var(--radius-full);
           border: 2px solid var(--color-card);
-          margin-left: -8px;
+          margin-left: -10px;
+          background-size: cover;
+          background-position: center;
         }
         .avatar-circle:first-child {
           margin-left: 0;
@@ -829,8 +759,8 @@ export default function LandingPage() {
         }
         .court-visual-canvas {
           position: relative;
-          width: 580px;
-          height: 480px;
+          width: 100%;
+          aspect-ratio: 4/3;
           border: 1px solid var(--color-border);
           border-radius: var(--radius-2xl);
           box-shadow: var(--shadow-lg);
@@ -840,73 +770,12 @@ export default function LandingPage() {
           justify-content: center;
         }
 
-        .court-lines {
-          position: absolute;
-          inset: 0;
-          border: 2px dashed rgba(255,255,255,0.4);
-          pointer-events: none;
-        }
-        .court-center-line {
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          left: 50%;
-          width: 2px;
-          background: rgba(255,255,255,0.7);
-        }
-        .court-kitchen-line {
-          position: absolute;
-          left: 0;
-          right: 0;
-          top: 40%;
-          height: 2px;
-          background: rgba(255,255,255,0.7);
-        }
-
-        /* Abstract paddle and ball design */
-        .pickleball-illustration {
-          position: absolute;
-          bottom: 40px;
-          right: 40px;
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        }
-        .illustration-paddle {
-          width: 56px;
-          height: 80px;
-          background: var(--color-primary);
-          border-radius: 20px 20px 8px 8px;
-          position: relative;
-          transform: rotate(-15deg);
-          box-shadow: var(--shadow-md);
-        }
-        .illustration-paddle::after {
-          content: '';
-          position: absolute;
-          bottom: -16px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 8px;
-          height: 20px;
-          background: #E2E8F0;
-          border-radius: 4px;
-        }
-        .illustration-ball {
-          width: 32px;
-          height: 32px;
-          border-radius: var(--radius-full);
-          background: var(--color-accent);
-          border: 1px solid var(--color-border);
-          box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
-
         .next-available-card {
           position: absolute;
           bottom: 24px;
-          right: 24px;
+          left: 24px;
           padding: 24px;
-          width: 260px;
+          width: 250px;
           display: flex;
           flex-direction: column;
           background: var(--color-card);
@@ -914,6 +783,7 @@ export default function LandingPage() {
           border-radius: var(--radius-xl);
           box-shadow: var(--shadow-xl);
           z-index: 20;
+          box-sizing: border-box;
           animation: float-animation 6s ease-in-out infinite;
         }
         @keyframes float-animation {
@@ -925,19 +795,20 @@ export default function LandingPage() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: var(--color-success-subtle);
-          color: var(--color-success);
+          background: #ecfdf5;
+          color: #10b981;
           font-size: 10px;
-          font-weight: 700;
+          font-weight: 800;
           letter-spacing: 0.08em;
           padding: 4px 10px;
           border-radius: var(--radius-full);
+          border: 1px solid rgba(16, 185, 129, 0.15);
         }
         .pulse-dot {
           width: 6px;
           height: 6px;
           border-radius: var(--radius-full);
-          background: var(--color-success);
+          background: #10b981;
           animation: pulse-glow 1.5s infinite;
         }
         @keyframes pulse-glow {
@@ -946,239 +817,301 @@ export default function LandingPage() {
           100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
-        .court-num-badge {
-          width: 38px;
+        .book-now-floating-btn {
+          width: 100%;
           height: 38px;
-          border-radius: var(--radius-lg);
-          background: var(--color-secondary-subtle);
-          color: var(--color-secondary);
+          background: var(--color-text-primary);
+          border: none;
+          border-radius: var(--radius-md);
+          font-size: 13px;
+          font-weight: 700;
+          color: white;
+          cursor: pointer;
+          margin-top: 14px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-weight: 800;
-          font-size: 16px;
+          text-decoration: none;
+          transition: background var(--duration-fast);
+        }
+        .book-now-floating-btn:hover {
+          background: #000000 !important;
         }
 
         /* Features */
         .features-section {
           max-width: 1280px;
           margin: 0 auto;
-          padding: 100px 48px;
+          padding: 40px 48px;
         }
-        .features-grid {
+        .features-container-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 24px;
+          background: var(--color-card);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-2xl);
+          padding: 40px;
+          box-shadow: var(--shadow-sm);
+        }
+        .feature-item-card {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          text-align: center;
+          align-items: center;
+        }
+        .feature-icon-wrapper {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: #ecfdf5;
+          color: #10b981;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        /* Courts Section */
-        .courts-section {
-          background: var(--color-surface);
-          border-top: 1px solid var(--color-border);
-          border-bottom: 1px solid var(--color-border);
-          padding: 100px 48px;
-        }
-        .courts-container {
+        /* Showcase Section */
+        .courts-showcase-section {
           max-width: 1280px;
           margin: 0 auto;
+          padding: 80px 48px;
+        }
+        .courts-showcase-container {
           display: grid;
-          grid-template-columns: 0.95fr 1.05fr;
+          grid-template-columns: 1fr 1.8fr;
           gap: 60px;
           align-items: center;
         }
-        .courts-header {
+        .courts-showcase-left {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 20px;
           text-align: left;
         }
-        .courts-eyebrow {
-          font-size: 11px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          color: var(--color-secondary);
-        }
-        .courts-title {
-          font-size: 32px;
+        .courts-showcase-title {
+          font-size: 38px;
           font-weight: 800;
           color: var(--color-text-primary);
+          line-height: 1.15;
           letter-spacing: -0.02em;
-          line-height: 1.2;
+          margin: 0;
         }
-        .courts-desc {
+        .courts-showcase-desc {
           font-size: 15px;
           color: var(--color-text-secondary);
           line-height: 1.6;
+          margin: 0;
+          font-weight: 500;
         }
-        .courts-bullet-list {
+        .courts-showcase-list {
           list-style: none;
           padding: 0;
-          margin: 12px 0 0;
+          margin: 0;
           display: flex;
           flex-direction: column;
           gap: 12px;
         }
-        .courts-bullet-item {
+        .courts-showcase-item {
           display: flex;
           align-items: center;
           gap: 10px;
           font-size: 14px;
+          font-weight: 700;
           color: var(--color-text-primary);
-          font-weight: 500;
         }
-        .bullet-check-icon {
-          color: var(--color-success);
-          flex-shrink: 0;
+        .explore-btn {
+          align-self: flex-start;
+          background: var(--color-text-primary);
+          color: white;
+          padding: 12px 24px;
+          font-size: 13px;
+          font-weight: 700;
+          border-radius: var(--radius-md);
+          text-decoration: none;
+          transition: background var(--duration-fast);
         }
-
-        .courts-visual-grid {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
+        .explore-btn:hover {
+          background: #000000;
         }
-        .court-image-card {
+        .courts-showcase-right {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+        }
+        .showcase-card {
           background: var(--color-card);
           border: 1px solid var(--color-border);
           border-radius: var(--radius-xl);
           overflow: hidden;
           box-shadow: var(--shadow-sm);
-          display: grid;
-          grid-template-columns: 140px 1fr;
-          align-items: center;
+          display: flex;
+          flex-direction: column;
         }
-        .court-img-wrap {
-          height: 100px;
+        .showcase-img-container {
           position: relative;
+          width: 100%;
+          aspect-ratio: 4/5;
+          overflow: hidden;
         }
-        .court-img {
+        .showcase-img {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          transition: transform var(--duration-normal);
         }
-        .court-img-tag {
+        .showcase-card:hover .showcase-img {
+          transform: scale(1.04);
+        }
+        .showcase-number {
           position: absolute;
-          top: 8px;
-          left: 8px;
-          font-size: 9px;
-          font-weight: 700;
-          background: rgba(9, 30, 58, 0.85);
-          color: white;
-          padding: 2px 6px;
-          border-radius: var(--radius-xs);
-          text-transform: uppercase;
-        }
-        .court-info {
-          padding: 16px 24px;
-          text-align: left;
-        }
-        .court-name {
-          font-size: 16px;
+          top: 12px;
+          left: 16px;
+          font-size: 64px;
           font-weight: 800;
-          color: var(--color-text-primary);
-          margin: 0;
+          color: #10b981;
+          line-height: 1;
         }
-        .court-features-row {
+        .showcase-footer {
+          padding: 14px;
           display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-          margin-top: 10px;
-        }
-        .court-feat-badge {
-          font-size: 10px;
-          font-weight: 600;
-          color: var(--color-text-secondary);
-          background: var(--color-surface);
-          padding: 3px 8px;
-          border-radius: var(--radius-sm);
+          flex-direction: column;
+          gap: 4px;
+          text-align: left;
+          border-top: 1px solid var(--color-border);
         }
 
-        /* How it Works */
+        /* How it works */
         .how-section {
           max-width: 1280px;
           margin: 0 auto;
-          padding: 100px 48px;
+          padding: 80px 48px;
         }
-        .steps-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 32px;
+        .steps-container-grid {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+        }
+        .step-arrow-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex: 1;
+          justify-content: center;
         }
         .step-card {
           background: var(--color-card);
           border: 1px solid var(--color-border);
           border-radius: var(--radius-xl);
-          padding: 32px 28px;
+          padding: 28px;
+          width: 100%;
+          max-width: 280px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           text-align: center;
-          position: relative;
           box-shadow: var(--shadow-sm);
+          box-sizing: border-box;
         }
-        .step-num {
-          width: 36px;
-          height: 36px;
-          border-radius: var(--radius-full);
-          background: var(--color-accent);
-          color: var(--color-text-primary);
+        .step-icon-badge {
+          position: relative;
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: #ecfdf5;
+          color: #10b981;
           display: flex;
           align-items: center;
           justify-content: center;
+        }
+        .step-number-pill {
+          position: absolute;
+          top: -4px;
+          right: -4px;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #10b981;
+          color: white;
+          font-size: 11px;
           font-weight: 800;
-          font-size: 15px;
-          margin: 0 auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid var(--color-card);
+        }
+        .step-arrow {
+          font-size: 24px;
+          color: var(--color-text-disabled);
+          font-weight: 700;
         }
 
-        /* Banner CTA */
+        /* CTA Ready Banner */
         .cta-banner-section {
-          padding: 0 48px 100px;
-        }
-        .cta-banner-container {
           max-width: 1280px;
           margin: 0 auto;
-          background: linear-gradient(135deg, var(--color-primary) 0%, #1e3a60 100%);
-          border-radius: var(--radius-xl);
-          padding: 80px 48px;
-          text-align: center;
+          padding: 0 48px 80px 48px;
+          box-sizing: border-box;
+        }
+        .cta-banner-container {
+          background: var(--color-card);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-2xl);
+          padding: 32px 48px;
           display: flex;
-          flex-direction: column;
-          gap: 20px;
           align-items: center;
+          justify-content: space-between;
           box-shadow: var(--shadow-md);
+          box-sizing: border-box;
         }
-        .cta-banner-title {
-          font-size: 34px;
-          font-weight: 800;
+        .paddle-ball-badge {
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
+          background: #ecfdf5;
+          color: #10b981;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .banner-cta-button {
+          background: var(--color-text-primary);
           color: white;
-          letter-spacing: -0.02em;
-          line-height: 1.2;
-          margin: 0;
+          padding: 12px 24px;
+          font-size: 13px;
+          font-weight: 700;
+          border-radius: var(--radius-md);
+          text-decoration: none;
+          transition: background var(--duration-fast);
+          display: inline-flex;
+          align-items: center;
+          white-space: nowrap;
         }
-        .cta-banner-desc {
-          font-size: 15px;
-          color: rgba(255,255,255,0.7);
-          line-height: 1.6;
-          max-width: 500px;
-          margin: 0;
+        .banner-cta-button:hover {
+          background: #000000;
         }
 
         /* Footer */
         .footer-section {
+          background: var(--color-card);
           border-top: 1px solid var(--color-border);
-          background: var(--color-bg-primary);
           padding: 80px 48px 40px;
         }
         .footer-grid {
           max-width: 1280px;
           margin: 0 auto;
           display: grid;
-          grid-template-columns: 1.2fr 0.8fr 0.8fr 0.8fr 1.4fr;
+          grid-template-columns: 1.5fr 1fr 1fr 1fr;
           gap: 40px;
-          padding-bottom: 60px;
-          border-bottom: 1px solid var(--color-border);
         }
         .footer-link {
-          color: var(--color-text-secondary);
           text-decoration: none;
+          color: var(--color-text-secondary);
           transition: color var(--duration-fast);
+          text-align: left;
         }
         .footer-link:hover {
           color: var(--color-text-primary);
@@ -1195,59 +1128,49 @@ export default function LandingPage() {
           transition: all var(--duration-fast);
         }
         .social-icon:hover {
-          background: var(--color-surface);
           color: var(--color-text-primary);
           border-color: var(--color-border-hover);
-        }
-        .footer-cta-card {
-          background: var(--color-surface);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-xl);
-          padding: 24px;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          text-align: left;
         }
 
         /* ── Responsive ── */
         @media (max-width: 1024px) {
-          .features-grid {
+          .features-container-grid {
             grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
           }
           .hero-container {
             grid-template-columns: 1fr;
             text-align: center;
+            gap: 40px;
           }
           .hero-left-content {
             align-items: center;
           }
-          .title-accent::after {
-            bottom: 0;
+          .hero-title, .hero-subtitle {
+            text-align: center;
           }
           .hero-right-visual {
             justify-content: center;
             margin: 0 auto;
+            width: 100%;
+            max-width: 580px;
           }
-          .next-available-card {
-            left: 20px;
-            top: 20px;
-          }
-          .courts-container {
+          .courts-showcase-container {
             grid-template-columns: 1fr;
+            gap: 40px;
           }
-          .courts-header {
+          .courts-showcase-left {
             align-items: center;
             text-align: center;
           }
-          .courts-bullet-list {
+          .courts-showcase-title, .courts-showcase-desc {
+            text-align: center;
+          }
+          .explore-btn {
             align-self: center;
           }
           .footer-grid {
             grid-template-columns: repeat(2, 1fr);
-          }
-          .footer-cta-card {
-            grid-column: span 2;
           }
         }
 
@@ -1270,62 +1193,66 @@ export default function LandingPage() {
           .hero-actions {
             flex-direction: column;
             width: 100%;
+            gap: 12px;
           }
           .hero-cta-btn {
             width: 100%;
             text-align: center;
-          }
-          .court-visual-canvas {
-            width: 100%;
-            height: 320px;
-          }
-          .next-available-card {
-            width: 250px;
-            padding: 16px;
+            box-sizing: border-box;
           }
           .features-section {
-            padding: 80px 24px;
+            padding: 40px 24px;
           }
-          .features-grid {
+          .features-container-grid {
             grid-template-columns: 1fr;
+            padding: 24px;
           }
-          .courts-section {
-            padding: 80px 24px;
+          .courts-showcase-section {
+            padding: 60px 24px;
           }
-          .courts-visual-grid {
-            gap: 16px;
-          }
-          .court-image-card {
-            grid-template-columns: 1fr;
-          }
-          .court-img-wrap {
-            height: 140px;
-          }
-          .how-section {
-            padding: 80px 24px;
-          }
-          .steps-grid {
+          .courts-showcase-right {
             grid-template-columns: 1fr;
             gap: 20px;
           }
-          .cta-banner-section {
-            padding: 0 24px 80px;
-          }
-          .cta-banner-container {
+          .how-section {
             padding: 60px 24px;
           }
-          .cta-banner-title {
-            font-size: 26px;
+          .steps-container-grid {
+            flex-direction: column;
+            gap: 24px;
+          }
+          .step-arrow-wrapper {
+            flex-direction: column;
+            width: 100%;
+          }
+          .step-arrow {
+            display: none;
+          }
+          .cta-banner-section {
+            padding: 0 24px 60px;
+          }
+          .cta-banner-container {
+            flex-direction: column;
+            gap: 20px;
+            padding: 32px 24px;
+            text-align: center;
+          }
+          .banner-details-row {
+            flex-direction: column;
+            text-align: center;
+            align-items: center;
+          }
+          .banner-cta-button {
+            width: 100%;
+            justify-content: center;
+            box-sizing: border-box;
           }
           .footer-section {
-            padding: 60px 24px 30px;
+            padding: 60px 24px 20px;
           }
           .footer-grid {
             grid-template-columns: 1fr;
             gap: 30px;
-          }
-          .footer-cta-card {
-            grid-column: span 1;
           }
         }
       `}</style>
