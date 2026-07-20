@@ -776,7 +776,8 @@ export async function getLatestUserCreditsAction(userId: string): Promise<{ succ
 //     This is NOT a regular player booking — it's an admin-reserved block for open play.
 //     It creates a booking entry with the admin as the owner and a special OPEN_PLAY reference.
 export async function adminReserveCourtForOpenPlayAction(data: {
-  courtId: string
+  courtId?: string
+  courtIds?: string[]   // support multiple courts selection
   startTime?: string    // ISO string
   durationHours?: number
   startTimes?: string[] // array of ISO strings
@@ -784,6 +785,16 @@ export async function adminReserveCourtForOpenPlayAction(data: {
 }): Promise<ActionState> {
   const admin = await checkAdmin()
   if (!admin) return { success: false, error: 'Unauthorized. Only admins can reserve courts.' }
+
+  const targetCourtIds = data.courtIds && data.courtIds.length > 0 
+    ? data.courtIds 
+    : data.courtId 
+      ? [data.courtId] 
+      : []
+
+  if (targetCourtIds.length === 0) {
+    return { success: false, error: 'No court selected.' }
+  }
 
   try {
     let resolvedTimes: Date[] = []
@@ -808,53 +819,63 @@ export async function adminReserveCourtForOpenPlayAction(data: {
       }
     }
 
-    // Process all slots to check conflicts first
-    for (const startTime of resolvedTimes) {
-      const endTime = new Date(startTime)
-      endTime.setHours(startTime.getHours() + 1)
+    // Process all slots to check conflicts first across all selected courts
+    for (const courtId of targetCourtIds) {
+      const court = await db.court.findUnique({ where: { id: courtId } })
+      const courtName = court ? court.name : `Court ${courtId.slice(-4)}`
 
-      // Check for conflicts
-      const conflict = await db.booking.findFirst({
-        where: {
-          courtId: data.courtId,
-          status: { in: ['RESERVED', 'PAID'] },
-          OR: [
-            { startTime: { lte: startTime }, endTime: { gt: startTime } },
-            { startTime: { lt: endTime }, endTime: { gte: endTime } }
-          ]
+      for (const startTime of resolvedTimes) {
+        const endTime = new Date(startTime)
+        endTime.setHours(startTime.getHours() + 1)
+
+        // Check for conflicts
+        const conflict = await db.booking.findFirst({
+          where: {
+            courtId,
+            status: { in: ['RESERVED', 'PAID'] },
+            OR: [
+              { startTime: { lte: startTime }, endTime: { gt: startTime } },
+              { startTime: { lt: endTime }, endTime: { gte: endTime } }
+            ]
+          }
+        })
+
+        if (conflict) {
+          return {
+            success: false,
+            error: `${courtName} already has a reservation at ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
+          }
         }
-      })
-
-      if (conflict) {
-        return { success: false, error: `Court already has a reservation at ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` }
       }
     }
 
-    // Create reservation for each time slot
-    for (const startTime of resolvedTimes) {
-      const endTime = new Date(startTime)
-      endTime.setHours(startTime.getHours() + 1)
+    // Create reservation for each court and time slot
+    for (const courtId of targetCourtIds) {
+      for (const startTime of resolvedTimes) {
+        const endTime = new Date(startTime)
+        endTime.setHours(startTime.getHours() + 1)
 
-      await db.booking.create({
-        data: {
-          userId: admin.id,
-          courtId: data.courtId,
-          startTime,
-          endTime,
-          status: 'PAID',
-          price: 0, // no charge for admin-reserved open play
-        }
-      })
+        await db.booking.create({
+          data: {
+            userId: admin.id,
+            courtId,
+            startTime,
+            endTime,
+            status: 'PAID',
+            price: 0, // no charge for admin-reserved open play
+          }
+        })
 
-      // Log a transaction record for transparency (₱0 since this is admin-reserved open play)
-      await db.transaction.create({
-        data: {
-          userId: admin.id,
-          amount: 0,
-          type: 'EVENT_DEBIT',
-          reference: `OPENPLAY-RESERVE-${data.courtId.slice(-4).toUpperCase()}-${startTime.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: '2-digit', day: '2-digit' })}`
-        }
-      })
+        // Log a transaction record for transparency (₱0 since this is admin-reserved open play)
+        await db.transaction.create({
+          data: {
+            userId: admin.id,
+            amount: 0,
+            type: 'EVENT_DEBIT',
+            reference: `OPENPLAY-RESERVE-${courtId.slice(-4).toUpperCase()}-${startTime.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: '2-digit', day: '2-digit' })}`
+          }
+        })
+      }
     }
 
     revalidatePath('/dashboard/admin')

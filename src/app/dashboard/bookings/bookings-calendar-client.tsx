@@ -117,6 +117,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   // Booking Modal States
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalCourtId, setModalCourtId] = useState<string>('')
+  const [modalCourtIds, setModalCourtIds] = useState<string[]>([]) // support multiple courts for admins
   const [modalDate, setModalDate] = useState<string>('')
   const [modalHours, setModalHours] = useState<number[]>([])
 
@@ -142,6 +143,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   // Open modal for a specific grid cell click
   const handleOpenBookingModalForSlot = (courtId: string, hour: number) => {
     setModalCourtId(courtId)
+    setModalCourtIds([courtId])
     setModalDate(formatDateToYYYYMMDD(selectedDate))
     setModalHours([hour])
     setIsModalOpen(true)
@@ -150,6 +152,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   // Open modal generally from header button
   const handleOpenBookingModalGeneral = () => {
     setModalCourtId(courts[0]?.id || '')
+    setModalCourtIds([])
     setModalDate(formatDateToYYYYMMDD(selectedDate))
     setModalHours([])
     setIsModalOpen(true)
@@ -157,12 +160,17 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
 
   // Check if a time slot is already booked on the selected court & date inside the modal
   const isSlotBookedInModal = (hour: number) => {
-    if (!modalDate || !modalCourtId) return false
+    if (!modalDate) return false
     const parsedDate = new Date(modalDate + 'T00:00:00')
+    const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
+    const targetIds = isAdminOrStaff ? modalCourtIds : [modalCourtId]
+
+    if (targetIds.length === 0) return false
+
     return bookings.some(b => {
       const bStart = new Date(b.startTime)
       return (
-        b.courtId === modalCourtId &&
+        targetIds.includes(b.courtId) &&
         bStart.getFullYear() === parsedDate.getFullYear() &&
         bStart.getMonth() === parsedDate.getMonth() &&
         bStart.getDate() === parsedDate.getDate() &&
@@ -190,7 +198,12 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   }
 
   const handleConfirmBooking = () => {
-    if (!modalCourtId || modalHours.length === 0) return
+    const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
+    if (isAdminOrStaff) {
+      if (modalCourtIds.length === 0 || modalHours.length === 0) return
+    } else {
+      if (!modalCourtId || modalHours.length === 0) return
+    }
 
     const startTimesISO = modalHours.map(hour => {
       const slotTime = new Date(modalDate + 'T00:00:00')
@@ -212,11 +225,10 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
     setMessage(null)
     setIsModalOpen(false)
     startTransition(async () => {
-      const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
       if (isAdminOrStaff) {
-        // Admin Open Play Block Reservation (Free ₱0)
+        // Admin Open Play Block Reservation (Free ₱0 across multiple courts)
         const result = await adminReserveCourtForOpenPlayAction({
-          courtId: modalCourtId,
+          courtIds: modalCourtIds,
           startTimes: startTimesISO,
           label: 'Open Play Block'
         })
@@ -736,38 +748,119 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
               </div>
 
               {/* Inputs */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Court</label>
-                  <select
-                    value={modalCourtId}
-                    onChange={e => { setModalCourtId(e.target.value); setModalHours([]); }}
-                    style={{
-                      width: '100%', height: '38px', padding: '0 10px',
-                      borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
-                      background: 'var(--color-surface)', color: 'var(--color-text-primary)',
-                      fontSize: '13px', fontWeight: 600, outline: 'none'
-                    }}
-                  >
-                    {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+              {isAdminOrStaff ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Date Input */}
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Date</label>
+                    <input
+                      type="date"
+                      value={modalDate}
+                      min={formatDateToYYYYMMDD(new Date())}
+                      onChange={e => { setModalDate(e.target.value); setModalHours([]); }}
+                      style={{
+                        width: '100%', height: '38px', padding: '0 10px',
+                        borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                        fontSize: '13px', fontWeight: 600, outline: 'none', boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  {/* Multi-court select checkbox tags */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
+                        Select Court(s)
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setModalCourtIds(courts.map(c => c.id))}
+                          style={{ fontSize: '10px', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                        >
+                          Select All
+                        </button>
+                        <span style={{ fontSize: '10px', color: 'var(--color-text-disabled)' }}>|</span>
+                        <button
+                          type="button"
+                          onClick={() => setModalCourtIds([])}
+                          style={{ fontSize: '10px', color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                      {courts.map(court => {
+                        const isSelected = modalCourtIds.includes(court.id)
+                        return (
+                          <button
+                            key={court.id}
+                            type="button"
+                            onClick={() => {
+                              setModalCourtIds(prev => 
+                                prev.includes(court.id)
+                                  ? prev.filter(id => id !== court.id)
+                                  : [...prev, court.id]
+                              )
+                            }}
+                            style={{
+                              height: '34px',
+                              borderRadius: 'var(--radius-md)',
+                              border: isSelected ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                              background: isSelected ? 'var(--color-primary-subtle)' : 'var(--color-card)',
+                              color: isSelected ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all var(--duration-fast)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            {court.name}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Date</label>
-                  <input
-                    type="date"
-                    value={modalDate}
-                    min={formatDateToYYYYMMDD(new Date())}
-                    onChange={e => { setModalDate(e.target.value); setModalHours([]); }}
-                    style={{
-                      width: '100%', height: '38px', padding: '0 10px',
-                      borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
-                      background: 'var(--color-surface)', color: 'var(--color-text-primary)',
-                      fontSize: '13px', fontWeight: 600, outline: 'none', boxSizing: 'border-box'
-                    }}
-                  />
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Court</label>
+                    <select
+                      value={modalCourtId}
+                      onChange={e => { setModalCourtId(e.target.value); setModalHours([]); }}
+                      style={{
+                        width: '100%', height: '38px', padding: '0 10px',
+                        borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                        fontSize: '13px', fontWeight: 600, outline: 'none'
+                      }}
+                    >
+                      {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Date</label>
+                    <input
+                      type="date"
+                      value={modalDate}
+                      min={formatDateToYYYYMMDD(new Date())}
+                      onChange={e => { setModalDate(e.target.value); setModalHours([]); }}
+                      style={{
+                        width: '100%', height: '38px', padding: '0 10px',
+                        borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                        fontSize: '13px', fontWeight: 600, outline: 'none', boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Hour slot selection grid */}
               <div>
@@ -841,7 +934,9 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                   <span>Court Fee</span>
                   <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                    {isAdminOrStaff ? '₱0.00 (Open Play block)' : `₱${totalCost.toFixed(2)}`}
+                    {isAdminOrStaff 
+                      ? `₱0.00 (Open Play block on ${modalCourtIds.length} court${modalCourtIds.length > 1 ? 's' : ''})` 
+                      : `₱${totalCost.toFixed(2)}`}
                   </span>
                 </div>
                 {!isAdminOrStaff && (
@@ -877,15 +972,15 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                   Cancel
                 </button>
                 <button
-                  disabled={isPending || modalHours.length === 0 || hasInsufficientBalance}
+                  disabled={isPending || (isAdminOrStaff ? modalCourtIds.length === 0 : !modalCourtId) || modalHours.length === 0 || hasInsufficientBalance}
                   onClick={handleConfirmBooking}
                   style={{
                     height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
                     border: 'none', background: 'var(--color-primary)',
                     color: 'white', fontSize: '13px', fontWeight: 700,
-                    cursor: (isPending || modalHours.length === 0 || hasInsufficientBalance) ? 'not-allowed' : 'pointer',
+                    cursor: (isPending || (isAdminOrStaff ? modalCourtIds.length === 0 : !modalCourtId) || modalHours.length === 0 || hasInsufficientBalance) ? 'not-allowed' : 'pointer',
                     boxShadow: 'var(--shadow-primary-btn)',
-                    opacity: (isPending || modalHours.length === 0 || hasInsufficientBalance) ? 0.6 : 1
+                    opacity: (isPending || (isAdminOrStaff ? modalCourtIds.length === 0 : !modalCourtId) || modalHours.length === 0 || hasInsufficientBalance) ? 0.6 : 1
                   }}
                 >
                   {isPending
