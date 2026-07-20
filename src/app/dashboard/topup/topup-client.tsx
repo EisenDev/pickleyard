@@ -57,6 +57,14 @@ const PAYMENT_METHODS = [
 
 const PRESET_AMOUNTS = [100, 200, 300, 500, 1000, 1500]
 
+function getTopUpPoints(amount: number): number {
+  if (amount >= 5000) return 1350
+  if (amount >= 2000) return 450
+  if (amount >= 1000) return 180
+  if (amount >= 500) return 75
+  return 0
+}
+
 export function TopUpClient({ userBalance, userId }: Props) {
   const searchParams = useSearchParams()
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null)
@@ -137,25 +145,37 @@ export function TopUpClient({ userBalance, userId }: Props) {
 
             {/* Preset amounts */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '16px' }}>
-              {PRESET_AMOUNTS.map(amt => (
-                <button
-                  key={amt}
-                  onClick={() => { setSelectedAmount(amt); setCustomAmount('') }}
-                  style={{
-                    height: '40px', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: '13px', fontWeight: 700,
-                    border: selectedAmount === amt && !customAmount ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                    background: selectedAmount === amt && !customAmount ? 'var(--color-primary-subtle)' : 'var(--color-card)',
-                    color: selectedAmount === amt && !customAmount ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                    transition: 'all var(--duration-fast)'
-                  }}
-                >
-                  ₱{amt}
-                </button>
-              ))}
+              {PRESET_AMOUNTS.map(amt => {
+                const points = getTopUpPoints(amt)
+                return (
+                  <button
+                    key={amt}
+                    onClick={() => { setSelectedAmount(amt); setCustomAmount('') }}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '52px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                      border: selectedAmount === amt && !customAmount ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: selectedAmount === amt && !customAmount ? 'var(--color-primary-subtle)' : 'var(--color-card)',
+                      color: selectedAmount === amt && !customAmount ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      transition: 'all var(--duration-fast)'
+                    }}
+                  >
+                    <span style={{ fontSize: '13px', fontWeight: 700 }}>₱{amt}</span>
+                    {points > 0 && (
+                      <span style={{ fontSize: '10px', fontWeight: 600, color: '#d97706', marginTop: '2px' }}>
+                        +{points} YP
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
 
             {/* Custom amount */}
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px' }}>
                 Or enter custom amount (₱)
               </label>
@@ -173,6 +193,29 @@ export function TopUpClient({ userBalance, userId }: Props) {
               />
             </div>
 
+            {/* Yard Points promo note */}
+            <div style={{
+              fontSize: '11px',
+              color: 'var(--color-text-secondary)',
+              lineHeight: '1.4',
+              background: 'rgba(217, 119, 6, 0.05)',
+              border: '1px dashed rgba(217, 119, 6, 0.25)',
+              borderRadius: 'var(--radius-md)',
+              padding: '8px 12px',
+              marginBottom: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px'
+            }}>
+              <span style={{ fontWeight: 800, color: '#d97706', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                🎁 Yard Points Bonus Schedule:
+              </span>
+              <span>₱500+ top-up gets <strong>75 YP</strong></span>
+              <span>₱1000+ top-up gets <strong>180 YP</strong></span>
+              <span>₱2000+ top-up gets <strong>450 YP</strong></span>
+              <span>₱5000+ top-up gets <strong>1350 YP</strong></span>
+            </div>
+
             {/* Summary */}
             <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
@@ -182,6 +225,12 @@ export function TopUpClient({ userBalance, userId }: Props) {
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                 <span>Current balance</span>
                 <span style={{ fontWeight: 700 }}>₱{userBalance.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                <span>Yard Points Reward</span>
+                <span style={{ fontWeight: 700, color: '#d97706' }}>
+                  {getTopUpPoints(finalAmount) > 0 ? `+${getTopUpPoints(finalAmount)} YP` : 'None (min. ₱500)'}
+                </span>
               </div>
               <div style={{ height: 1, background: 'var(--color-border)' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 800, color: 'var(--color-text-primary)' }}>

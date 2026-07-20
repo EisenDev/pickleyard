@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { createBookingAction } from '@/lib/actions/booking'
-import { ShieldCheck, AlertTriangle, Calendar, List, Plus, Clock, MapPin, ChevronLeft, ChevronRight, ArrowLeft, X } from 'lucide-react'
+import { ShieldCheck, AlertTriangle, Calendar, List, Plus, Clock, MapPin, ChevronLeft, ChevronRight, ArrowLeft, X, Search } from 'lucide-react'
 import Link from 'next/link'
 
 interface Court {
@@ -22,6 +22,8 @@ interface BookingItem {
   endTime: Date
   status: string
   userName: string
+  userEmail: string
+  userRole: string
   isOwn: boolean
 }
 
@@ -66,6 +68,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   const [selectedCourt, setSelectedCourt] = useState<string>('all')
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
+  const [bookingSearch, setBookingSearch] = useState('')
 
   // Booking Modal States
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -94,14 +97,6 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
 
   // Open modal for a specific grid cell click
   const handleOpenBookingModalForSlot = (courtId: string, hour: number) => {
-    if (userRole === 'ADMIN' || userRole === 'STAFF') {
-      setMessage({
-        success: false,
-        text: 'ℹ️ Schedule Monitor Mode: Staff and Admin accounts are read-only and cannot book slots.'
-      })
-      setTimeout(() => setMessage(null), 5000)
-      return
-    }
     setModalCourtId(courtId)
     setModalDate(formatDateToYYYYMMDD(selectedDate))
     setModalHour(hour)
@@ -110,14 +105,6 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
 
   // Open modal generally from header button
   const handleOpenBookingModalGeneral = () => {
-    if (userRole === 'ADMIN' || userRole === 'STAFF') {
-      setMessage({
-        success: false,
-        text: 'ℹ️ Schedule Monitor Mode: Staff and Admin accounts are read-only and cannot book slots.'
-      })
-      setTimeout(() => setMessage(null), 5000)
-      return
-    }
     setModalCourtId(courts[0]?.id || '')
     setModalDate(formatDateToYYYYMMDD(selectedDate))
     setModalHour(null)
@@ -190,7 +177,29 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                 {userRole === 'ADMIN' || userRole === 'STAFF' ? 'Monitor active court reservations and scheduling.' : 'Book active courts and view your scheduled reservations.'}
               </p>
             </div>
-            {userRole !== 'ADMIN' && userRole !== 'STAFF' && (
+            {(userRole === 'ADMIN' || userRole === 'STAFF') ? (
+              <button
+                onClick={handleOpenBookingModalGeneral}
+                style={{
+                  height: '38px',
+                  padding: '0 16px',
+                  borderRadius: 'var(--radius-md)',
+                  border: 'none',
+                  background: 'var(--color-primary)',
+                  color: 'white',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: 'var(--shadow-primary-btn)'
+                }}
+              >
+                <Plus size={15} />
+                <span>Reserve for Open Play</span>
+              </button>
+            ) : (
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>Balance: <strong style={{ color: 'var(--color-primary)' }}>₱{userBalance.toFixed(2)}</strong></span>
                 <button
@@ -383,7 +392,11 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                                   </div>
                                 ) : isBooked ? (
                                   <div style={{
-                                    background: booking.isOwn ? 'var(--color-primary)' : 'rgba(0,124,128,0.35)',
+                                    background: (booking.userRole === 'ADMIN' || booking.userRole === 'STAFF')
+                                      ? 'var(--color-success)'
+                                      : booking.isOwn 
+                                        ? 'var(--color-primary)' 
+                                        : 'rgba(0,124,128,0.35)',
                                     color: 'white',
                                     borderRadius: 'var(--radius-md)',
                                     padding: '4px 8px',
@@ -396,15 +409,17 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                                     minHeight: 36
                                   }}>
                                     <span>
-                                      {(userRole === 'ADMIN' || userRole === 'STAFF') 
-                                        ? booking.userName 
-                                        : booking.isOwn 
-                                          ? 'My Booking' 
-                                          : 'Booked'}
+                                      {booking.userRole === 'ADMIN' || booking.userRole === 'STAFF'
+                                        ? 'Open Play'
+                                        : (userRole === 'ADMIN' || userRole === 'STAFF') 
+                                          ? booking.userName 
+                                          : booking.isOwn 
+                                            ? 'My Booking' 
+                                            : 'Booked'}
                                     </span>
                                     {((userRole === 'ADMIN' || userRole === 'STAFF') || booking.isOwn) && (
                                       <span style={{ fontWeight: 400, opacity: 0.85, fontSize: 10 }}>
-                                        {booking.status}
+                                        {booking.userRole === 'ADMIN' || booking.userRole === 'STAFF' ? 'RESERVED' : booking.status}
                                       </span>
                                     )}
                                   </div>
@@ -441,6 +456,10 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
               <div style={{ padding: '12px 16px', borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)', display: 'flex', gap: '20px', alignItems: 'center' }}>
                 <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Legend:</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--color-success)' }} />
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Open Play</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <div style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--color-primary)' }} />
                   <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>My Booking</span>
                 </div>
@@ -462,29 +481,73 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
               const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
               const listToRender = isAdminOrStaff ? allBookings : myBookings
 
-              if (listToRender.length === 0) {
+              // Filter bookings based on bookingSearch state
+              const filteredList = listToRender.filter(b => {
+                if (!bookingSearch.trim()) return true
+                const searchLower = bookingSearch.toLowerCase()
+                
+                const userName = 'userName' in b ? String(b.userName).toLowerCase() : ''
+                const userEmail = 'userEmail' in b ? String(b.userEmail).toLowerCase() : ''
+                const courtName = 'courtName' in b ? String(b.courtName).toLowerCase() : ''
+                
                 return (
-                  <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '60px 24px', textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
-                    <Calendar size={40} color="var(--color-text-disabled)" style={{ margin: '0 auto 16px' }} />
-                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text-primary)' }}>No bookings scheduled</h3>
-                    <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>No court reservations found on this date range.</p>
-                  </div>
+                  userName.includes(searchLower) ||
+                  userEmail.includes(searchLower) ||
+                  courtName.includes(searchLower)
                 )
-              }
+              })
 
               return (
-                <div style={{ 
-                  background: 'var(--color-card)', 
-                  border: '1px solid var(--color-border)', 
-                  borderRadius: 'var(--radius-xl)', 
-                  overflowX: 'hidden',
-                  overflowY: 'auto', 
-                  maxHeight: '720px', 
-                  boxShadow: 'var(--shadow-sm)' 
-                }}>
-                  {listToRender.map((b, i) => {
-                    const priceVal = 'price' in b ? b.price : 500.00
-                    const userNameStr = 'userName' in b ? b.userName : 'Member'
+                <>
+                  {isAdminOrStaff && (
+                    <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
+                      <input
+                        type="text"
+                        placeholder="Search bookings by name, email or court..."
+                        value={bookingSearch}
+                        onChange={e => setBookingSearch(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '38px',
+                          padding: '0 16px 0 38px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1px solid var(--color-border)',
+                          background: 'var(--color-surface)',
+                          color: 'var(--color-text-primary)',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <Search size={14} style={{ position: 'absolute', left: 14, top: 12, color: 'var(--color-text-disabled)' }} />
+                    </div>
+                  )}
+
+                  {filteredList.length === 0 ? (
+                    <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '60px 24px', textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
+                      <Calendar size={40} color="var(--color-text-disabled)" style={{ margin: '0 auto 16px' }} />
+                      <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                        {bookingSearch ? 'No matching bookings found' : 'No bookings scheduled'}
+                      </h3>
+                      <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
+                        {bookingSearch ? 'Try checking your search spelling or searching for a different user.' : 'No court reservations found on this date range.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      background: 'var(--color-card)', 
+                      border: '1px solid var(--color-border)', 
+                      borderRadius: 'var(--radius-xl)', 
+                      overflowX: 'hidden',
+                      overflowY: 'auto', 
+                      maxHeight: '720px', 
+                      boxShadow: 'var(--shadow-sm)' 
+                    }}>
+                      {filteredList.map((b, i) => {
+                        const isOP = 'userRole' in b && (b.userRole === 'ADMIN' || b.userRole === 'STAFF')
+                        const priceVal = isOP ? 0.00 : ('price' in b ? b.price : 250.00)
+                        const userNameStr = isOP ? 'Open Play' : ('userName' in b ? b.userName : 'Member')
 
                     return (
                       <div key={b.id} style={{
@@ -529,9 +592,11 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                     )
                   })}
                 </div>
-              )
-            })()}
-          </div>
+              )}
+            </>
+          )
+        })()}
+      </div>
         )}
       </div>
 
@@ -570,10 +635,12 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
 
             <div>
               <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
-                Book a Court
+                {userRole === 'ADMIN' || userRole === 'STAFF' ? 'Reserve Court for Open Play' : 'Book a Court'}
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px', margin: '4px 0 0' }}>
-                Select court, date, and hourly slot to complete your reservation.
+                {userRole === 'ADMIN' || userRole === 'STAFF' 
+                  ? 'Reserve this court slot on the schedule for Open Play games.' 
+                  : 'Select court, date, and hourly slot to complete your reservation.'}
               </p>
             </div>
 
@@ -682,20 +749,26 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                 <span>Court Fee</span>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>₱250.00</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                  {userRole === 'ADMIN' || userRole === 'STAFF' ? '₱0.00 (Open Play block)' : '₱250.00'}
+                </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                <span>Account Balance</span>
-                <span style={{ fontWeight: 700 }}>₱{userBalance.toFixed(2)}</span>
-              </div>
-              {userBalance < 250 && (
-                <div style={{
-                  color: 'var(--color-danger)', fontSize: '11px', fontWeight: 700,
-                  marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px'
-                }}>
-                  <AlertTriangle size={12} />
-                  <span>Insufficient balance. Please top up your account.</span>
-                </div>
+              {userRole !== 'ADMIN' && userRole !== 'STAFF' && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                    <span>Account Balance</span>
+                    <span style={{ fontWeight: 700 }}>₱{userBalance.toFixed(2)}</span>
+                  </div>
+                  {userBalance < 250 && (
+                    <div style={{
+                      color: 'var(--color-danger)', fontSize: '11px', fontWeight: 700,
+                      marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px'
+                    }}>
+                      <AlertTriangle size={12} />
+                      <span>Insufficient balance. Please top up your account.</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -713,18 +786,18 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                 Cancel
               </button>
               <button
-                disabled={isPending || modalHour === null || userBalance < 250}
+                disabled={isPending || modalHour === null || (userRole !== 'ADMIN' && userRole !== 'STAFF' && userBalance < 250)}
                 onClick={handleConfirmBooking}
                 style={{
                   height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
                   border: 'none', background: 'var(--color-primary)',
                   color: 'white', fontSize: '13px', fontWeight: 700,
-                  cursor: (isPending || modalHour === null || userBalance < 250) ? 'not-allowed' : 'pointer',
+                  cursor: (isPending || modalHour === null || (userRole !== 'ADMIN' && userRole !== 'STAFF' && userBalance < 250)) ? 'not-allowed' : 'pointer',
                   boxShadow: 'var(--shadow-primary-btn)',
-                  opacity: (isPending || modalHour === null || userBalance < 250) ? 0.6 : 1
+                  opacity: (isPending || modalHour === null || (userRole !== 'ADMIN' && userRole !== 'STAFF' && userBalance < 250)) ? 0.6 : 1
                 }}
               >
-                {isPending ? 'Booking...' : 'Confirm Booking'}
+                {isPending ? 'Reserving...' : (userRole === 'ADMIN' || userRole === 'STAFF') ? 'Confirm Reservation' : 'Confirm Booking'}
               </button>
             </div>
           </div>

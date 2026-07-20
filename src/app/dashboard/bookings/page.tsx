@@ -11,14 +11,13 @@ export default async function MyBookingsPage() {
   const user = await db.user.findUnique({ where: { email: session.user.email } })
   if (!user) return null
 
-  // Fetch ALL bookings (all courts) so calendar shows full picture for any date
   const allBookingsToday = await db.booking.findMany({
     where: {
       status: { in: ['RESERVED', 'PAID'] }
     },
     include: {
       court: { select: { id: true, number: true, name: true, type: true } },
-      user: { select: { id: true, name: true } }
+      user: { select: { id: true, name: true, email: true, role: true } }
     },
     orderBy: { startTime: 'asc' }
   })
@@ -53,6 +52,8 @@ export default async function MyBookingsPage() {
         endTime: b.endTime,
         status: b.status,
         userName: b.user?.name || 'Member',
+        userEmail: b.user?.email || '',
+        userRole: b.user?.role || 'PLAYER',
         isOwn: b.userId === user.id
       }))}
       myBookings={myBookings.map(b => ({

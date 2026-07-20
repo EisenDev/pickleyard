@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { joinPaddleStackAction, leavePaddleStackAction } from '@/lib/actions/paddlestack'
 import { checkAndRotateExpiredMatchesAction } from '@/lib/actions/admin'
 import { Clock, Users, ShieldCheck, ShieldAlert, ArrowLeft } from 'lucide-react'
@@ -102,6 +103,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date; duration: numbe
 }
 
 export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialStacks, currentUserId, userRole, userCredits, expiryHours }: Props) {
+  const router = useRouter()
   const [courts, setCourts] = useState<Court[]>(initialCourts)
   const [stacks, setStacks] = useState<StackEntry[]>(initialStacks)
   const [isPending, setIsPending] = useState(false)
@@ -156,6 +158,13 @@ export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialS
 
   const handleJoin = async () => {
     if (activeLoadingId) return
+    
+    // Check credits before attempting to join
+    if (userCredits !== undefined && userCredits < 150) {
+      router.push('/dashboard/topup')
+      return
+    }
+
     setMessage(null)
     setActiveLoadingId('join')
     setIsPending(true)
@@ -163,10 +172,12 @@ export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialS
     setIsPending(false)
     setActiveLoadingId(null)
     if (result.success) {
-      setMessage({ success: true, text: 'You successfully entered the paddle stack queue!' })
-      await fetchRealtimeData()
+      router.push('/dashboard/openplay')
     } else {
       setMessage({ success: false, text: result.error })
+      if (result.error.toLowerCase().includes('credits') || result.error.toLowerCase().includes('balance')) {
+        router.push('/dashboard/topup')
+      }
     }
   }
 

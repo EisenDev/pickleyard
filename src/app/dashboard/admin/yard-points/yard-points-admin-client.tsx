@@ -34,13 +34,34 @@ const CATEGORY_COLORS: Record<string, string> = {
   DRINK: '#3b82f6', VOUCHER: '#10b981', COURT_TIME: '#8b5cf6', MERCHANDISE: '#f59e0b', OTHER: '#6b7280'
 }
 
+// ── System Default Rates ──────────────────────────────────────────────────
+const DEFAULT_RATES: Record<string, string> = {
+  yp_novice_winner: '35',
+  yp_intermediate_winner: '50',
+  yp_advanced_winner: '65',
+  yp_loser_percentage: '15',
+  yp_daily_login: '2',
+  yp_topup_500: '75',
+  yp_topup_1000: '180',
+  yp_topup_2000: '450',
+  yp_topup_5000: '1350',
+}
+
 export function YardPointsAdminClient({ settings: initialSettings, products: initialProducts, pendingRedemptions, allRedemptions }: Props) {
   const [isPending, startTransition] = useTransition()
   const [activeTab, setActiveTab] = useState<'settings' | 'products' | 'redemptions'>('settings')
   const [notice, setNotice] = useState<{ success: boolean; text: string } | null>(null)
 
   // ── Settings State ─────────────────────────────────────────────────────────
-  const [settings, setSettings] = useState(initialSettings)
+  const [settings, setSettings] = useState(() => {
+    const merged: Record<string, string> = { ...DEFAULT_RATES }
+    for (const [key, val] of Object.entries(initialSettings)) {
+      if (val !== undefined && val !== null && val !== '') {
+        merged[key] = val
+      }
+    }
+    return merged
+  })
 
   // ── Products State ─────────────────────────────────────────────────────────
   const [products, setProducts] = useState(initialProducts)
@@ -62,19 +83,6 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
       if (res.success) showNotice(true, '✅ Settings saved successfully!')
       else showNotice(false, res.error || 'Failed to save settings.')
     })
-  }
-
-  // ── System Default Rates ──────────────────────────────────────────────────
-  const DEFAULT_RATES: Record<string, string> = {
-    yp_novice_participation: '20',
-    yp_intermediate_participation: '35',
-    yp_advanced_participation: '50',
-    yp_win_bonus: '15',
-    yp_daily_login: '2',
-    yp_topup_500: '75',
-    yp_topup_1000: '180',
-    yp_topup_2000: '450',
-    yp_topup_5000: '1350',
   }
 
   const handleResetSettings = () => {
@@ -143,11 +151,11 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
 
   // ── Settings Fields Config ─────────────────────────────────────────────────
   const earningFields = [
-    { key: 'yp_novice_participation',      label: 'Novice Participation (per game)', suffix: 'YP', def: '20' },
-    { key: 'yp_intermediate_participation', label: 'Intermediate Participation (per game)', suffix: 'YP', def: '35' },
-    { key: 'yp_advanced_participation',    label: 'Advanced Participation (per game)', suffix: 'YP', def: '50' },
-    { key: 'yp_win_bonus',                 label: 'Win Bonus (added on top)', suffix: 'YP', def: '15' },
-    { key: 'yp_daily_login',               label: 'Daily Login Reward', suffix: 'YP', def: '2' },
+    { key: 'yp_novice_winner',       label: 'Novice Winner Points',       suffix: 'YP', def: '35' },
+    { key: 'yp_intermediate_winner',  label: 'Intermediate Winner Points', suffix: 'YP', def: '50' },
+    { key: 'yp_advanced_winner',      label: 'Advanced Winner Points',     suffix: 'YP', def: '65' },
+    { key: 'yp_loser_percentage',     label: 'Loser Reward Percentage',    suffix: '%',  def: '15' },
+    { key: 'yp_daily_login',          label: 'Daily Login Reward',         suffix: 'YP', def: '2' },
   ]
   const topupFields = [
     { key: 'yp_topup_500',  label: '₱500 Top-up Reward',   suffix: 'YP', def: '75' },

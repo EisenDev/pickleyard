@@ -2,10 +2,10 @@ import { db } from './db'
 
 export async function initYardPointsSettings() {
   const DEFAULT_SETTINGS = [
-    { key: 'yp_novice_participation', value: '35' },
-    { key: 'yp_intermediate_participation', value: '35' },
-    { key: 'yp_advanced_participation', value: '50' },
-    { key: 'yp_win_bonus', value: '15' },
+    { key: 'yp_novice_winner', value: '35' },
+    { key: 'yp_intermediate_winner', value: '50' },
+    { key: 'yp_advanced_winner', value: '65' },
+    { key: 'yp_loser_percentage', value: '15' },
     { key: 'yp_topup_500', value: '75' },
     { key: 'yp_topup_1000', value: '180' },
     { key: 'yp_topup_2000', value: '450' },

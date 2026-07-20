@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { awardTopUpPoints } from '@/lib/actions/yardpoints'
 import crypto from 'crypto'
 
 export async function POST(req: Request) {
@@ -70,6 +71,9 @@ export async function POST(req: Request) {
             reference: `PAYMONGO-${paymentId}`
           }
         })
+
+        // Award topup reward points
+        await awardTopUpPoints(tx, user.id, amount)
       })
 
       console.log(`User ${userId} topped up with ₱${amount} successfully via PayMongo payment ${paymentId}`)

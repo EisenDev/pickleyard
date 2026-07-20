@@ -123,7 +123,15 @@ export function EventsClient({ events: initialEvents, userBalance, userRole }: E
       return
     }
 
-    const scheduledAt = `${form.scheduledDate}T${form.scheduledTime || '08:00'}:00+08:00`
+    // Past date/time validation
+    const scheduledTimeStr = form.scheduledTime || '08:00'
+    const eventTime = new Date(`${form.scheduledDate}T${scheduledTimeStr}:00`)
+    if (eventTime < new Date()) {
+      setCreateMsg({ success: false, text: 'Cannot create an event in the past.' })
+      return
+    }
+
+    const scheduledAt = `${form.scheduledDate}T${scheduledTimeStr}:00+08:00`
     setCreateMsg(null)
     startCreateTransition(async () => {
       const result = await createClubEventAction({

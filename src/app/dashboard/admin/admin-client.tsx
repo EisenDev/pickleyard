@@ -11,7 +11,8 @@ import {
   endMatchEarlyAction,
   checkAndRotateExpiredMatchesAction,
   creditUserCashAction,
-  recordMatchResultAction
+  recordMatchResultAction,
+  getLatestUserCreditsAction
 } from '@/lib/actions/admin'
 import { Users, Clock, ShieldCheck, ShieldAlert, X, Search, UserCheck, Play, Award, Zap, Power, Volume2, QrCode, Trash2, Camera, AlertTriangle, Calendar, RefreshCw, DollarSign, Star, Trophy } from 'lucide-react'
 
@@ -35,6 +36,7 @@ interface StackEntry {
   checkedInAt: string | null
   sessionExpiresAt: string | null
   qrId: string | null
+  user?: UserListItem
 }
 
 interface UserListItem {
@@ -390,6 +392,13 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     }
     setAdminMessage(null)
     setIsCheckinModalOpen(true)
+
+    // Fetch latest credits in background
+    getLatestUserCreditsAction(user.id).then(res => {
+      if (res.success && res.credits !== undefined) {
+        setSelectedUser(prev => prev && prev.id === user.id ? { ...prev, credits: res.credits! } : prev)
+      }
+    })
   }
 
   const handleChargeCheckin = async () => {
@@ -1343,7 +1352,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                   ['PENDING', 'WAITING', 'PLAYING', 'MATCHED'].includes(s.status)
                 )
                 const matchedScanUser = activeQueueEntry 
-                  ? users.find(u => u.id === activeQueueEntry.userId)
+                  ? (activeQueueEntry.user || users.find(u => u.id === activeQueueEntry.userId))
                   : null
 
                 return (

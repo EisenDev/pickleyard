@@ -246,7 +246,10 @@ export async function assignMatchToCourtAction(
           courtId,
           status: { in: ['RESERVED', 'PAID'] },
           startTime: { lte: limitTime },
-          endTime: { gte: now }
+          endTime: { gte: now },
+          user: {
+            role: { notIn: ['ADMIN', 'STAFF'] }
+          }
         }
       })
 
@@ -401,21 +404,27 @@ export async function recordMatchResultAction(
         return s ? parseInt(s.value) : def
       }
 
-      const WIN_BONUS = getSetting('yp_win_bonus', 15)
+      const noviceWinner = getSetting('yp_novice_winner', 35)
+      const intermediateWinner = getSetting('yp_intermediate_winner', 50)
+      const advancedWinner = getSetting('yp_advanced_winner', 65)
+      const loserPercentage = getSetting('yp_loser_percentage', 15)
 
-      // 3. Award points to all players (winners get full points, losers get 15% of winners' points)
+      // 3. Award points to all players (winners get full points, losers get % of winners' points)
       for (const entry of activePlayers) {
         const skillLevel = entry.skillLevel
         const isWinner = winnerUserIds.includes(entry.userId)
 
-        const participationKey = `yp_${skillLevel.toLowerCase()}_participation`
-        const participationPoints = getSetting(participationKey, skillLevel === 'ADVANCED' ? 50 : skillLevel === 'INTERMEDIATE' ? 35 : 20)
+        let winnerPoints = 35
+        if (skillLevel === 'ADVANCED') {
+          winnerPoints = advancedWinner
+        } else if (skillLevel === 'INTERMEDIATE') {
+          winnerPoints = intermediateWinner
+        } else {
+          winnerPoints = noviceWinner
+        }
         
-        // Winners get participation points + win bonus
-        const winnerPoints = participationPoints + WIN_BONUS
-        
-        // Losers get 15% of winners' points, rounded to the nearest integer
-        const totalPoints = isWinner ? winnerPoints : Math.round(winnerPoints * 0.15)
+        // Winners get full winnerPoints, losers get percentage
+        const totalPoints = isWinner ? winnerPoints : Math.round(winnerPoints * (loserPercentage / 100))
 
         // Update user yard points
         await tx.user.update({
@@ -432,7 +441,7 @@ export async function recordMatchResultAction(
             userId: entry.userId,
             amount: totalPoints,
             reason: isWinner ? 'OPEN_PLAY_WIN' : 'OPEN_PLAY_PARTICIPATION',
-            details: `${skillLevel} match – ${isWinner ? `Winner (earned ${totalPoints} YP)` : `Participation / Loser (earned 15% of winners' points: ${totalPoints} YP)`} (Court ${courtId.slice(-4)})`
+            details: `${skillLevel} match – ${isWinner ? `Winner (earned ${totalPoints} YP)` : `Participation / Loser (earned ${loserPercentage}% of winners' points: ${totalPoints} YP)`} (Court ${courtId.slice(-4)})`
           }
         })
       }
@@ -484,7 +493,10 @@ export async function checkAndRotateExpiredMatchesAction(): Promise<ActionState>
               courtId: c.id,
               status: { in: ['RESERVED', 'PAID'] },
               startTime: { lte: now },
-              endTime: { gte: now }
+              endTime: { gte: now },
+              user: {
+                role: { notIn: ['ADMIN', 'STAFF'] }
+              }
             }
           })
           if (!activeBooking) {
@@ -746,3 +758,17 @@ export async function creditUserCashAction(
     return { success: false, error: error.message || 'Failed to top up balance.' }
   }
 }
+
+export async function getLatestUserCreditsAction(userId: string): Promise<{ success: boolean; credits?: number; error?: string }> {
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { credits: true }
+    })
+    if (!user) return { success: false, error: 'User not found' }
+    return { success: true, credits: Number(user.credits) }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to fetch credits' }
+  }
+}
+

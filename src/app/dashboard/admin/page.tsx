@@ -52,7 +52,10 @@ export default async function AdminDashboardPage() {
   const bookings = await db.booking.findMany({
     where: {
       status: { in: ['RESERVED', 'PAID'] },
-      startTime: { gte: todayStart, lte: todayEnd }
+      startTime: { gte: todayStart, lte: todayEnd },
+      user: {
+        role: { notIn: ['ADMIN', 'STAFF'] }
+      }
     },
     orderBy: { startTime: 'asc' }
   })
