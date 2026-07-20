@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AlertCircle, Check, Eye, EyeOff, Sparkles, ArrowRight, Info } from 'lucide-react'
@@ -8,7 +8,8 @@ import { signUpAction } from '@/lib/actions/auth'
 import { SignInModal } from '@/components/auth/signin-modal'
 import { signIn } from 'next-auth/react'
 
-export default function SignUpPage() {
+// Inner component uses useSearchParams — must be wrapped in Suspense by the parent
+function SignUpPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -823,5 +824,14 @@ export default function SignUpPage() {
         }
       `}</style>
     </div>
+  )
+}
+
+// Outer wrapper: Suspense is required because SignUpPageInner uses useSearchParams
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--color-bg)' }} />}>
+      <SignUpPageInner />
+    </Suspense>
   )
 }
