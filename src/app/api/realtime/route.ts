@@ -13,7 +13,27 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url)
-    const type = searchParams.get('type') // 'events' | 'paddlestack'
+    const type = searchParams.get('type') // 'events' | 'paddlestack' | 'user_balance'
+
+    // ── Real-time balance for a single user (scan modal) ──────────────────────
+    if (type === 'user_balance') {
+      const userId = searchParams.get('userId')
+      if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
+
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { id: true, credits: true }
+      })
+      if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+      return NextResponse.json({ success: true, credits: Number(user.credits) }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
+    }
 
     let formattedCourts: any[] = []
     let formattedStacks: any[] = []

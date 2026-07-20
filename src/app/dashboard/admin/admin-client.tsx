@@ -243,6 +243,7 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
   const [adminMessage, setAdminMessage] = useState<{ success: boolean; text: string } | null>(null)
   const [modalSkillLevel, setModalSkillLevel] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('INTERMEDIATE')
   const [kioskNotice, setKioskNotice] = useState<{ success: boolean; text: string } | null>(null)
+  const [liveCredits, setLiveCredits] = useState<number | null>(null)
 
   // ── Record Winner Modal State ─────────────────────────────────────────────
   const [recordWinnerModal, setRecordWinnerModal] = useState<{
@@ -353,6 +354,53 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     const interval = setInterval(fetchRealtimeData, 2000)
     return () => clearInterval(interval)
   }, [activeLoadingId, isCheckinModalOpen, isScannerOpen, assigningMatch, recordWinnerModal])
+
+  // Find currently matched scan user for either cash top-up or regular check-in
+  const getActiveScanUser = () => {
+    const text = scanText.trim()
+    if (!text) return null
+
+    if (text.startsWith('CASH-TOPUP:')) {
+      const decoded = decodeURIComponent(text)
+      const userIdMatch = decoded.match(/userId=([^&]+)/)
+      const parsedUserId = userIdMatch ? userIdMatch[1] : null
+      return users.find(u => u.id === parsedUserId) || null
+    }
+
+    const activeQueueEntry = stacks.find(s => 
+      s.qrId?.toLowerCase() === text.toLowerCase() && 
+      ['PENDING', 'WAITING', 'PLAYING', 'MATCHED'].includes(s.status)
+    )
+    return activeQueueEntry 
+      ? users.find(u => u.id === activeQueueEntry.userId) || null
+      : null
+  }
+  const activeScanUser = getActiveScanUser()
+
+  // ── Live Balance Polling for Selected User (scan/checkin modal) ─────────────
+  // Fetches the player's latest credit balance every 3s while either modal is open.
+  // This prevents check-in on a stale 0-balance that was actually topped up.
+  useEffect(() => {
+    const targetUser = selectedUser || activeScanUser
+    if (!targetUser || (!isCheckinModalOpen && !isScannerOpen)) {
+      setLiveCredits(null)
+      return
+    }
+    const fetchBalance = async () => {
+      try {
+        const res = await fetch(`/api/realtime?type=user_balance&userId=${targetUser.id}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success) setLiveCredits(data.credits)
+        }
+      } catch (e) {
+        // silently fail — fallback to props credits
+      }
+    }
+    fetchBalance()
+    const interval = setInterval(fetchBalance, 3000)
+    return () => clearInterval(interval)
+  }, [selectedUser, activeScanUser, isCheckinModalOpen, isScannerOpen])
 
   // Filter users for scanner manual selector
   const filteredScanUsers = users.filter(u =>
@@ -1283,8 +1331,8 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
-                          <div>Current Balance: <strong>₱{matchedScanUser.credits.toFixed(2)}</strong></div>
-                          <div>New Balance: <strong style={{ color: 'var(--color-success)' }}>₱{(matchedScanUser.credits + parsedAmt).toFixed(2)}</strong></div>
+                          <div>Current Balance: <strong>₱{(liveCredits ?? matchedScanUser.credits).toFixed(2)}{liveCredits !== null ? ' ●' : ''}</strong></div>
+                          <div>New Balance: <strong style={{ color: 'var(--color-success)' }}>₱{((liveCredits ?? matchedScanUser.credits) + parsedAmt).toFixed(2)}</strong></div>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
@@ -1384,7 +1432,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
                           <div>DUPR: <strong>{matchedScanUser.duprRating.toFixed(2)}</strong></div>
-                          <div>Balance: <strong>₱{matchedScanUser.credits.toFixed(2)}</strong></div>
+                          <div>Balance: <strong style={{ color: (liveCredits ?? matchedScanUser.credits) >= 150 ? 'var(--color-success)' : 'var(--color-danger)' }}>₱{(liveCredits ?? matchedScanUser.credits).toFixed(2)}{liveCredits !== null ? ' ●' : ''}</strong></div>
                         </div>
 
                         <button
@@ -1478,10 +1526,10 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                 <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)', textTransform: 'uppercase', display: 'block' }}>DUPR Rating</span>
                 <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{selectedUser.duprRating.toFixed(2)}</span>
               </div>
-              <div>
+               <div>
                 <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)', textTransform: 'uppercase', display: 'block' }}>Credits Balance</span>
-                <span style={{ fontSize: '13px', fontWeight: 800, color: selectedUser.credits < 150 ? 'var(--color-danger)' : 'var(--color-primary)' }}>
-                  ₱{selectedUser.credits.toFixed(2)}
+                <span style={{ fontSize: '13px', fontWeight: 800, color: (liveCredits ?? selectedUser.credits) < 150 ? 'var(--color-danger)' : 'var(--color-primary)' }}>
+                  ₱{(liveCredits ?? selectedUser.credits).toFixed(2)}{liveCredits !== null ? ' ●' : ''}
                 </span>
               </div>
               <div>
@@ -1550,13 +1598,13 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                 
                 <button
                   type="button"
-                  disabled={isPending || selectedUser.credits < 150}
+                  disabled={isPending || (liveCredits ?? selectedUser.credits) < 150}
                   onClick={handleChargeCheckin}
                   style={{
                     flex: 1.5, height: '40px', borderRadius: 'var(--radius-md)', border: 'none',
                     background: 'var(--color-success)', color: 'white',
-                    fontSize: '13px', fontWeight: 700, cursor: (isPending || selectedUser.credits < 150) ? 'not-allowed' : 'pointer',
-                    opacity: (isPending || selectedUser.credits < 150) ? 0.6 : 1,
+                    fontSize: '13px', fontWeight: 700, cursor: (isPending || (liveCredits ?? selectedUser.credits) < 150) ? 'not-allowed' : 'pointer',
+                    opacity: (isPending || (liveCredits ?? selectedUser.credits) < 150) ? 0.6 : 1,
                     boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                   }}
                 >

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { createBookingAction } from '@/lib/actions/booking'
+import { createBookingAction, createBookingsAction } from '@/lib/actions/booking'
+import { adminReserveCourtForOpenPlayAction } from '@/lib/actions/admin'
 import { ShieldCheck, AlertTriangle, Calendar, List, Plus, Clock, MapPin, ChevronLeft, ChevronRight, ArrowLeft, X, Search } from 'lucide-react'
 import Link from 'next/link'
 
@@ -74,7 +75,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalCourtId, setModalCourtId] = useState<string>('')
   const [modalDate, setModalDate] = useState<string>('')
-  const [modalHour, setModalHour] = useState<number | null>(null)
+  const [modalHours, setModalHours] = useState<number[]>([])
 
   const filteredCourts = selectedCourt === 'all' ? courts : courts.filter(c => c.id === selectedCourt)
 
@@ -99,7 +100,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   const handleOpenBookingModalForSlot = (courtId: string, hour: number) => {
     setModalCourtId(courtId)
     setModalDate(formatDateToYYYYMMDD(selectedDate))
-    setModalHour(hour)
+    setModalHours([hour])
     setIsModalOpen(true)
   }
 
@@ -107,7 +108,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   const handleOpenBookingModalGeneral = () => {
     setModalCourtId(courts[0]?.id || '')
     setModalDate(formatDateToYYYYMMDD(selectedDate))
-    setModalHour(null)
+    setModalHours([])
     setIsModalOpen(true)
   }
 
@@ -135,24 +136,60 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
     return slotTime < new Date()
   }
 
-  const handleConfirmBooking = () => {
-    if (!modalCourtId || modalHour === null) return
-    const slotTime = new Date(modalDate + 'T00:00:00')
-    slotTime.setHours(modalHour, 0, 0, 0)
+  const toggleHourSelection = (hour: number) => {
+    setModalHours(prev => {
+      if (prev.includes(hour)) {
+        return prev.filter(h => h !== hour)
+      } else {
+        return [...prev, hour].sort((a, b) => a - b)
+      }
+    })
+  }
 
-    if (slotTime < new Date()) {
-      alert('Cannot book a slot in the past.')
+  const handleConfirmBooking = () => {
+    if (!modalCourtId || modalHours.length === 0) return
+
+    const startTimesISO = modalHours.map(hour => {
+      const slotTime = new Date(modalDate + 'T00:00:00')
+      slotTime.setHours(hour, 0, 0, 0)
+      return slotTime.toISOString()
+    })
+
+    const hasPastSlot = modalHours.some(hour => {
+      const slotTime = new Date(modalDate + 'T00:00:00')
+      slotTime.setHours(hour, 0, 0, 0)
+      return slotTime < new Date()
+    })
+
+    if (hasPastSlot) {
+      alert('Cannot book slots in the past.')
       return
     }
 
     setMessage(null)
     setIsModalOpen(false)
     startTransition(async () => {
-      const result = await createBookingAction(modalCourtId, slotTime.toISOString())
-      if (result.success) {
-        setMessage({ success: true, text: 'Court booked successfully!' })
+      const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
+      if (isAdminOrStaff) {
+        // Admin Open Play Block Reservation (Free ₱0)
+        const result = await adminReserveCourtForOpenPlayAction({
+          courtId: modalCourtId,
+          startTimes: startTimesISO,
+          label: 'Open Play Block'
+        })
+        if (result.success) {
+          setMessage({ success: true, text: 'Court successfully reserved for Open Play block(s)!' })
+        } else {
+          setMessage({ success: false, text: result.error || 'Failed to reserve court slots.' })
+        }
       } else {
-        setMessage({ success: false, text: result.error })
+        // Regular Player Court Booking
+        const result = await createBookingsAction(modalCourtId, startTimesISO)
+        if (result.success) {
+          setMessage({ success: true, text: 'Court booked successfully!' })
+        } else {
+          setMessage({ success: false, text: result.error })
+        }
       }
     })
   }
@@ -601,208 +638,218 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
       </div>
 
       {/* ── Booking Modal (Avenor style popup) ── */}
-      {isModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.40)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 10000
-        }}>
+      {isModalOpen && (() => {
+        const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
+        const court = courts.find(c => c.id === modalCourtId)
+        const hourlyRate = court?.type === 'ROOFTOP' ? 300 : 250
+        const totalCost = hourlyRate * modalHours.length
+        const hasInsufficientBalance = !isAdminOrStaff && userBalance < totalCost
+
+        return (
           <div style={{
-            background: 'var(--color-card)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-xl)',
-            padding: '28px',
-            maxWidth: '520px',
-            width: '90%',
-            boxShadow: 'var(--shadow-lg)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '20px',
-            position: 'relative'
-          }} className="animate-fade-up">
-            {/* Close button */}
-            <button
-              onClick={() => setIsModalOpen(false)}
-              style={{
-                position: 'absolute', top: 20, right: 20,
-                border: 'none', background: 'transparent',
-                cursor: 'pointer', color: 'var(--color-text-secondary)'
-              }}
-            >
-              <X size={18} />
-            </button>
-
-            <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
-                {userRole === 'ADMIN' || userRole === 'STAFF' ? 'Reserve Court for Open Play' : 'Book a Court'}
-              </h3>
-              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px', margin: '4px 0 0' }}>
-                {userRole === 'ADMIN' || userRole === 'STAFF' 
-                  ? 'Reserve this court slot on the schedule for Open Play games.' 
-                  : 'Select court, date, and hourly slot to complete your reservation.'}
-              </p>
-            </div>
-
-            {/* Inputs */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Court</label>
-                <select
-                  value={modalCourtId}
-                  onChange={e => { setModalCourtId(e.target.value); setModalHour(null); }}
-                  style={{
-                    width: '100%', height: '38px', padding: '0 10px',
-                    borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
-                    background: 'var(--color-surface)', color: 'var(--color-text-primary)',
-                    fontSize: '13px', fontWeight: 600, outline: 'none'
-                  }}
-                >
-                  {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Date</label>
-                <input
-                  type="date"
-                  value={modalDate}
-                  min={formatDateToYYYYMMDD(new Date())}
-                  onChange={e => { setModalDate(e.target.value); setModalHour(null); }}
-                  style={{
-                    width: '100%', height: '38px', padding: '0 10px',
-                    borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
-                    background: 'var(--color-surface)', color: 'var(--color-text-primary)',
-                    fontSize: '13px', fontWeight: 600, outline: 'none', boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Hour slot selection grid */}
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase' }}>Select Time Slot</label>
-              <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px',
-                maxHeight: '200px', overflowY: 'auto', paddingRight: '4px'
-              }}>
-                {HOURS.map(hour => {
-                  const isBooked = isSlotBookedInModal(hour)
-                  const isPast = isSlotInPastInModal(hour)
-                  const isSelected = modalHour === hour
-
-                  let btnBg = 'var(--color-card)'
-                  let btnColor = 'var(--color-text-primary)'
-                  let btnBorder = '1px solid var(--color-border)'
-                  let cursorType = 'pointer'
-
-                  if (isBooked) {
-                    btnBg = 'rgba(239, 68, 68, 0.08)'
-                    btnColor = 'var(--color-danger)'
-                    btnBorder = '1px solid rgba(239, 68, 68, 0.25)'
-                    cursorType = 'not-allowed'
-                  } else if (isPast) {
-                    btnBg = 'var(--color-surface)'
-                    btnColor = 'var(--color-text-disabled)'
-                    btnBorder = '1px solid var(--color-border-subtle)'
-                    cursorType = 'not-allowed'
-                  } else if (isSelected) {
-                    btnBg = 'var(--color-primary)'
-                    btnColor = 'white'
-                    btnBorder = '1px solid var(--color-primary)'
-                  }
-
-                  return (
-                    <button
-                      key={hour}
-                      disabled={isBooked || isPast}
-                      onClick={() => setModalHour(hour)}
-                      style={{
-                        height: '36px',
-                        borderRadius: 'var(--radius-md)',
-                        border: btnBorder,
-                        background: btnBg,
-                        color: btnColor,
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        cursor: cursorType,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all var(--duration-fast)',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      <span>{formatHour(hour).split(' ')[0]}</span>
-                      <span style={{ fontSize: '8px', opacity: 0.8 }}>{formatHour(hour).split(' ')[1]}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Info Summary */}
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0, 0, 0, 0.40)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10000
+          }}>
             <div style={{
-              background: 'var(--color-surface)', borderRadius: 'var(--radius-md)',
-              padding: '12px 14px', border: '1px solid var(--color-border)',
-              display: 'flex', flexDirection: 'column', gap: '6px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                <span>Court Fee</span>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                  {userRole === 'ADMIN' || userRole === 'STAFF' ? '₱0.00 (Open Play block)' : '₱250.00'}
-                </span>
-              </div>
-              {userRole !== 'ADMIN' && userRole !== 'STAFF' && (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                    <span>Account Balance</span>
-                    <span style={{ fontWeight: 700 }}>₱{userBalance.toFixed(2)}</span>
-                  </div>
-                  {userBalance < 250 && (
-                    <div style={{
-                      color: 'var(--color-danger)', fontSize: '11px', fontWeight: 700,
-                      marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px'
-                    }}>
-                      <AlertTriangle size={12} />
-                      <span>Insufficient balance. Please top up your account.</span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
+              background: 'var(--color-card)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-xl)',
+              padding: '28px',
+              maxWidth: '520px',
+              width: '90%',
+              boxShadow: 'var(--shadow-lg)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+              position: 'relative'
+            }} className="animate-fade-up">
+              {/* Close button */}
               <button
                 onClick={() => setIsModalOpen(false)}
                 style={{
-                  height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)', background: 'var(--color-card)',
-                  color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: 600,
-                  cursor: 'pointer'
+                  position: 'absolute', top: 20, right: 20,
+                  border: 'none', background: 'transparent',
+                  cursor: 'pointer', color: 'var(--color-text-secondary)'
                 }}
               >
-                Cancel
+                <X size={18} />
               </button>
-              <button
-                disabled={isPending || modalHour === null || (userRole !== 'ADMIN' && userRole !== 'STAFF' && userBalance < 250)}
-                onClick={handleConfirmBooking}
-                style={{
-                  height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
-                  border: 'none', background: 'var(--color-primary)',
-                  color: 'white', fontSize: '13px', fontWeight: 700,
-                  cursor: (isPending || modalHour === null || (userRole !== 'ADMIN' && userRole !== 'STAFF' && userBalance < 250)) ? 'not-allowed' : 'pointer',
-                  boxShadow: 'var(--shadow-primary-btn)',
-                  opacity: (isPending || modalHour === null || (userRole !== 'ADMIN' && userRole !== 'STAFF' && userBalance < 250)) ? 0.6 : 1
-                }}
-              >
-                {isPending ? 'Reserving...' : (userRole === 'ADMIN' || userRole === 'STAFF') ? 'Confirm Reservation' : 'Confirm Booking'}
-              </button>
+
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
+                  {isAdminOrStaff ? 'Reserve Court for Open Play' : 'Book a Court'}
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px', margin: '4px 0 0' }}>
+                  {isAdminOrStaff
+                    ? 'Reserve this court slot on the schedule for Open Play games.'
+                    : 'Select court, date, and hourly slots to complete your reservation.'}
+                </p>
+              </div>
+
+              {/* Inputs */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Court</label>
+                  <select
+                    value={modalCourtId}
+                    onChange={e => { setModalCourtId(e.target.value); setModalHours([]); }}
+                    style={{
+                      width: '100%', height: '38px', padding: '0 10px',
+                      borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                      background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                      fontSize: '13px', fontWeight: 600, outline: 'none'
+                    }}
+                  >
+                    {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Date</label>
+                  <input
+                    type="date"
+                    value={modalDate}
+                    min={formatDateToYYYYMMDD(new Date())}
+                    onChange={e => { setModalDate(e.target.value); setModalHours([]); }}
+                    style={{
+                      width: '100%', height: '38px', padding: '0 10px',
+                      borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                      background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                      fontSize: '13px', fontWeight: 600, outline: 'none', boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Hour slot selection grid */}
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase' }}>Select Time Slot</label>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px',
+                  maxHeight: '200px', overflowY: 'auto', paddingRight: '4px'
+                }}>
+                  {HOURS.map(hour => {
+                    const isBooked = isSlotBookedInModal(hour)
+                    const isPast = isSlotInPastInModal(hour)
+                    const isSelected = modalHours.includes(hour)
+
+                    let btnBg = 'var(--color-card)'
+                    let btnColor = 'var(--color-text-primary)'
+                    let btnBorder = '1px solid var(--color-border)'
+                    let cursorType = 'pointer'
+
+                    if (isBooked) {
+                      btnBg = 'rgba(239, 68, 68, 0.08)'
+                      btnColor = 'var(--color-danger)'
+                      btnBorder = '1px solid rgba(239, 68, 68, 0.25)'
+                      cursorType = 'not-allowed'
+                    } else if (isPast) {
+                      btnBg = 'var(--color-surface)'
+                      btnColor = 'var(--color-text-disabled)'
+                      btnBorder = '1px solid var(--color-border-subtle)'
+                      cursorType = 'not-allowed'
+                    } else if (isSelected) {
+                      btnBg = 'var(--color-primary)'
+                      btnColor = 'white'
+                      btnBorder = '1px solid var(--color-primary)'
+                    }
+
+                    return (
+                      <button
+                        key={hour}
+                        disabled={isBooked || isPast}
+                        onClick={() => toggleHourSelection(hour)}
+                        style={{
+                          height: '36px',
+                          borderRadius: 'var(--radius-md)',
+                          border: btnBorder,
+                          background: btnBg,
+                          color: btnColor,
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: cursorType,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all var(--duration-fast)',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        <span>{formatHour(hour).split(' ')[0]}</span>
+                        <span style={{ fontSize: '8px', opacity: 0.8 }}>{formatHour(hour).split(' ')[1]}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Info Summary */}
+              <div style={{
+                background: 'var(--color-surface)', borderRadius: 'var(--radius-md)',
+                padding: '12px 14px', border: '1px solid var(--color-border)',
+                display: 'flex', flexDirection: 'column', gap: '6px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                  <span>Court Fee</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                    {isAdminOrStaff ? '₱0.00 (Open Play block)' : `₱${totalCost.toFixed(2)}`}
+                  </span>
+                </div>
+                {!isAdminOrStaff && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                      <span>Account Balance</span>
+                      <span style={{ fontWeight: 700 }}>₱{userBalance.toFixed(2)}</span>
+                    </div>
+                    {hasInsufficientBalance && (
+                      <div style={{
+                        color: 'var(--color-danger)', fontSize: '11px', fontWeight: 700,
+                        marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px'
+                      }}>
+                        <AlertTriangle size={12} />
+                        <span>Insufficient balance. Please top up your account.</span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  style={{
+                    height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--color-border)', background: 'var(--color-card)',
+                    color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={isPending || modalHours.length === 0 || hasInsufficientBalance}
+                  onClick={handleConfirmBooking}
+                  style={{
+                    height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
+                    border: 'none', background: 'var(--color-primary)',
+                    color: 'white', fontSize: '13px', fontWeight: 700,
+                    cursor: (isPending || modalHours.length === 0 || hasInsufficientBalance) ? 'not-allowed' : 'pointer',
+                    boxShadow: 'var(--shadow-primary-btn)',
+                    opacity: (isPending || modalHours.length === 0 || hasInsufficientBalance) ? 0.6 : 1
+                  }}
+                >
+                  {isPending
+                    ? (isAdminOrStaff ? 'Reserving...' : 'Booking...')
+                    : (isAdminOrStaff ? 'Confirm Reservation' : 'Confirm Booking')}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       <style>{`
         .slot-open:hover {
