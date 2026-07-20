@@ -11,13 +11,14 @@ interface SignInModalProps {
   isOpen: boolean
   onClose: () => void
   onSwitchToSignUp?: () => void
+  initialError?: string | null
 }
 
-export function SignInModal({ isOpen, onClose, onSwitchToSignUp }: SignInModalProps) {
+export function SignInModal({ isOpen, onClose, onSwitchToSignUp, initialError }: SignInModalProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(initialError ?? null)
   const [isPending, startTransition] = useTransition()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const router = useRouter()

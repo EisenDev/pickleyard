@@ -20,6 +20,25 @@ export const authConfig: NextAuthConfig = {
     newUser: '/signup',
   },
   callbacks: {
+    async signIn({ user, account }) {
+      // Only intercept Google OAuth
+      if (account?.provider === 'google') {
+        const email = user.email
+        if (!email) return false
+
+        // Check if user exists in DB
+        const existing = await db.user.findUnique({ where: { email } })
+
+        if (!existing) {
+          // Brand new email — redirect to signup with a hint
+          return `/signup?email=${encodeURIComponent(email)}&reason=not_registered`
+        }
+
+        // User exists — allow sign-in (allowDangerousEmailAccountLinking handles linking)
+        return true
+      }
+      return true
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
@@ -51,6 +70,7 @@ export const authConfig: NextAuthConfig = {
     Google({
       clientId: process.env.AUTH_GOOGLE_ID || 'dummy_google_id',
       clientSecret: process.env.AUTH_GOOGLE_SECRET || 'dummy_google_secret',
+      allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
       async authorize(credentials) {

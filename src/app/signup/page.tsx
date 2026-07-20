@@ -2,14 +2,19 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { AlertCircle, Check, Eye, EyeOff, Sparkles, ArrowRight } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { AlertCircle, Check, Eye, EyeOff, Sparkles, ArrowRight, Info } from 'lucide-react'
 import { signUpAction } from '@/lib/actions/auth'
 import { SignInModal } from '@/components/auth/signin-modal'
 import { signIn } from 'next-auth/react'
 
 export default function SignUpPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Detect Google OAuth redirect hints
+  const oauthEmail = searchParams.get('email') || ''
+  const oauthReason = searchParams.get('reason') || ''
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -23,7 +28,7 @@ export default function SignUpPage() {
   }, [router])
 
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(oauthEmail) // pre-fill if redirected from Google OAuth
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -181,6 +186,27 @@ export default function SignUpPage() {
             <span className="signup-divider-text">or</span>
             <div className="signup-divider-line" />
           </div>
+
+          {/* OAuth hint banners */}
+          {oauthReason === 'not_registered' && (
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: '10px',
+              background: 'rgba(59,130,246,0.08)',
+              border: '1px solid rgba(59,130,246,0.25)',
+              borderRadius: 'var(--radius-md)',
+              padding: '12px 14px',
+              fontSize: '13px',
+              color: '#3b82f6',
+              fontWeight: 500,
+              marginBottom: '4px'
+            }}>
+              <Info size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>
+                <strong>{oauthEmail}</strong> is not registered yet.
+                {' '}Sign up below or use a different Google account.
+              </span>
+            </div>
+          )}
 
           {/* Error */}
           {error && (

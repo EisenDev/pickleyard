@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { SignInModal } from '@/components/auth/signin-modal'
 import {
@@ -24,6 +25,17 @@ export default function LandingPage() {
   const [isSignInOpen, setIsSignInOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [session, setSession] = useState<any>(null)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+
+  // Handle NextAuth OAuth errors redirected here
+  useEffect(() => {
+    const error = searchParams.get('error')
+    if (error === 'OAuthAccountNotLinked') {
+      setAuthError('This email is already registered with a different sign-in method. Please use email & password to log in.')
+      setIsSignInOpen(true)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -604,7 +616,8 @@ export default function LandingPage() {
       {/* Auth Modal */}
       <SignInModal
         isOpen={isSignInOpen}
-        onClose={() => setIsSignInOpen(false)}
+        onClose={() => { setIsSignInOpen(false); setAuthError(null) }}
+        initialError={authError}
       />
 
       <style>{`
