@@ -13,6 +13,8 @@ import {
   Menu,
   X,
   MapPin,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 
 // Isolated component so useSearchParams doesn't block static prerendering of LandingPage
@@ -33,6 +35,8 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [session, setSession] = useState<any>(null)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -43,7 +47,37 @@ export default function LandingPage() {
         }
       })
       .catch(err => console.error(err))
+
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  const courtsData = [
+    { id: '1', name: 'Court 1', image: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=600' },
+    { id: '2', name: 'Court 2', image: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&q=80&w=600' },
+    { id: '3', name: 'Court 3', image: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=600' },
+    { id: '4', name: 'Court 4', image: 'https://images.unsplash.com/photo-1599447421416-3414500d18a5?auto=format&fit=crop&q=80&w=600' },
+    { id: '5', name: 'Court 5', image: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&q=80&w=600' },
+    { id: '6', name: 'Court 6', image: 'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?auto=format&fit=crop&q=80&w=600' },
+    { id: '7', name: 'Court 7', image: 'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?auto=format&fit=crop&q=80&w=600' },
+    { id: '8', name: 'Court 8', image: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80&w=600' },
+    { id: '9', name: 'Court 9', image: 'https://images.unsplash.com/photo-1628155930542-3c7a64e2c833?auto=format&fit=crop&q=80&w=600' },
+    { id: '10', name: 'Court 10', image: 'https://images.unsplash.com/photo-1613918431208-67527b6e4922?auto=format&fit=crop&q=80&w=600' }
+  ]
+
+  const maxIndex = isMobile ? 9 : 7
+
+  const handlePrev = () => {
+    setActiveIndex(prev => Math.max(prev - 1, 0))
+  }
+
+  const handleNext = () => {
+    setActiveIndex(prev => Math.min(prev + 1, maxIndex))
+  }
 
   return (
     <div style={{ background: 'var(--color-bg-primary)', minHeight: '100vh', overflowX: 'hidden' }}>
@@ -203,7 +237,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right Hero / Visual Image (Bigger) */}
+          {/* Right Hero / Visual Image (Bigger Pickleball Court Image) */}
           <div className="hero-right-visual animate-fade-up">
             <div 
               className="court-visual-canvas" 
@@ -297,7 +331,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Our Indoor Courts */}
+      {/* Our Indoor Courts (Side Slider Carousel) */}
       <section id="courts" className="courts-showcase-section">
         <div className="courts-showcase-container">
           <div className="courts-showcase-left animate-fade-up">
@@ -323,51 +357,101 @@ export default function LandingPage() {
               ))}
             </ul>
 
-            <Link href={session ? "/dashboard/bookings" : "/signup"} className="explore-btn">
-              Explore Courts →
-            </Link>
+            <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+              <button 
+                onClick={handlePrev} 
+                disabled={activeIndex === 0}
+                style={{
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  border: '1px solid var(--color-border)', background: 'var(--color-card)',
+                  color: activeIndex === 0 ? 'var(--color-text-disabled)' : 'var(--color-text-primary)',
+                  display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center',
+                  cursor: activeIndex === 0 ? 'not-allowed' : 'pointer',
+                  transition: 'all var(--duration-fast)'
+                }}
+                className="carousel-nav-btn"
+                aria-label="Previous court"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button 
+                onClick={handleNext} 
+                disabled={activeIndex === maxIndex}
+                style={{
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  border: '1px solid var(--color-border)', background: 'var(--color-card)',
+                  color: activeIndex === maxIndex ? 'var(--color-text-disabled)' : 'var(--color-text-primary)',
+                  display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center',
+                  cursor: activeIndex === maxIndex ? 'not-allowed' : 'pointer',
+                  transition: 'all var(--duration-fast)'
+                }}
+                className="carousel-nav-btn"
+                aria-label="Next court"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
           </div>
 
-          <div className="courts-showcase-right">
-            {[
-              {
-                id: '1',
-                name: 'Court 1',
-                image: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=600'
-              },
-              {
-                id: '2',
-                name: 'Court 2',
-                image: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&q=80&w=600'
-              },
-              {
-                id: '3',
-                name: 'Court 3',
-                image: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=600'
-              }
-            ].map((court, idx) => (
-              <div key={idx} className="showcase-card">
-                <div className="showcase-img-container">
-                  <img src={court.image} alt={court.name} className="showcase-img" />
-                  <div className="showcase-number">{court.id}</div>
-                </div>
-                <div className="showcase-footer">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Calendar size={13} style={{ color: 'var(--color-text-secondary)' }} />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>{court.name}</span>
+          <div style={{ overflow: 'hidden', width: '100%' }}>
+            <div 
+              style={{
+                display: 'flex',
+                transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: `translateX(-${activeIndex * (isMobile ? 100 : 33.333)}%)`,
+                width: '100%'
+              }}
+            >
+              {courtsData.map((court, idx) => (
+                <div 
+                  key={idx} 
+                  style={{ 
+                    flex: isMobile ? '0 0 100%' : '0 0 33.333%', 
+                    padding: '0 8px', 
+                    boxSizing: 'border-box' 
+                  }}
+                >
+                  <div className="showcase-card" style={{ width: '100%' }}>
+                    <div className="showcase-img-container">
+                      <img src={court.image} alt={court.name} className="showcase-img" />
+                      <div className="showcase-number">{court.id}</div>
+                    </div>
+                    <div className="showcase-footer">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Calendar size={13} style={{ color: 'var(--color-text-secondary)' }} />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>{court.name}</span>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Indoor Court</span>
+                    </div>
                   </div>
-                  <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Indoor Court</span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
         
-        {/* Carousel indicators */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '24px' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-border)' }} />
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-border)' }} />
+        {/* Clickable indicators dots representing the 10 courts */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '32px' }}>
+          {Array.from({ length: 10 }).map((_, idx) => {
+            const isActive = activeIndex === idx
+            return (
+              <button
+                key={idx}
+                onClick={() => setActiveIndex(Math.min(idx, maxIndex))}
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: isActive ? '#10b981' : 'var(--color-border)',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  transition: 'all var(--duration-fast)'
+                }}
+                aria-label={`Go to court ${idx + 1}`}
+              />
+            )
+          })}
         </div>
       </section>
 
@@ -935,11 +1019,7 @@ export default function LandingPage() {
         .explore-btn:hover {
           background: #000000;
         }
-        .courts-showcase-right {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 16px;
-        }
+
         .showcase-card {
           background: var(--color-card);
           border: 1px solid var(--color-border);
@@ -980,6 +1060,12 @@ export default function LandingPage() {
           gap: 4px;
           text-align: left;
           border-top: 1px solid var(--color-border);
+        }
+
+        .carousel-nav-btn:hover:not(:disabled) {
+          background: var(--color-primary-subtle) !important;
+          color: var(--color-primary) !important;
+          border-color: var(--color-primary-muted) !important;
         }
 
         /* How it works */
@@ -1166,9 +1252,6 @@ export default function LandingPage() {
           .courts-showcase-title, .courts-showcase-desc {
             text-align: center;
           }
-          .explore-btn {
-            align-self: center;
-          }
           .footer-grid {
             grid-template-columns: repeat(2, 1fr);
           }
@@ -1209,10 +1292,6 @@ export default function LandingPage() {
           }
           .courts-showcase-section {
             padding: 60px 24px;
-          }
-          .courts-showcase-right {
-            grid-template-columns: 1fr;
-            gap: 20px;
           }
           .how-section {
             padding: 60px 24px;
