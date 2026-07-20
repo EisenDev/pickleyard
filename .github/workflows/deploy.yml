@@ -90,6 +90,8 @@ jobs:
                   PAYMONGO_WEBHOOK_SECRET: ${PAYMONGO_WEBHOOK_SECRET}
                   AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID}
                   AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET}
+                  SMTP_USER: ${SMTP_USER}
+                  SMTP_PASS: ${SMTP_PASS}
                   NODE_OPTIONS: "--max-old-space-size=512"
                 deploy:
                   resources:
