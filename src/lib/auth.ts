@@ -6,6 +6,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { db } from './db'
+import 'nodemailer'
 
 const CredentialsSchema = z.object({
   email: z.string().email(),

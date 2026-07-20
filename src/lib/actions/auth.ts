@@ -142,10 +142,10 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
       })
 
       const mailOptions = {
-        from: `"PaddleYard" <${smtpUser}>`,
+        from: `"PaddleYard Support" <${smtpUser}>`,
         to: email,
-        subject: `PaddleYard Email Verification Code: ${code}`,
-        text: `Your PaddleYard sign-up verification code is: ${code}. This code is valid for 15 minutes.`,
+        subject: `Your PaddleYard Verification Code: ${code}`,
+        text: `Your PaddleYard verification code is: ${code}. This code is valid for 15 minutes.`,
         html: `
           <div style="font-family: sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 8px;">
             <h2 style="color: #007C80; margin-bottom: 20px;">Verify your email address</h2>
@@ -159,12 +159,14 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
       }
 
       await transporter.sendMail(mailOptions)
+    } else {
+      console.warn('SMTP credentials missing. Skipped sending email, printed code in logs.')
     }
 
     return { success: true }
   } catch (error: any) {
     console.error('Error in sendOtpAction:', error)
-    return { success: true } // Return success to allow local testing via console log fallback
+    return { success: false, error: `Failed to send email: ${error.message || error}` }
   }
 }
 
