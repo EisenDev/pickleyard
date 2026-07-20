@@ -26,7 +26,7 @@ export async function GET(req: Request) {
       })
 
       const stacks = await db.paddleStack.findMany({
-        where: { status: { in: ['PENDING', 'WAITING', 'PLAYING', 'MATCHED', 'COMPLETED'] } },
+        where: { status: { in: ['PENDING', 'WAITING', 'PLAYING', 'MATCHED'] } },
         include: {
           user: {
             select: {

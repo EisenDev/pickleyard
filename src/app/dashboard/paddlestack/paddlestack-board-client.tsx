@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { joinPaddleStackAction, leavePaddleStackAction } from '@/lib/actions/paddlestack'
 import { checkAndRotateExpiredMatchesAction } from '@/lib/actions/admin'
 import { Clock, Users, ShieldCheck, ShieldAlert, ArrowLeft } from 'lucide-react'
@@ -71,11 +70,42 @@ function PlayerCountdown({ sessionExpiresAt }: { sessionExpiresAt: string }) {
   )
 }
 
+function ActiveTimer({ startTime, duration }: { startTime: Date; duration: number }) {
+  const [timeLeft, setTimeLeft] = useState(0)
+
+  useEffect(() => {
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000)
+      const remaining = Math.max(0, duration - elapsed)
+      setTimeLeft(remaining)
+
+      if (remaining === 0) {
+        checkAndRotateExpiredMatchesAction()
+      }
+    }
+
+    tick()
+    const timer = setInterval(tick, 1000)
+    return () => clearInterval(timer)
+  }, [startTime, duration])
+
+  const mins = Math.floor(timeLeft / 60)
+  const secs = timeLeft % 60
+  const timeStr = `${mins}:${String(secs).padStart(2, '0')}`
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.9)' }}>
+      <Clock size={12} />
+      {timeLeft === 0 ? 'Rotated' : timeStr}
+    </span>
+  )
+}
+
 export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialStacks, currentUserId, userRole, userCredits, expiryHours }: Props) {
-  const router = useRouter()
   const [courts, setCourts] = useState<Court[]>(initialCourts)
   const [stacks, setStacks] = useState<StackEntry[]>(initialStacks)
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
+  const [activeLoadingId, setActiveLoadingId] = useState<string | null>(null)
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
   const [skillLevel, setSkillLevel] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('INTERMEDIATE')
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
@@ -105,63 +135,16 @@ export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialS
     }
   }
 
-  const [ticks, setTicks] = useState(0)
+  // ── Real-Time Polling ─────────────────────────────────────────────────────
+  // Polling pauses while an action is in flight so buttons remain clickable
   useEffect(() => {
-    const timer = setInterval(() => setTicks(t => t + 1), 1000)
-    return () => clearInterval(timer)
-  }, [])
-
-  // ── Real-Time Polling ───────────────────────────────────────────────
-  // Refresh the Paddle Stack Board every 2 seconds so users see
-  // court status, waiting queue position, and ready states instantly.
-  useEffect(() => {
+    if (activeLoadingId || isLeaveModalOpen) return
     fetchRealtimeData()
     const interval = setInterval(fetchRealtimeData, 2000)
     return () => clearInterval(interval)
-  }, [])
+  }, [activeLoadingId, isLeaveModalOpen])
 
-  // Auto trigger rotation check periodically
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      await checkAndRotateExpiredMatchesAction()
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
-
-  function ActiveTimer({ startTime, duration }: { startTime: Date; duration: number }) {
-    const [timeLeft, setTimeLeft] = useState(0)
-
-    useEffect(() => {
-      const tick = () => {
-        const elapsed = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000)
-        const remaining = Math.max(0, duration - elapsed)
-        setTimeLeft(remaining)
-
-        if (remaining === 0) {
-          startTransition(async () => {
-            await checkAndRotateExpiredMatchesAction()
-          })
-        }
-      }
-
-      tick()
-      const timer = setInterval(tick, 1000)
-      return () => clearInterval(timer)
-    }, [startTime, duration])
-
-    const mins = Math.floor(timeLeft / 60)
-    const secs = timeLeft % 60
-    const timeStr = `${mins}:${String(secs).padStart(2, '0')}`
-
-    return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.9)' }}>
-        <Clock size={12} />
-        {timeLeft === 0 ? 'Rotated' : timeStr}
-      </span>
-    )
-  }
-
-  const userInQueue = stacks.find(s => s.userId === currentUserId)
+  const userInQueue = stacks.find(s => s.userId === currentUserId && s.status !== 'COMPLETED')
 
   // Group stacks by courtId
   const stacksByCourtId = (courtId: string) => stacks.filter(s => s.courtId === courtId && (s.status === 'PLAYING' || s.status === 'MATCHED'))
@@ -171,35 +154,40 @@ export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialS
   const intermediateQueue = stacks.filter(s => s.skillLevel === 'INTERMEDIATE' && (s.status === 'WAITING' || s.status === 'PENDING'))
   const advancedQueue = stacks.filter(s => s.skillLevel === 'ADVANCED' && (s.status === 'WAITING' || s.status === 'PENDING'))
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
+    if (activeLoadingId) return
     setMessage(null)
-    startTransition(async () => {
-      const result = await joinPaddleStackAction(skillLevel)
-      if (result.success) {
-        setMessage({ success: true, text: 'You successfully entered the paddle stack queue!' })
-        fetchRealtimeData()
-      } else {
-        setMessage({ success: false, text: result.error })
-      }
-    })
+    setActiveLoadingId('join')
+    setIsPending(true)
+    const result = await joinPaddleStackAction(skillLevel)
+    setIsPending(false)
+    setActiveLoadingId(null)
+    if (result.success) {
+      setMessage({ success: true, text: 'You successfully entered the paddle stack queue!' })
+      await fetchRealtimeData()
+    } else {
+      setMessage({ success: false, text: result.error })
+    }
   }
 
   const handleLeaveTrigger = () => {
     setIsLeaveModalOpen(true)
   }
 
-  const handleLeaveConfirm = () => {
+  const handleLeaveConfirm = async () => {
     setIsLeaveModalOpen(false)
     setMessage(null)
-    startTransition(async () => {
-      const result = await leavePaddleStackAction()
-      if (result.success) {
-        setMessage({ success: true, text: 'You left the queue.' })
-        fetchRealtimeData()
-      } else {
-        setMessage({ success: false, text: result.error })
-      }
-    })
+    setActiveLoadingId('leave')
+    setIsPending(true)
+    const result = await leavePaddleStackAction()
+    setIsPending(false)
+    setActiveLoadingId(null)
+    if (result.success) {
+      setMessage({ success: true, text: 'You left the queue.' })
+      await fetchRealtimeData()
+    } else {
+      setMessage({ success: false, text: result.error })
+    }
   }
 
   return (
