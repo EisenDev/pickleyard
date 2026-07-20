@@ -226,6 +226,9 @@ function SignUpPageInner() {
                 <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.4 }}>
                   We sent a 6-digit verification code to <strong>{email}</strong>. Please enter the code below to complete signup.
                 </p>
+                <div style={{ fontSize: '12px', background: 'rgba(245,158,11,0.08)', color: '#d97706', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(245,158,11,0.25)', marginTop: '6px', fontWeight: 500 }}>
+                  ✉️ <strong>Important:</strong> If you don't see the email, please check your <strong>SPAM</strong> or <strong>Promotions</strong> folder!
+                </div>
                 <div style={{ fontSize: '11px', background: 'var(--color-surface)', color: 'var(--color-text-secondary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', marginTop: '4px' }}>
                   💡 <em>For testing, the code is also printed in your server logs!</em>
                 </div>

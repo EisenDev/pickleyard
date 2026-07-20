@@ -142,7 +142,7 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
       })
 
       const mailOptions = {
-        from: `"PaddleYard Support" <${smtpUser}>`,
+        from: `"PaddleYard" <${smtpUser}>`,
         to: email,
         subject: `Your PaddleYard Verification Code: ${code}`,
         text: `Your PaddleYard verification code is: ${code}. This code is valid for 15 minutes.`,
@@ -165,6 +165,9 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
 
     return { success: true }
   } catch (error: any) {
+    if (error instanceof Error && (error.message === 'NEXT_REDIRECT' || error.message?.includes('NEXT_REDIRECT') || (error as any).digest?.startsWith('NEXT_REDIRECT'))) {
+      throw error
+    }
     console.error('Error in sendOtpAction:', error)
     return { success: false, error: `Failed to send email: ${error.message || error}` }
   }
@@ -229,6 +232,9 @@ export async function signUpWithOtpAction(
 
     return { success: true }
   } catch (err: any) {
+    if (err instanceof Error && (err.message === 'NEXT_REDIRECT' || err.message?.includes('NEXT_REDIRECT') || (err as any).digest?.startsWith('NEXT_REDIRECT'))) {
+      throw err
+    }
     console.error('Error in signUpWithOtpAction:', err)
     return { success: false, error: err.message || 'Error occurred during registration.' }
   }
