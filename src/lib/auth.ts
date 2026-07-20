@@ -20,7 +20,7 @@ export const authConfig: NextAuthConfig = {
     newUser: '/signup',
   },
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       // Only intercept Google OAuth
       if (account?.provider === 'google') {
         const email = user.email
@@ -30,11 +30,19 @@ export const authConfig: NextAuthConfig = {
         const existing = await db.user.findUnique({ where: { email } })
 
         if (!existing) {
-          // Brand new email — redirect to signup with a hint
-          return `/signup?email=${encodeURIComponent(email)}&reason=not_registered`
+          // Check if this came from the signup page via google_signup flag
+          // The signup page passes callbackUrl='/dashboard?google_signup=1'
+          const callbackUrl = (account as any)?.callbackUrl || ''
+          const isSignupIntent = typeof callbackUrl === 'string' && callbackUrl.includes('google_signup=1')
+
+          if (!isSignupIntent) {
+            // Came from login modal — redirect to signup page with helpful hint
+            return `/signup?email=${encodeURIComponent(email)}&reason=not_registered`
+          }
+          // Came from signup page — let PrismaAdapter create the new account (return true)
         }
 
-        // User exists — allow sign-in (allowDangerousEmailAccountLinking handles linking)
+        // User exists OR signup intent — allow sign-in/creation
         return true
       }
       return true

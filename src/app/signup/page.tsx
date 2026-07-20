@@ -162,7 +162,9 @@ function SignUpPageInner() {
               disabled={isGoogleLoading || isPending}
               onClick={() => {
                 setIsGoogleLoading(true)
-                signIn('google', { callbackUrl: '/dashboard' })
+                // google_signup=1 tells the auth signIn callback this is a signup intent
+                // so it creates the account instead of redirecting to "not registered"
+                signIn('google', { callbackUrl: '/dashboard?google_signup=1' })
               }}
               className="signup-social-btn"
               style={{ opacity: isGoogleLoading ? 0.7 : 1, cursor: isGoogleLoading ? 'not-allowed' : 'pointer' }}
