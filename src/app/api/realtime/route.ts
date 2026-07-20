@@ -38,6 +38,7 @@ export async function GET(req: Request) {
     let formattedCourts: any[] = []
     let formattedStacks: any[] = []
     let formattedEvents: any[] = []
+    let formattedBookings: any[] = []
 
     // Fetch courts and stacks if type is paddlestack or not specified
     if (!type || type === 'paddlestack') {
@@ -104,11 +105,40 @@ export async function GET(req: Request) {
       }))
     }
 
+    // Fetch bookings if type is bookings or not specified
+    if (!type || type === 'bookings') {
+      const bookings = await db.booking.findMany({
+        where: {
+          status: { in: ['RESERVED', 'PAID'] }
+        },
+        include: {
+          court: { select: { id: true, number: true, name: true, type: true } },
+          user: { select: { id: true, name: true, email: true, role: true } }
+        },
+        orderBy: { startTime: 'asc' }
+      })
+
+      formattedBookings = bookings.map(b => ({
+        id: b.id,
+        courtId: b.courtId,
+        courtNumber: b.court.number,
+        courtName: b.court.name,
+        startTime: b.startTime.toISOString(),
+        endTime: b.endTime.toISOString(),
+        status: b.status,
+        userId: b.userId,
+        userName: b.user?.name || 'Member',
+        userEmail: b.user?.email || '',
+        userRole: b.user?.role || 'PLAYER'
+      }))
+    }
+
     return NextResponse.json({
       success: true,
       courts: formattedCourts,
       stacks: formattedStacks,
-      events: formattedEvents
+      events: formattedEvents,
+      bookings: formattedBookings
     }, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { createBookingAction, createBookingsAction } from '@/lib/actions/booking'
 import { adminReserveCourtForOpenPlayAction } from '@/lib/actions/admin'
 import { ShieldCheck, AlertTriangle, Calendar, List, Plus, Clock, MapPin, ChevronLeft, ChevronRight, ArrowLeft, X, Search } from 'lucide-react'
@@ -70,6 +70,49 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
   const [bookingSearch, setBookingSearch] = useState('')
+  
+  // Real-time bookings state and polling
+  const [bookings, setBookings] = useState<BookingItem[]>(allBookings)
+
+  useEffect(() => {
+    setBookings(allBookings)
+  }, [allBookings])
+
+  useEffect(() => {
+    let active = true
+    const fetchLatestBookings = async () => {
+      try {
+        const res = await fetch('/api/realtime?type=bookings')
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.success && data.bookings && active) {
+          const mapped = data.bookings.map((b: any) => ({
+            id: b.id,
+            courtId: b.courtId,
+            courtNumber: b.courtNumber,
+            courtName: b.courtName,
+            startTime: new Date(b.startTime),
+            endTime: new Date(b.endTime),
+            status: b.status,
+            userName: b.userName,
+            userEmail: b.userEmail,
+            userRole: b.userRole,
+            isOwn: b.userId === userId
+          }))
+          setBookings(mapped)
+        }
+      } catch (err) {
+        console.error('Failed to poll real-time bookings:', err)
+      }
+    }
+
+    fetchLatestBookings()
+    const interval = setInterval(fetchLatestBookings, 3000)
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
+  }, [userId])
 
   // Booking Modal States
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -80,7 +123,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   const filteredCourts = selectedCourt === 'all' ? courts : courts.filter(c => c.id === selectedCourt)
 
   const getBookingsForCourtAndHour = (courtId: string, hour: number) => {
-    return allBookings.filter(b => {
+    return bookings.filter(b => {
       const d = selectedDate
       const slotHourStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, 0, 0).getTime()
       const slotHourEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour + 1, 0, 0).getTime()
@@ -116,7 +159,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   const isSlotBookedInModal = (hour: number) => {
     if (!modalDate || !modalCourtId) return false
     const parsedDate = new Date(modalDate + 'T00:00:00')
-    return allBookings.some(b => {
+    return bookings.some(b => {
       const bStart = new Date(b.startTime)
       return (
         b.courtId === modalCourtId &&
@@ -408,42 +451,43 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                             const isClosed = court.status === 'MAINTENANCE'
 
                             return (
-                              <td key={court.id} style={{ borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)', verticalAlign: 'top', padding: '4px 6px', height: 44 }}>
+                              <td key={court.id} style={{ borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)', verticalAlign: 'middle', padding: 0, height: 48 }}>
                                 {isClosed ? (
                                   <div style={{
-                                    background: '#f9fafb',
+                                    background: '#f3f4f6',
                                     color: '#9ca3af',
-                                    border: '1.5px dashed #e5e7eb',
-                                    borderRadius: 'var(--radius-md)',
-                                    padding: '4px 8px',
+                                    padding: '8px 12px',
                                     fontSize: '11px',
                                     fontWeight: 700,
                                     height: '100%',
+                                    width: '100%',
                                     display: 'flex',
                                     flexDirection: 'column',
                                     justifyContent: 'center',
                                     alignItems: 'center',
-                                    minHeight: 36
+                                    boxSizing: 'border-box'
                                   }}>
                                     <span>Closed</span>
                                   </div>
                                 ) : isBooked ? (
                                   <div style={{
                                     background: (booking.userRole === 'ADMIN' || booking.userRole === 'STAFF')
-                                      ? 'var(--color-success)'
+                                      ? '#10b981' // Success Green for Open Play block
                                       : booking.isOwn 
-                                        ? 'var(--color-primary)' 
-                                        : 'rgba(0,124,128,0.35)',
+                                        ? '#007C80' // Brand Teal for My Booking
+                                        : '#475569', // Slate Gray for other Player Bookings
                                     color: 'white',
-                                    borderRadius: 'var(--radius-md)',
-                                    padding: '4px 8px',
+                                    padding: '6px 12px',
                                     fontSize: '11px',
                                     fontWeight: 700,
                                     height: '100%',
+                                    width: '100%',
                                     display: 'flex',
                                     flexDirection: 'column',
                                     justifyContent: 'center',
-                                    minHeight: 36
+                                    alignItems: 'center',
+                                    textAlign: 'center',
+                                    boxSizing: 'border-box'
                                   }}>
                                     <span>
                                       {booking.userRole === 'ADMIN' || booking.userRole === 'STAFF'
@@ -455,7 +499,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                                             : 'Booked'}
                                     </span>
                                     {((userRole === 'ADMIN' || userRole === 'STAFF') || booking.isOwn) && (
-                                      <span style={{ fontWeight: 400, opacity: 0.85, fontSize: 10 }}>
+                                      <span style={{ fontWeight: 400, opacity: 0.85, fontSize: 10, marginTop: '2px' }}>
                                         {booking.userRole === 'ADMIN' || booking.userRole === 'STAFF' ? 'RESERVED' : booking.status}
                                       </span>
                                     )}
@@ -467,14 +511,17 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                                     style={{
                                       width: '100%',
                                       height: '100%',
-                                      minHeight: 36,
                                       background: 'transparent',
                                       border: 'none',
                                       cursor: 'pointer',
                                       color: 'var(--color-text-disabled)',
                                       fontSize: '11px',
-                                      borderRadius: 'var(--radius-md)',
-                                      transition: 'all var(--duration-fast)'
+                                      borderRadius: 0,
+                                      transition: 'all var(--duration-fast)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      boxSizing: 'border-box'
                                     }}
                                     className="slot-open"
                                   >
@@ -493,15 +540,15 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
               <div style={{ padding: '12px 16px', borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)', display: 'flex', gap: '20px', alignItems: 'center' }}>
                 <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Legend:</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--color-success)' }} />
+                  <div style={{ width: 12, height: 12, borderRadius: 3, background: '#10b981' }} />
                   <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Open Play</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--color-primary)' }} />
+                  <div style={{ width: 12, height: 12, borderRadius: 3, background: '#007C80' }} />
                   <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>My Booking</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: 12, height: 12, borderRadius: 3, background: 'rgba(0,124,128,0.35)' }} />
+                  <div style={{ width: 12, height: 12, borderRadius: 3, background: '#475569' }} />
                   <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Booked</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -516,7 +563,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {(() => {
               const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
-              const listToRender = isAdminOrStaff ? allBookings : myBookings
+              const listToRender = isAdminOrStaff ? bookings : myBookings
 
               // Filter bookings based on bookingSearch state
               const filteredList = listToRender.filter(b => {
