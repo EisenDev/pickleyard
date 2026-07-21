@@ -1503,7 +1503,6 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                       </div>
                     )
                   }
-
                   if (!scannedBooking) {
                     return (
                       <div style={{
@@ -1520,6 +1519,21 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                   const isPaid = scannedBooking.status === 'PAID'
                   const isReserved = scannedBooking.status === 'RESERVED'
 
+                  // Compute active check-in bounds
+                  const nowVal = Date.now()
+                  const scanStartVal = new Date(scannedBooking.startTime).getTime()
+                  const scanEndVal = new Date(scannedBooking.endTime).getTime()
+                  const scanStartDate = new Date(scannedBooking.startTime)
+                  const nowDate = new Date()
+
+                  const isToday = scanStartDate.getFullYear() === nowDate.getFullYear() &&
+                                  scanStartDate.getMonth() === nowDate.getMonth() &&
+                                  scanStartDate.getDate() === nowDate.getDate()
+
+                  // Check-in opens 15 mins before play time and stays active until slot ends
+                  const isTimeMatch = nowVal >= (scanStartVal - 15 * 60 * 1000) && nowVal <= scanEndVal
+                  const isCheckinActive = isToday && isTimeMatch
+
                   return (
                     <div style={{ marginTop: '4px' }}>
                       <div style={{
@@ -1532,7 +1546,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
-                              🎟️ Reservation Check-in
+                              🎟️ Reservation Details
                             </span>
                             <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-primary)', marginTop: '2px' }}>
                               Player: {scannedBooking.userName}
@@ -1554,13 +1568,34 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
 
                         <div style={{ background: 'var(--color-surface)', padding: '10px 12px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                           <div>Court: <strong style={{ color: 'var(--color-text-primary)' }}>{scannedBooking.courtName}</strong></div>
+                          <div>Play Date: <strong style={{ color: 'var(--color-text-primary)' }}>
+                            {new Date(scannedBooking.startTime).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}
+                          </strong></div>
                           <div>Play Time: <strong style={{ color: 'var(--color-text-primary)' }}>
                             {new Date(scannedBooking.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(scannedBooking.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
                           </strong></div>
                           <div>Fee Total: <strong style={{ color: 'var(--color-primary)' }}>₱{scannedBooking.price.toFixed(2)}</strong></div>
                         </div>
 
-                        {isPending && (
+                        {!isCheckinActive && (
+                          <div style={{
+                            padding: '10px',
+                            background: isPaid ? 'rgba(239, 68, 68, 0.03)' : 'rgba(245, 158, 11, 0.03)',
+                            borderRadius: 'var(--radius-md)',
+                            border: `1px solid ${isPaid ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)'}`,
+                            fontSize: '11px',
+                            color: isPaid ? 'var(--color-danger)' : 'var(--color-warning)',
+                            fontWeight: 600
+                          }}>
+                            {isPaid ? (
+                              <span>🔒 Check-in is locked. Scheduled for {new Date(scannedBooking.startTime).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} at {new Date(scannedBooking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.</span>
+                            ) : (
+                              <span>📅 Future Cash Payment: Collect cash today to secure reservation. Early check-in will be locked.</span>
+                            )}
+                          </div>
+                        )}
+
+                        {isCheckinActive && isPending && (
                           <div style={{
                             padding: '10px',
                             background: 'rgba(245, 158, 11, 0.05)',
@@ -1587,7 +1622,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
 
                         <button
                           type="button"
-                          disabled={isPending ? false : isReserved}
+                          disabled={isCheckinActive ? isReserved : isPaid}
                           onClick={async () => {
                             if (activeLoadingId) return
                             setActiveLoadingId('bookingcheckin')
@@ -1596,30 +1631,36 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                             setIsPending(false)
                             setActiveLoadingId(null)
                             if (res.success) {
-                              setAdminMessage({ success: true, text: isPending ? 'Payment confirmed & checked in successfully!' : 'Check-in confirmed!' })
+                              setAdminMessage({ success: true, text: res.message || 'Action confirmed successfully!' })
                               setTimeout(() => { setIsScannerOpen(false); setScanText('') }, 1500)
                             } else {
-                              setAdminMessage({ success: false, text: res.error || 'Failed to check in.' })
+                              setAdminMessage({ success: false, text: res.error || 'Failed to process.' })
                             }
                           }}
                           style={{
-                            width: '100%', height: '36px', background: isPending ? 'var(--color-accent)' : 'var(--color-primary)',
+                            width: '100%', height: '36px', 
+                            background: !isCheckinActive ? 'var(--color-primary)' : isPending ? 'var(--color-accent)' : 'var(--color-primary)',
                             color: 'white', border: 'none', borderRadius: 'var(--radius-md)',
-                            fontSize: '12px', fontWeight: 800, cursor: isReserved ? 'not-allowed' : 'pointer',
+                            fontSize: '12px', fontWeight: 800, 
+                            cursor: (isCheckinActive ? isReserved : isPaid) ? 'not-allowed' : 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                             boxShadow: 'var(--shadow-sm)', transition: 'background var(--duration-fast)',
-                            opacity: isReserved ? 0.6 : 1
+                            opacity: (isCheckinActive ? isReserved : isPaid) ? 0.6 : 1
                           }}
                         >
                           <UserCheck size={14} />
                           <span>
                             {activeLoadingId === 'bookingcheckin'
                               ? 'Processing...' 
-                              : isPending 
-                                ? 'Confirm Cash Payment & Check In' 
-                                : isReserved 
-                                  ? 'Checked In' 
-                                  : 'Confirm Arrival & Check In'}
+                              : !isCheckinActive
+                                ? isPending 
+                                  ? 'Collect Cash & Confirm Reservation' 
+                                  : 'Paid (Early Check-In Locked)'
+                                : isPending 
+                                  ? 'Confirm Cash Payment & Check In' 
+                                  : isReserved 
+                                    ? 'Checked In' 
+                                    : 'Confirm Arrival & Check In'}
                           </span>
                         </button>
                       </div>

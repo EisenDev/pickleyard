@@ -260,6 +260,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
         })
         if (result.success) {
           setMessage({ success: true, text: 'Court successfully reserved for Open Play block(s)!' })
+          setSelectedDate(new Date(modalDate + 'T00:00:00'))
         } else {
           setMessage({ success: false, text: result.error || 'Failed to reserve court slots.' })
         }
@@ -268,6 +269,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
         const result = await createBookingsAction(modalCourtId, startTimesISO, selectedPaymentMethod)
         if (result.success) {
           setMessage({ success: true, text: 'Court booked successfully!' })
+          setSelectedDate(new Date(modalDate + 'T00:00:00'))
         } else {
           setMessage({ success: false, text: result.error })
         }

@@ -15,7 +15,7 @@ async function checkAdmin() {
   return user?.role === 'ADMIN' ? user : null
 }
 
-export type ActionState = { success: boolean; error?: string }
+export type ActionState = { success: boolean; error?: string; [key: string]: any }
 
 // 1. Scan / Deduct Open Play fee and place user in Stack Queue
 export async function scanCheckinAction(
@@ -960,43 +960,83 @@ export async function adminConfirmBookingCheckinAction(bookingId: string): Promi
         throw new Error('Booking has been cancelled or has expired.')
       }
 
+      // Check if booking date is today, and if current time matches the scheduled range
+      const now = new Date()
+      const startTime = new Date(booking.startTime)
+      const endTime = new Date(booking.endTime)
+
+      // Compare dates in local time
+      const isToday = startTime.getFullYear() === now.getFullYear() &&
+                      startTime.getMonth() === now.getMonth() &&
+                      startTime.getDate() === now.getDate()
+
+      // Allow checking in 15 minutes before the booking starts, until it finishes
+      const isTimeMatch = now.getTime() >= (startTime.getTime() - 15 * 60 * 1000) &&
+                          now.getTime() <= endTime.getTime()
+
       const isUnpaid = booking.status === 'PENDING'
+      const isCheckinActive = isToday && isTimeMatch
 
-      // 2. Update booking status to RESERVED (checked in)
-      await tx.booking.update({
-        where: { id: bookingId },
-        data: { status: 'RESERVED' }
-      })
+      if (isCheckinActive) {
+        // SCENARIO 1: Booking is for today and it is time to play!
+        // Perform FULL check-in (mark as RESERVED, occupy court, collect payment if unpaid)
+        await tx.booking.update({
+          where: { id: bookingId },
+          data: { status: 'RESERVED' }
+        })
 
-      // 3. If unpaid, record cash payment ledger entry
-      if (isUnpaid) {
-        await tx.transaction.create({
+        if (isUnpaid) {
+          await tx.transaction.create({
+            data: {
+              userId: booking.userId,
+              amount: Number(booking.price),
+              type: 'CASH_TOPUP',
+              reference: `CASH-BOOKING-${booking.id.slice(-4).toUpperCase()}`
+            }
+          })
+        }
+
+        // Occupy court on dashboard (mark gameStartedAt/duration)
+        await tx.court.update({
+          where: { id: booking.courtId },
           data: {
-            userId: booking.userId,
-            amount: Number(booking.price),
-            type: 'CASH_TOPUP',
-            reference: `CASH-BOOKING-${booking.id.slice(-4).toUpperCase()}`
+            status: 'OCCUPIED',
+            gameStartedAt: new Date(),
+            gameDurationSecond: Math.max(900, Math.floor((endTime.getTime() - now.getTime()) / 1000))
           }
         })
-      }
 
-      // 4. Occupy court on dashboard (mark gameStartedAt/duration)
-      await tx.court.update({
-        where: { id: booking.courtId },
-        data: {
-          status: 'OCCUPIED',
-          gameStartedAt: new Date(),
-          gameDurationSecond: 3600 // 1 hour default session
+        return { booking, checkedIn: true, message: isUnpaid ? 'Cash payment confirmed & checked in successfully!' : 'Arrival confirmed & checked in!' }
+      } else {
+        // SCENARIO 2: Booking is for a future date, or not time yet today!
+        if (isUnpaid) {
+          // If unpaid, confirm cash payment only (mark as PAID, record cash, but do NOT occupy court or set to RESERVED!)
+          await tx.booking.update({
+            where: { id: bookingId },
+            data: { status: 'PAID' }
+          })
+
+          await tx.transaction.create({
+            data: {
+              userId: booking.userId,
+              amount: Number(booking.price),
+              type: 'CASH_TOPUP',
+              reference: `CASH-BOOKING-${booking.id.slice(-4).toUpperCase()}`
+            }
+          })
+
+          return { booking, checkedIn: false, message: 'Cash payment confirmed! Booking marked as Paid.' }
+        } else {
+          // If already paid, staff shouldn't be checking them in early
+          throw new Error('This booking is already Paid. Check-in is only available on the day and time of play.')
         }
-      })
-
-      return { booking }
+      }
     })
 
     revalidatePath('/dashboard/admin')
     revalidatePath('/dashboard/bookings')
     revalidatePath('/dashboard/paddlestack')
-    return { success: true }
+    return { success: true, checkedIn: result.checkedIn, message: result.message }
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to confirm booking.' }
   }
