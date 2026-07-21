@@ -32,8 +32,19 @@ export default async function AdminDashboardPage() {
 
   // Fetch active queue stack entries (PENDING, WAITING, PLAYING, MATCHED, or COMPLETED)
   const stacks = await db.paddleStack.findMany({
-    where: { status: { in: ['PENDING', 'WAITING', 'PLAYING', 'MATCHED', 'COMPLETED'] } },
-    include: { user: { select: { id: true, name: true } } },
+    where: { status: { in: ['PENDING', 'WAITING', 'PLAYING', 'MATCHED'] } },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          duprRating: true,
+          credits: true,
+          membership: true
+        }
+      }
+    },
     orderBy: { joinedAt: 'asc' }
   })
 
@@ -51,13 +62,29 @@ export default async function AdminDashboardPage() {
   todayEnd.setHours(23, 59, 59, 999)
   const bookings = await db.booking.findMany({
     where: {
-      status: { in: ['RESERVED', 'PAID'] },
+      status: { in: ['RESERVED', 'PAID', 'PENDING'] },
       startTime: { gte: todayStart, lte: todayEnd },
       user: {
         role: { notIn: ['ADMIN', 'STAFF'] }
       }
     },
     orderBy: { startTime: 'asc' }
+  })
+
+  // Fetch booking ledger (past 48 hours bookings) for lookup
+  const ledgerStart = new Date(now.getTime() - 48 * 3600 * 1000)
+  const bookingLedger = await db.booking.findMany({
+    where: {
+      startTime: { gte: ledgerStart },
+      user: {
+        role: { notIn: ['ADMIN', 'STAFF'] }
+      }
+    },
+    include: {
+      user: { select: { name: true, email: true } },
+      court: { select: { name: true } }
+    },
+    orderBy: { startTime: 'desc' }
   })
 
   // Fetch lobby active queue expiry and operational hours settings
@@ -68,21 +95,11 @@ export default async function AdminDashboardPage() {
 
   const startHourSetting = await db.systemSetting.findUnique({ where: { key: 'openplay_start_hour' } })
   const endHourSetting = await db.systemSetting.findUnique({ where: { key: 'openplay_end_hour' } })
-  const opStartHour = startHourSetting ? parseInt(startHourSetting.value) : 8
-  const opEndHour = endHourSetting ? parseInt(endHourSetting.value) : 22
+  const startHour = startHourSetting ? parseInt(startHourSetting.value) : 8
+  const endHour = endHourSetting ? parseInt(endHourSetting.value) : 22
 
   return (
     <AdminClient
-      expiryHours={expiryHours}
-      opStartHour={opStartHour}
-      opEndHour={opEndHour}
-      bookings={bookings.map(b => ({
-        id: b.id,
-        courtId: b.courtId,
-        startTime: b.startTime.toISOString(),
-        endTime: b.endTime.toISOString(),
-        status: b.status
-      }))}
       courts={courts.map(c => ({
         id: c.id,
         number: c.number,
@@ -101,16 +118,44 @@ export default async function AdminDashboardPage() {
         joinedAt: s.joinedAt.toISOString(),
         checkedInAt: s.checkedInAt ? s.checkedInAt.toISOString() : null,
         sessionExpiresAt: s.sessionExpiresAt ? s.sessionExpiresAt.toISOString() : null,
-        qrId: s.qrId
+        qrId: s.qrId,
+        user: s.user ? {
+          id: s.user.id,
+          name: s.user.name || 'Player',
+          email: s.user.email,
+          duprRating: s.user.duprRating,
+          credits: Number(s.user.credits),
+          membership: s.user.membership
+        } : undefined
       }))}
       users={players.map(p => ({
         id: p.id,
-        name: p.name || 'Member',
+        name: p.name || 'Player',
         email: p.email,
+        membership: p.membership,
         credits: Number(p.credits),
-        duprRating: p.duprRating,
-        membership: p.membership
+        duprRating: p.duprRating
       }))}
+      bookings={bookings.map(b => ({
+        id: b.id,
+        courtId: b.courtId,
+        startTime: b.startTime.toISOString(),
+        endTime: b.endTime.toISOString(),
+        status: b.status
+      }))}
+      bookingLedger={bookingLedger.map(b => ({
+        id: b.id,
+        courtName: b.court.name,
+        startTime: b.startTime.toISOString(),
+        endTime: b.endTime.toISOString(),
+        status: b.status,
+        price: Number(b.price),
+        userName: b.user?.name || 'Member',
+        userEmail: b.user?.email || ''
+      }))}
+      expiryHours={expiryHours}
+      opStartHour={startHour}
+      opEndHour={endHour}
     />
   )
 }

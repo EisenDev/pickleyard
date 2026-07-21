@@ -28,9 +28,19 @@ interface StackEntry {
   sessionExpiresAt: string | null
 }
 
+interface BookingPass {
+  id: string
+  courtId: string
+  status: string
+  startTime: string
+  endTime: string
+  userName: string
+}
+
 interface Props {
   courts: Court[]
   stacks: StackEntry[]
+  bookings: BookingPass[]
   currentUserId: string
   userRole?: string
   userCredits?: number
@@ -102,7 +112,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date; duration: numbe
   )
 }
 
-export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialStacks, currentUserId, userRole, userCredits, expiryHours }: Props) {
+export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialStacks, bookings, currentUserId, userRole, userCredits, expiryHours }: Props) {
   const router = useRouter()
   const [courts, setCourts] = useState<Court[]>(initialCourts)
   const [stacks, setStacks] = useState<StackEntry[]>(initialStacks)
@@ -287,6 +297,16 @@ export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialS
           const playersHere = stacksByCourtId(court.id)
           const hasPlayers = playersHere.length > 0
 
+          // Find if there is an active reservation right now
+          const nowTime = Date.now()
+          const activeBooking = bookings?.find(b => {
+            if (b.courtId !== court.id) return false
+            if (!['RESERVED', 'PAID', 'PENDING'].includes(b.status)) return false
+            const bStart = new Date(b.startTime).getTime()
+            const bEnd = new Date(b.endTime).getTime()
+            return nowTime >= bStart && nowTime <= bEnd
+          })
+
           // If court status is MAINTENANCE, render as Court close
           if (court.status === 'MAINTENANCE') {
             return (
@@ -325,6 +345,63 @@ export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialS
                 <div style={{ padding: '12px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', textAlign: 'center' }}>
                   <span className="court-card-title" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Court close</span>
                   <span style={{ fontSize: '10px', color: 'var(--color-text-disabled)', maxWidth: '180px' }}>Not active for stacks</span>
+                </div>
+              </div>
+            )
+          }
+
+          if (activeBooking) {
+            const isPending = activeBooking.status === 'PENDING'
+            const statusLabel = isPending ? 'RESERVED (UNPAID)' : 'BOOKED'
+            return (
+              <div
+                key={court.id}
+                style={{
+                  background: 'var(--color-card)',
+                  border: `1.5px solid ${isPending ? 'var(--color-warning)' : 'var(--color-primary)'}`,
+                  borderRadius: 'var(--radius-xl)',
+                  overflow: 'hidden',
+                  boxShadow: 'var(--shadow-sm)',
+                  height: '265px',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                {/* Court header */}
+                <div style={{
+                  padding: '10px 16px',
+                  background: isPending ? 'rgba(245, 158, 11, 0.08)' : 'var(--color-primary-subtle)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: '1px solid var(--color-border)'
+                }}>
+                  <span className="court-card-title" style={{ fontSize: '13px', fontWeight: 800, color: isPending ? 'var(--color-warning)' : 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    🔒 Court {court.number}
+                  </span>
+                  <span className="court-card-timer" style={{ fontSize: '9px', fontWeight: 800, color: isPending ? 'var(--color-warning)' : 'var(--color-primary)', background: isPending ? 'rgba(245, 158, 11, 0.15)' : 'rgba(0, 124, 128, 0.15)', padding: '2px 8px', borderRadius: 'var(--radius-full)', textTransform: 'uppercase' }}>
+                    {statusLabel}
+                  </span>
+                </div>
+
+                {/* Body */}
+                <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', textAlign: 'center' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: isPending ? 'var(--color-warning-subtle)' : 'var(--color-primary-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Users size={20} color={isPending ? 'var(--color-warning)' : 'var(--color-primary)'} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-primary)', display: 'block' }}>
+                      {activeBooking.userName}
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block', marginTop: '2px' }}>
+                      Slot: {new Date(activeBooking.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(activeBooking.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  {isPending && (
+                    <span style={{ fontSize: '10px', color: 'var(--color-warning)', fontWeight: 650 }}>
+                      ⚠️ Payment hold expires in 5m
+                    </span>
+                  )}
                 </div>
               </div>
             )

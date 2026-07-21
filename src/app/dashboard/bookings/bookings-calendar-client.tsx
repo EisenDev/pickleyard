@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { createBookingAction, createBookingsAction } from '@/lib/actions/booking'
 import { adminReserveCourtForOpenPlayAction } from '@/lib/actions/admin'
-import { ShieldCheck, AlertTriangle, Calendar, List, Plus, Clock, MapPin, ChevronLeft, ChevronRight, ArrowLeft, X, Search } from 'lucide-react'
+import { ShieldCheck, AlertTriangle, Calendar, List, Plus, Clock, MapPin, ChevronLeft, ChevronRight, ArrowLeft, X, Search, QrCode } from 'lucide-react'
 import Link from 'next/link'
 
 interface Court {
@@ -64,7 +64,8 @@ function formatDateToYYYYMMDD(d: Date) {
 
 export function BookingsCalendarClient({ courts, allBookings, myBookings, userBalance, userId, userRole, startHour, endHour }: Props) {
   const HOURS = Array.from({ length: Math.max(1, endHour - startHour) }, (_, i) => i + startHour)
-  const [activeTab, setActiveTab] = useState<'calendar' | 'list'>('calendar')
+  const [activeTab, setActiveTab] = useState<'calendar' | 'list' | 'passes'>('calendar')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'credits' | 'cash'>('credits')
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedCourt, setSelectedCourt] = useState<string>('all')
   const [isPending, startTransition] = useTransition()
@@ -146,15 +147,27 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
     setModalCourtIds([courtId])
     setModalDate(formatDateToYYYYMMDD(selectedDate))
     setModalHours([hour])
+    
+    // Auto check balance
+    const court = courts.find(c => c.id === courtId)
+    const hourlyRate = court?.type === 'ROOFTOP' ? 300 : 250
+    if (userBalance >= hourlyRate) {
+      setSelectedPaymentMethod('credits')
+    } else {
+      setSelectedPaymentMethod('cash')
+    }
+    
     setIsModalOpen(true)
   }
 
   // Open modal generally from header button
   const handleOpenBookingModalGeneral = () => {
-    setModalCourtId(courts[0]?.id || '')
+    const firstId = courts[0]?.id || ''
+    setModalCourtId(firstId)
     setModalCourtIds([])
     setModalDate(formatDateToYYYYMMDD(selectedDate))
     setModalHours([])
+    setSelectedPaymentMethod(userBalance >= 250 ? 'credits' : 'cash')
     setIsModalOpen(true)
   }
 
@@ -186,6 +199,19 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
     slotTime.setHours(hour, 0, 0, 0)
     return slotTime < new Date()
   }
+
+  // Re-check balance when modal settings change
+  useEffect(() => {
+    if (!isModalOpen) return
+    const court = courts.find(c => c.id === modalCourtId)
+    const hourlyRate = court?.type === 'ROOFTOP' ? 300 : 250
+    const totalCost = hourlyRate * modalHours.length
+    if (userBalance >= totalCost) {
+      setSelectedPaymentMethod('credits')
+    } else {
+      setSelectedPaymentMethod('cash')
+    }
+  }, [modalHours.length, modalCourtId, isModalOpen, userBalance, courts])
 
   const toggleHourSelection = (hour: number) => {
     setModalHours(prev => {
@@ -239,7 +265,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
         }
       } else {
         // Regular Player Court Booking
-        const result = await createBookingsAction(modalCourtId, startTimesISO)
+        const result = await createBookingsAction(modalCourtId, startTimesISO, selectedPaymentMethod)
         if (result.success) {
           setMessage({ success: true, text: 'Court booked successfully!' })
         } else {
@@ -338,32 +364,36 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
 
         {/* Tab switcher */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', gap: '0' }}>
-          {(['calendar', 'list'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                padding: '10px 20px',
-                fontSize: '13px',
-                fontWeight: 600,
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                color: activeTab === tab ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                borderBottom: activeTab === tab ? '2px solid var(--color-primary)' : '2px solid transparent',
-                transition: 'all var(--duration-fast)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              {tab === 'calendar' ? <Calendar size={15} /> : <List size={15} />}
-              <span>{tab === 'calendar' ? 'Calendar View' : 'List View'}</span>
-            </button>
-          ))}
+          {(['calendar', 'list', 'passes'] as const).map(tab => {
+            if (tab === 'passes' && (userRole === 'ADMIN' || userRole === 'STAFF')) return null
+
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: activeTab === tab ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                  borderBottom: activeTab === tab ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  transition: 'all var(--duration-fast)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {tab === 'calendar' ? <Calendar size={15} /> : tab === 'list' ? <List size={15} /> : <QrCode size={15} />}
+                <span>{tab === 'calendar' ? 'Calendar View' : tab === 'list' ? 'List View' : '🎟️ Play & Cash Passes'}</span>
+              </button>
+            )
+          })}
         </div>
 
-        {activeTab === 'calendar' ? (
+        {activeTab === 'calendar' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Calendar controls */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
@@ -559,19 +589,12 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                   <div style={{ width: 12, height: 12, borderRadius: 3, background: '#007C80' }} />
                   <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>My Booking</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: 12, height: 12, borderRadius: 3, background: '#475569' }} />
-                  <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Booked</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: 12, height: 12, borderRadius: 3, border: '1px dashed var(--color-border)' }} />
-                  <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Available (click to book)</span>
-                </div>
               </div>
             </div>
           </div>
-        ) : (
-          /* List View */
+        )}
+
+        {activeTab === 'list' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {(() => {
               const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
@@ -645,58 +668,165 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                         const priceVal = isOP ? 0.00 : ('price' in b ? b.price : 250.00)
                         const userNameStr = isOP ? 'Open Play' : ('userName' in b ? b.userName : 'Member')
 
-                    return (
-                      <div key={b.id} style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '16px 24px',
-                        borderBottom: i < listToRender.length - 1 ? '1px solid var(--color-border)' : 'none',
-                        flexWrap: 'wrap', gap: '12px'
-                      }}>
-                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                          <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: 'var(--color-primary-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <MapPin size={18} color="var(--color-primary)" />
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{b.courtName}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Clock size={11} />
-                                {new Date(b.startTime).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })} •{' '}
-                                {new Date(b.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(b.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
+                        return (
+                          <div key={b.id} style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '16px 24px',
+                            borderBottom: i < filteredList.length - 1 ? '1px solid var(--color-border)' : 'none',
+                            flexWrap: 'wrap', gap: '12px'
+                          }}>
+                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                              <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: 'var(--color-primary-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <MapPin size={18} color="var(--color-primary)" />
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{b.courtName}</div>
+                                <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Clock size={11} />
+                                    {new Date(b.startTime).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })} •{' '}
+                                    {new Date(b.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(b.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                  {isAdminOrStaff && (
+                                    <span style={{ fontWeight: 650, color: 'var(--color-text-primary)', fontSize: '11px', marginTop: '2px' }}>
+                                      👤 Booked by: <span style={{ color: 'var(--color-primary)' }}>{userNameStr}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                              <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-primary)' }}>₱{priceVal.toFixed(2)}</span>
+                              <span style={{
+                                fontSize: '10px', fontWeight: 800, padding: '3px 10px',
+                                borderRadius: 'var(--radius-full)',
+                                background: b.status === 'PAID' ? 'var(--color-success-subtle)' : b.status === 'PENDING' ? 'var(--color-warning-subtle)' : b.status === 'RESERVED' ? 'var(--color-info-subtle)' : 'var(--color-danger-subtle)',
+                                color: b.status === 'PAID' ? 'var(--color-success)' : b.status === 'PENDING' ? 'var(--color-warning)' : b.status === 'RESERVED' ? 'var(--color-info)' : 'var(--color-danger)',
+                                textTransform: 'uppercase', letterSpacing: '0.05em'
+                              }}>
+                                {b.status === 'PENDING' ? 'Unpaid' : b.status === 'RESERVED' ? 'Checked In' : b.status}
                               </span>
-                              {isAdminOrStaff && (
-                                <span style={{ fontWeight: 650, color: 'var(--color-text-primary)', fontSize: '11px', marginTop: '2px' }}>
-                                  👤 Booked by: <span style={{ color: 'var(--color-primary)' }}>{userNameStr}</span>
-                                </span>
-                              )}
                             </div>
                           </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                          <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-primary)' }}>₱{priceVal.toFixed(2)}</span>
-                          <span style={{
-                            fontSize: '10px', fontWeight: 800, padding: '3px 10px',
-                            borderRadius: 'var(--radius-full)',
-                            background: b.status === 'PAID' ? 'var(--color-success-subtle)' : 'var(--color-warning-subtle)',
-                            color: b.status === 'PAID' ? 'var(--color-success)' : 'var(--color-warning)',
-                            textTransform: 'uppercase', letterSpacing: '0.05em'
-                          }}>
-                            {b.status}
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
+              )
+            })()}
+          </div>
+        )}
+
+        {activeTab === 'passes' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} className="animate-fade-up">
+            {(() => {
+              const activePasses = myBookings.filter(b => 
+                (b.status === 'PENDING' || b.status === 'PAID' || b.status === 'RESERVED') &&
+                new Date(b.endTime).getTime() >= Date.now()
+              )
+
+              if (activePasses.length === 0) {
+                return (
+                  <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '60px 24px', textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
+                    <QrCode size={40} color="var(--color-text-disabled)" style={{ margin: '0 auto 16px' }} />
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                      No active passes found
+                    </h3>
+                    <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
+                      You have no active or upcoming court reservations that require counter check-in.
+                    </p>
+                  </div>
+                )
+              }
+
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                  {activePasses.map(pass => {
+                    const isPending = pass.status === 'PENDING'
+                    const isPaid = pass.status === 'PAID'
+                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=BOOKING-PASS:bookingId=${pass.id}`
+                    
+                    return (
+                      <div key={pass.id} style={{
+                        background: 'var(--color-card)',
+                        border: `1.5px solid ${isPending ? 'var(--color-warning)' : 'var(--color-border)'}`,
+                        borderRadius: 'var(--radius-xl)',
+                        padding: '24px',
+                        boxShadow: 'var(--shadow-md)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '16px',
+                        position: 'relative'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
+                            {pass.courtName}
                           </span>
+                          <span style={{
+                            fontSize: '9px', fontWeight: 800, padding: '3px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            background: isPending ? 'var(--color-warning-subtle)' : isPaid ? 'var(--color-success-subtle)' : 'var(--color-primary-subtle)',
+                            color: isPending ? 'var(--color-warning)' : isPaid ? 'var(--color-success)' : 'var(--color-primary)',
+                            textTransform: 'uppercase'
+                          }}>
+                            {isPending ? 'Pay cash' : isPaid ? 'Paid' : 'Checked In'}
+                          </span>
+                        </div>
+
+                        <div style={{
+                          background: 'white',
+                          padding: '12px',
+                          borderRadius: 'var(--radius-lg)',
+                          border: '1px solid var(--color-border)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <img src={qrUrl} alt="Booking QR Pass" style={{ width: '150px', height: '150px', display: 'block' }} />
+                        </div>
+
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                            {new Date(pass.startTime).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                            {new Date(pass.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(pass.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)', marginTop: '8px' }}>
+                            Fee: ₱{pass.price.toFixed(2)}
+                          </div>
+                        </div>
+
+                        <div style={{
+                          width: '100%',
+                          background: 'var(--color-surface)',
+                          padding: '10px 12px',
+                          borderRadius: 'var(--radius-md)',
+                          fontSize: '11px',
+                          color: 'var(--color-text-secondary)',
+                          lineHeight: '1.4',
+                          textAlign: 'center',
+                          boxSizing: 'border-box'
+                        }}>
+                          {isPending ? (
+                            <span>⚠️ Show this QR pass at the front counter to pay <strong>₱{pass.price.toFixed(2)}</strong>. You must pay within 5 mins of play time.</span>
+                          ) : isPaid ? (
+                            <span>🟢 Fully paid via credits. Scan this QR pass at the counter to verify your arrival and check in.</span>
+                          ) : (
+                            <span>✅ Checked in! Enjoy your game.</span>
+                          )}
                         </div>
                       </div>
                     )
                   })}
                 </div>
-              )}
-            </>
-          )
-        })()}
-      </div>
+              )
+            })()}
+          </div>
         )}
       </div>
-
-      {/* ── Booking Modal (Avenor style popup) ── */}
       {isModalOpen && (() => {
         const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
         const court = courts.find(c => c.id === modalCourtId)
@@ -925,6 +1055,80 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                 </div>
               </div>
 
+              {/* Payment Method Select (Player booking only) */}
+              {!isAdminOrStaff && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
+                    Payment Method
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {/* Pay with Credits */}
+                    <button
+                      type="button"
+                      disabled={hasInsufficientBalance}
+                      onClick={() => setSelectedPaymentMethod('credits')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '10px 14px',
+                        borderRadius: 'var(--radius-md)',
+                        border: selectedPaymentMethod === 'credits' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        background: selectedPaymentMethod === 'credits' ? 'var(--color-primary-subtle)' : hasInsufficientBalance ? 'var(--color-surface)' : 'var(--color-card)',
+                        cursor: hasInsufficientBalance ? 'not-allowed' : 'pointer',
+                        textAlign: 'left',
+                        opacity: hasInsufficientBalance ? 0.6 : 1,
+                        width: '100%',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {selectedPaymentMethod === 'credits' && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)' }} />}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                          Pay with Credits (Wallet)
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                          Deduct instantly. Booking is fully confirmed and guaranteed.
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Pay Cash at Counter */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod('cash')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '10px 14px',
+                        borderRadius: 'var(--radius-md)',
+                        border: selectedPaymentMethod === 'cash' ? '1.5px solid var(--color-accent)' : '1px solid var(--color-border)',
+                        background: selectedPaymentMethod === 'cash' ? 'var(--color-accent-subtle)' : 'var(--color-card)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        width: '100%',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {selectedPaymentMethod === 'cash' && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-accent)' }} />}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                          Pay Cash at Desk (5m Expiration Rule)
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                          Pay at counter. Unpaid reservations release 5 minutes after game start.
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Info Summary */}
               <div style={{
                 background: 'var(--color-surface)', borderRadius: 'var(--radius-md)',
@@ -945,13 +1149,13 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                       <span>Account Balance</span>
                       <span style={{ fontWeight: 700 }}>₱{userBalance.toFixed(2)}</span>
                     </div>
-                    {hasInsufficientBalance && (
+                    {hasInsufficientBalance && selectedPaymentMethod === 'credits' && (
                       <div style={{
                         color: 'var(--color-danger)', fontSize: '11px', fontWeight: 700,
                         marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px'
                       }}>
                         <AlertTriangle size={12} />
-                        <span>Insufficient balance. Please top up your account.</span>
+                        <span>Insufficient balance. Please top up or choose Cash at Desk.</span>
                       </div>
                     )}
                   </>
@@ -972,15 +1176,15 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                   Cancel
                 </button>
                 <button
-                  disabled={isPending || (isAdminOrStaff ? modalCourtIds.length === 0 : !modalCourtId) || modalHours.length === 0 || hasInsufficientBalance}
+                  disabled={isPending || (isAdminOrStaff ? modalCourtIds.length === 0 : !modalCourtId) || modalHours.length === 0 || (selectedPaymentMethod === 'credits' && hasInsufficientBalance)}
                   onClick={handleConfirmBooking}
                   style={{
                     height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
                     border: 'none', background: 'var(--color-primary)',
                     color: 'white', fontSize: '13px', fontWeight: 700,
-                    cursor: (isPending || (isAdminOrStaff ? modalCourtIds.length === 0 : !modalCourtId) || modalHours.length === 0 || hasInsufficientBalance) ? 'not-allowed' : 'pointer',
+                    cursor: (isPending || (isAdminOrStaff ? modalCourtIds.length === 0 : !modalCourtId) || modalHours.length === 0 || (selectedPaymentMethod === 'credits' && hasInsufficientBalance)) ? 'not-allowed' : 'pointer',
                     boxShadow: 'var(--shadow-primary-btn)',
-                    opacity: (isPending || (isAdminOrStaff ? modalCourtIds.length === 0 : !modalCourtId) || modalHours.length === 0 || hasInsufficientBalance) ? 0.6 : 1
+                    opacity: (isPending || (isAdminOrStaff ? modalCourtIds.length === 0 : !modalCourtId) || modalHours.length === 0 || (selectedPaymentMethod === 'credits' && hasInsufficientBalance)) ? 0.6 : 1
                   }}
                 >
                   {isPending

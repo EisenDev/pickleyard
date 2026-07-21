@@ -34,7 +34,7 @@ export default async function DashboardPage() {
     where: { email: session.user.email },
     include: {
       bookings: {
-        where: { startTime: { gte: new Date() }, status: { in: ['RESERVED', 'PAID'] } },
+        where: { startTime: { gte: new Date() }, status: { in: ['RESERVED', 'PAID', 'PENDING'] } },
         orderBy: { startTime: 'asc' },
         take: 1,
         include: { court: true }

@@ -109,7 +109,7 @@ export async function GET(req: Request) {
     if (!type || type === 'bookings') {
       const bookings = await db.booking.findMany({
         where: {
-          status: { in: ['RESERVED', 'PAID'] }
+          status: { in: ['RESERVED', 'PAID', 'PENDING'] }
         },
         include: {
           court: { select: { id: true, number: true, name: true, type: true } },

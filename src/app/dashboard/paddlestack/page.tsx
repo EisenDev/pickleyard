@@ -21,6 +21,21 @@ export default async function PaddleStackPage() {
     orderBy: { joinedAt: 'asc' }
   })
 
+  // Fetch today's reservations for blocking court displays
+  const now = new Date()
+  const todayStart = new Date(now)
+  todayStart.setHours(0, 0, 0, 0)
+  const todayEnd = new Date(now)
+  todayEnd.setHours(23, 59, 59, 999)
+
+  const todayBookings = await db.booking.findMany({
+    where: {
+      status: { in: ['RESERVED', 'PAID', 'PENDING'] },
+      startTime: { gte: todayStart, lte: todayEnd }
+    },
+    include: { user: { select: { name: true } } }
+  })
+
   // Fetch lobby active queue expiry setting
   const expirySetting = await db.systemSetting.findUnique({
     where: { key: 'openplay_expiry_hours' }
@@ -48,6 +63,14 @@ export default async function PaddleStackPage() {
         joinedAt: s.joinedAt.toISOString(),
         checkedInAt: s.checkedInAt ? s.checkedInAt.toISOString() : null,
         sessionExpiresAt: s.sessionExpiresAt ? s.sessionExpiresAt.toISOString() : null
+      }))}
+      bookings={todayBookings.map(b => ({
+        id: b.id,
+        courtId: b.courtId,
+        status: b.status,
+        startTime: b.startTime.toISOString(),
+        endTime: b.endTime.toISOString(),
+        userName: b.user?.name || 'Member'
       }))}
       currentUserId={user.id}
       userRole={user.role}

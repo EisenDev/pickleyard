@@ -12,7 +12,9 @@ import {
   checkAndRotateExpiredMatchesAction,
   creditUserCashAction,
   recordMatchResultAction,
-  getLatestUserCreditsAction
+  getLatestUserCreditsAction,
+  getBookingDetailsForScanAction,
+  adminConfirmBookingCheckinAction
 } from '@/lib/actions/admin'
 import { Users, Clock, ShieldCheck, ShieldAlert, X, Search, UserCheck, Play, Award, Zap, Power, Volume2, QrCode, Trash2, Camera, AlertTriangle, Calendar, RefreshCw, DollarSign, Star, Trophy } from 'lucide-react'
 
@@ -56,11 +58,23 @@ interface Booking {
   status: string
 }
 
+interface BookingLedgerItem {
+  id: string
+  courtName: string
+  startTime: string
+  endTime: string
+  status: string
+  price: number
+  userName: string
+  userEmail: string
+}
+
 interface Props {
   courts: Court[]
   stacks: StackEntry[]
   users: UserListItem[]
   bookings: Booking[]
+  bookingLedger: BookingLedgerItem[]
   expiryHours: number
   opStartHour: number
   opEndHour: number
@@ -137,7 +151,7 @@ function ClockCountdown({ sessionExpiresAt }: { sessionExpiresAt: Date | string 
   return <span>{hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}</span>
 }
 
-export function AdminClient({ courts: initialCourts, stacks: initialStacks, users, bookings, expiryHours, opStartHour, opEndHour }: Props) {
+export function AdminClient({ courts: initialCourts, stacks: initialStacks, users, bookings, bookingLedger, expiryHours, opStartHour, opEndHour }: Props) {
   const [courts, setCourts] = useState<Court[]>(initialCourts)
   const [stacks, setStacks] = useState<StackEntry[]>(initialStacks)
   const [isPending, setIsPending] = useState(false)
@@ -265,6 +279,22 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
   // Manual scan text field
   const [scanText, setScanText] = useState('')
   const [overrideCashAmount, setOverrideCashAmount] = useState('')
+  
+  // Booking scan details state
+  const [scannedBooking, setScannedBooking] = useState<{
+    id: string
+    courtId: string
+    courtName: string
+    courtNumber: number
+    startTime: string
+    endTime: string
+    status: string
+    price: number
+    userId: string
+    userName: string
+    userEmail: string
+  } | null>(null)
+  const [isBookingLoading, setIsBookingLoading] = useState(false)
 
   useEffect(() => {
     if (scanText.trim().startsWith('CASH-TOPUP:')) {
@@ -273,8 +303,31 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
       if (amountMatch) {
         setOverrideCashAmount(amountMatch[1])
       }
+      setScannedBooking(null)
+    } else if (scanText.trim().startsWith('BOOKING-PASS:')) {
+      setOverrideCashAmount('')
+      const decoded = decodeURIComponent(scanText.trim())
+      const bookingIdMatch = decoded.match(/bookingId=([^&]+)/)
+      const parsedBookingId = bookingIdMatch ? bookingIdMatch[1] : null
+      
+      if (parsedBookingId) {
+        setIsBookingLoading(true)
+        setAdminMessage(null)
+        getBookingDetailsForScanAction(parsedBookingId).then(res => {
+          setIsBookingLoading(false)
+          if (res.success && res.booking) {
+            setScannedBooking(res.booking)
+          } else {
+            setScannedBooking(null)
+            setAdminMessage({ success: false, text: res.error || 'Failed to resolve booking details.' })
+          }
+        })
+      } else {
+        setScannedBooking(null)
+      }
     } else {
       setOverrideCashAmount('')
+      setScannedBooking(null)
     }
     setAdminMessage(null)
   }, [scanText])
@@ -1222,6 +1275,140 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
             </div>
           </div>
         </div>
+
+        {/* Booking History Ledger (Failed/Late vs. Success Bookings) */}
+        <div style={{
+          background: 'var(--color-card)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-xl)',
+          padding: '24px',
+          boxShadow: 'var(--shadow-sm)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          marginTop: '12px'
+        }}>
+          <div>
+            <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Calendar size={18} color="var(--color-primary)" />
+              Court Booking Check-In Ledger (Past 48 Hours)
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px', margin: '4px 0 0' }}>
+              Reference ledger for cashier collections, no-show court releases, and payment confirmations.
+            </p>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  <th style={{ padding: '10px 8px', fontWeight: 700 }}>Player</th>
+                  <th style={{ padding: '10px 8px', fontWeight: 700 }}>Court</th>
+                  <th style={{ padding: '10px 8px', fontWeight: 700 }}>Schedule</th>
+                  <th style={{ padding: '10px 8px', fontWeight: 700 }}>Fee Due</th>
+                  <th style={{ padding: '10px 8px', fontWeight: 700 }}>Status</th>
+                  <th style={{ padding: '10px 8px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bookingLedger.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--color-text-disabled)' }}>
+                      No court reservations recorded in the past 48 hours.
+                    </td>
+                  </tr>
+                ) : (
+                  bookingLedger.map(b => {
+                    const isPending = b.status === 'PENDING'
+                    const isPaid = b.status === 'PAID'
+                    const isReserved = b.status === 'RESERVED'
+                    const isExpired = b.status === 'EXPIRED'
+                    const isCancelled = b.status === 'CANCELLED'
+
+                    return (
+                      <tr key={b.id} style={{ borderBottom: '1px solid var(--color-border-subtle)', color: 'var(--color-text-primary)' }}>
+                        <td style={{ padding: '10px 8px' }}>
+                          <div style={{ fontWeight: 700 }}>{b.userName}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>{b.userEmail}</div>
+                        </td>
+                        <td style={{ padding: '10px 8px', fontWeight: 650 }}>{b.courtName}</td>
+                        <td style={{ padding: '10px 8px' }}>
+                          <div>{new Date(b.startTime).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>
+                            {new Date(b.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} - {new Date(b.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })}
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px 8px', fontWeight: 700 }}>₱{b.price.toFixed(2)}</td>
+                        <td style={{ padding: '10px 8px' }}>
+                          <span style={{
+                            fontSize: '9px', fontWeight: 800, padding: '2px 8px', borderRadius: 'var(--radius-full)',
+                            background: isReserved ? 'var(--color-info-subtle)' : isPaid ? 'var(--color-success-subtle)' : isPending ? 'var(--color-warning-subtle)' : 'var(--color-danger-subtle)',
+                            color: isReserved ? 'var(--color-info)' : isPaid ? 'var(--color-success)' : isPending ? 'var(--color-warning)' : 'var(--color-danger)',
+                            textTransform: 'uppercase'
+                          }}>
+                            {isPending ? 'Cash Due' : isReserved ? 'Checked In' : isPaid ? 'Paid' : isExpired ? 'Expired (Late)' : b.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 8px', textAlign: 'right' }}>
+                          {isPending && (
+                            <button
+                              onClick={async () => {
+                                if (confirm(`Collect ₱${b.price.toFixed(2)} cash from ${b.userName} and check in?`)) {
+                                  const res = await adminConfirmBookingCheckinAction(b.id)
+                                  if (res.success) {
+                                    alert('Booking check-in successful!')
+                                    router.refresh()
+                                  } else {
+                                    alert(res.error || 'Failed to check in.')
+                                  }
+                                }
+                              }}
+                              style={{
+                                padding: '4px 10px', background: 'var(--color-accent)', border: 'none', borderRadius: 'var(--radius-sm)',
+                                color: 'white', fontWeight: 700, fontSize: '10px', cursor: 'pointer'
+                              }}
+                            >
+                              Collect Cash & Check In
+                            </button>
+                          )}
+                          {isPaid && (
+                            <button
+                              onClick={async () => {
+                                const res = await adminConfirmBookingCheckinAction(b.id)
+                                if (res.success) {
+                                  alert('Check-in confirmed!')
+                                  router.refresh()
+                                } else {
+                                  alert(res.error || 'Failed to check in.')
+                                }
+                              }}
+                              style={{
+                                padding: '4px 10px', background: 'var(--color-primary)', border: 'none', borderRadius: 'var(--radius-sm)',
+                                color: 'white', fontWeight: 700, fontSize: '10px', cursor: 'pointer'
+                              }}
+                            >
+                              Check In Player
+                            </button>
+                          )}
+                          {(isExpired || isCancelled) && (
+                            <span style={{ fontSize: '11px', color: 'var(--color-text-disabled)', fontStyle: 'italic' }}>
+                              {isExpired ? 'No Show Penalty' : 'Cancelled'}
+                            </span>
+                          )}
+                          {isReserved && (
+                            <span style={{ fontSize: '11px', color: 'var(--color-success)', fontWeight: 650 }}>
+                              Active Play
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {/* ── CAMERA SCANNER MODAL (Outside of animated wrapper to prevent viewport trapping!) ── */}
@@ -1305,7 +1492,141 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
 
               {scanText.trim() && (() => {
                 const isCashQr = scanText.trim().startsWith('CASH-TOPUP:')
+                const isBookingQr = scanText.trim().startsWith('BOOKING-PASS:')
                 
+                if (isBookingQr) {
+                  if (isBookingLoading) {
+                    return (
+                      <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+                        <RefreshCw size={18} className="animate-spin" style={{ margin: '0 auto 8px', display: 'block' }} />
+                        <span>Fetching booking details...</span>
+                      </div>
+                    )
+                  }
+
+                  if (!scannedBooking) {
+                    return (
+                      <div style={{
+                        padding: '12px', textAlign: 'center', background: 'rgba(239, 68, 68, 0.03)',
+                        border: '1.5px dashed #fecaca', borderRadius: 'var(--radius-lg)',
+                        fontSize: '12px', color: 'var(--color-danger)', fontWeight: 650, marginTop: '4px'
+                      }}>
+                        {adminMessage?.text || 'No matching reservation booking found.'}
+                      </div>
+                    )
+                  }
+
+                  const isPending = scannedBooking.status === 'PENDING'
+                  const isPaid = scannedBooking.status === 'PAID'
+                  const isReserved = scannedBooking.status === 'RESERVED'
+
+                  return (
+                    <div style={{ marginTop: '4px' }}>
+                      <div style={{
+                        display: 'flex', flexDirection: 'column', gap: '12px',
+                        background: isPending ? 'rgba(245, 158, 11, 0.03)' : 'rgba(0, 124, 128, 0.03)',
+                        border: `1.5px solid ${isPending ? 'rgba(245, 158, 11, 0.3)' : 'rgba(0, 124, 128, 0.3)'}`,
+                        borderRadius: 'var(--radius-lg)', padding: '14px',
+                        textAlign: 'left'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
+                              🎟️ Reservation Check-in
+                            </span>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-primary)', marginTop: '2px' }}>
+                              Player: {scannedBooking.userName}
+                            </span>
+                            <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                              {scannedBooking.userEmail}
+                            </span>
+                          </div>
+                          <span style={{
+                            fontSize: '9px', fontWeight: 800, padding: '3px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            background: isPending ? 'var(--color-warning-subtle)' : isPaid ? 'var(--color-success-subtle)' : 'var(--color-primary-subtle)',
+                            color: isPending ? 'var(--color-warning)' : isPaid ? 'var(--color-success)' : 'var(--color-primary)',
+                            textTransform: 'uppercase'
+                          }}>
+                            {isPending ? 'Pay cash' : isPaid ? 'Paid' : 'Checked In'}
+                          </span>
+                        </div>
+
+                        <div style={{ background: 'var(--color-surface)', padding: '10px 12px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                          <div>Court: <strong style={{ color: 'var(--color-text-primary)' }}>{scannedBooking.courtName}</strong></div>
+                          <div>Play Time: <strong style={{ color: 'var(--color-text-primary)' }}>
+                            {new Date(scannedBooking.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(scannedBooking.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
+                          </strong></div>
+                          <div>Fee Total: <strong style={{ color: 'var(--color-primary)' }}>₱{scannedBooking.price.toFixed(2)}</strong></div>
+                        </div>
+
+                        {isPending && (
+                          <div style={{
+                            padding: '10px',
+                            background: 'rgba(245, 158, 11, 0.05)',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid rgba(245, 158, 11, 0.2)',
+                            fontSize: '11px',
+                            color: 'var(--color-warning)',
+                            fontWeight: 600
+                          }}>
+                            👉 Collection required: Collect <strong>₱{scannedBooking.price.toFixed(2)} cash</strong> at counter before confirming.
+                          </div>
+                        )}
+
+                        {adminMessage && (
+                          <div style={{
+                            padding: '8px 10px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 600,
+                            background: adminMessage.success ? 'var(--color-success-subtle)' : 'var(--color-danger-subtle)',
+                            color: adminMessage.success ? 'var(--color-success)' : 'var(--color-danger)',
+                            border: `1px solid ${adminMessage.success ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+                          }}>
+                            {adminMessage.text}
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          disabled={isPending ? false : isReserved}
+                          onClick={async () => {
+                            if (activeLoadingId) return
+                            setActiveLoadingId('bookingcheckin')
+                            setIsPending(true)
+                            const res = await adminConfirmBookingCheckinAction(scannedBooking.id)
+                            setIsPending(false)
+                            setActiveLoadingId(null)
+                            if (res.success) {
+                              setAdminMessage({ success: true, text: isPending ? 'Payment confirmed & checked in successfully!' : 'Check-in confirmed!' })
+                              setTimeout(() => { setIsScannerOpen(false); setScanText('') }, 1500)
+                            } else {
+                              setAdminMessage({ success: false, text: res.error || 'Failed to check in.' })
+                            }
+                          }}
+                          style={{
+                            width: '100%', height: '36px', background: isPending ? 'var(--color-accent)' : 'var(--color-primary)',
+                            color: 'white', border: 'none', borderRadius: 'var(--radius-md)',
+                            fontSize: '12px', fontWeight: 800, cursor: isReserved ? 'not-allowed' : 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                            boxShadow: 'var(--shadow-sm)', transition: 'background var(--duration-fast)',
+                            opacity: isReserved ? 0.6 : 1
+                          }}
+                        >
+                          <UserCheck size={14} />
+                          <span>
+                            {activeLoadingId === 'bookingcheckin'
+                              ? 'Processing...' 
+                              : isPending 
+                                ? 'Confirm Cash Payment & Check In' 
+                                : isReserved 
+                                  ? 'Checked In' 
+                                  : 'Confirm Arrival & Check In'}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                }
+
                 if (isCashQr) {
                   const decoded = decodeURIComponent(scanText.trim())
                   const userIdMatch = decoded.match(/userId=([^&]+)/)

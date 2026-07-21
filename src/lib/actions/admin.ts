@@ -244,7 +244,7 @@ export async function assignMatchToCourtAction(
       const nextBooking = await tx.booking.findFirst({
         where: {
           courtId,
-          status: { in: ['RESERVED', 'PAID'] },
+          status: { in: ['RESERVED', 'PAID', 'PENDING'] },
           startTime: { lte: limitTime },
           endTime: { gte: now },
           user: {
@@ -477,6 +477,26 @@ export async function recordMatchResultAction(
 export async function checkAndRotateExpiredMatchesAction(): Promise<ActionState> {
   try {
     const now = new Date()
+    let rotationsPerformed = 0
+
+    // 0.0. Auto-expire unpaid cash bookings that are more than 5 minutes late
+    const fiveMinsAgo = new Date(now.getTime() - 5 * 60 * 1000)
+    const latePendingBookings = await db.booking.findMany({
+      where: {
+        status: 'PENDING',
+        startTime: { lte: fiveMinsAgo }
+      }
+    })
+
+    if (latePendingBookings.length > 0) {
+      for (const booking of latePendingBookings) {
+        await db.booking.update({
+          where: { id: booking.id },
+          data: { status: 'EXPIRED' }
+        })
+        rotationsPerformed++
+      }
+    }
 
     // 0. Auto-release any courts closed by bookings if the booking has ended
     const allCourts = await db.court.findMany()
@@ -517,7 +537,7 @@ export async function checkAndRotateExpiredMatchesAction(): Promise<ActionState>
       }
     })
 
-    let rotationsPerformed = 0
+    // accumulate rotationsPerformed
 
     // 1. Expire any lobby player sessions after their stored sessionExpiresAt timestamp
     const expiredSessions = await db.paddleStack.findMany({
@@ -831,7 +851,7 @@ export async function adminReserveCourtForOpenPlayAction(data: {
         const conflict = await db.booking.findFirst({
           where: {
             courtId,
-            status: { in: ['RESERVED', 'PAID'] },
+            status: { in: ['RESERVED', 'PAID', 'PENDING'] },
             OR: [
               { startTime: { lte: startTime }, endTime: { gt: startTime } },
               { startTime: { lt: endTime }, endTime: { gte: endTime } }
@@ -881,6 +901,104 @@ export async function adminReserveCourtForOpenPlayAction(data: {
     return { success: true }
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to reserve court.' }
+  }
+}
+
+export async function getBookingDetailsForScanAction(bookingId: string) {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized. Staff permissions required.' }
+
+  try {
+    const booking = await db.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        court: { select: { id: true, name: true, number: true } }
+      }
+    })
+
+    if (!booking) {
+      return { success: false, error: 'Booking not found.' }
+    }
+
+    return {
+      success: true,
+      booking: {
+        id: booking.id,
+        courtId: booking.courtId,
+        courtName: booking.court.name,
+        courtNumber: booking.court.number,
+        startTime: booking.startTime.toISOString(),
+        endTime: booking.endTime.toISOString(),
+        status: booking.status,
+        price: Number(booking.price),
+        userId: booking.user.id,
+        userName: booking.user.name || 'Member',
+        userEmail: booking.user.email
+      }
+    }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to load booking details.' }
+  }
+}
+
+export async function adminConfirmBookingCheckinAction(bookingId: string): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized. Staff permissions required.' }
+
+  try {
+    const result = await db.$transaction(async (tx) => {
+      // 1. Fetch booking
+      const booking = await tx.booking.findUnique({
+        where: { id: bookingId },
+        include: { court: true, user: true }
+      })
+
+      if (!booking) throw new Error('Booking not found.')
+      if (booking.status === 'RESERVED') throw new Error('Booking is already checked-in.')
+      if (booking.status === 'CANCELLED' || booking.status === 'EXPIRED') {
+        throw new Error('Booking has been cancelled or has expired.')
+      }
+
+      const isUnpaid = booking.status === 'PENDING'
+
+      // 2. Update booking status to RESERVED (checked in)
+      await tx.booking.update({
+        where: { id: bookingId },
+        data: { status: 'RESERVED' }
+      })
+
+      // 3. If unpaid, record cash payment ledger entry
+      if (isUnpaid) {
+        await tx.transaction.create({
+          data: {
+            userId: booking.userId,
+            amount: Number(booking.price),
+            type: 'CASH_TOPUP',
+            reference: `CASH-BOOKING-${booking.id.slice(-4).toUpperCase()}`
+          }
+        })
+      }
+
+      // 4. Occupy court on dashboard (mark gameStartedAt/duration)
+      await tx.court.update({
+        where: { id: booking.courtId },
+        data: {
+          status: 'OCCUPIED',
+          gameStartedAt: new Date(),
+          gameDurationSecond: 3600 // 1 hour default session
+        }
+      })
+
+      return { booking }
+    })
+
+    revalidatePath('/dashboard/admin')
+    revalidatePath('/dashboard/bookings')
+    revalidatePath('/dashboard/paddlestack')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to confirm booking.' }
   }
 }
 

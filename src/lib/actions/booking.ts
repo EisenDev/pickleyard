@@ -11,14 +11,16 @@ export type BookingResult =
 
 export async function createBookingAction(
   courtId: string,
-  startTimeString: string
+  startTimeString: string,
+  paymentMethod: 'credits' | 'cash' = 'credits'
 ): Promise<BookingResult> {
-  return createBookingsAction(courtId, [startTimeString])
+  return createBookingsAction(courtId, [startTimeString], paymentMethod)
 }
 
 export async function createBookingsAction(
   courtId: string,
-  startTimeStrings: string[]
+  startTimeStrings: string[],
+  paymentMethod: 'credits' | 'cash' = 'credits'
 ): Promise<BookingResult> {
   const session = await auth()
   if (!session?.user?.email) {
@@ -64,12 +66,25 @@ export async function createBookingsAction(
       const hourlyRate = court.type === 'ROOFTOP' ? 300.00 : 250.00
       const totalCost = hourlyRate * startTimes.length
 
-      // 2. Check user credit balance
-      if (Number(user.credits) < totalCost) {
-        throw new Error(`Insufficient credits. Booking cost: ₱${totalCost.toFixed(2)}, Balance: ₱${Number(user.credits).toFixed(2)}`)
+      // 2. Validate Payment Method
+      if (paymentMethod === 'credits') {
+        if (Number(user.credits) < totalCost) {
+          throw new Error(`Insufficient credits. Booking cost: ₱${totalCost.toFixed(2)}, Balance: ₱${Number(user.credits).toFixed(2)}`)
+        }
+      } else {
+        // Abuse proof: check how many pending cash bookings the user currently has
+        const pendingCount = await tx.booking.count({
+          where: {
+            userId: user.id,
+            status: BookingStatus.PENDING
+          }
+        })
+        if (pendingCount >= 2) {
+          throw new Error('You cannot have more than 2 pending cash bookings at a time. Please settle your unpaid bookings at the desk first.')
+        }
       }
 
-      // 3. Check for booking conflicts
+      // 3. Check for booking conflicts and overlaps
       for (const startTime of startTimes) {
         const endTime = new Date(startTime.getTime() + 3600000)
 
@@ -85,10 +100,11 @@ export async function createBookingsAction(
           throw new Error(`Selected booking slot is outside of operational hours (${startHour}:00 to ${endHour}:00).`)
         }
 
+        // Court conflict check (slots in RESERVED, PAID, or PENDING)
         const conflict = await tx.booking.findFirst({
           where: {
             courtId,
-            status: { in: [BookingStatus.RESERVED, BookingStatus.PAID] },
+            status: { in: [BookingStatus.RESERVED, BookingStatus.PAID, BookingStatus.PENDING] },
             OR: [
               {
                 startTime: { lte: startTime },
@@ -105,13 +121,37 @@ export async function createBookingsAction(
         if (conflict) {
           throw new Error(`This court is already reserved at ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`)
         }
+
+        // User overlapping booking check (cannot book multiple courts at the same time)
+        const userConflict = await tx.booking.findFirst({
+          where: {
+            userId: user.id,
+            status: { in: [BookingStatus.PAID, BookingStatus.RESERVED, BookingStatus.PENDING] },
+            OR: [
+              {
+                startTime: { lte: startTime },
+                endTime: { gt: startTime }
+              },
+              {
+                startTime: { lt: endTime },
+                endTime: { gte: endTime }
+              }
+            ]
+          }
+        })
+
+        if (userConflict) {
+          throw new Error(`You already have an active booking at ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} on another court. Double booking is not allowed.`)
+        }
       }
 
-      // 4. Deduct user credits
-      const updatedUser = await tx.user.update({
-        where: { id: user.id },
-        data: { credits: Number(user.credits) - totalCost }
-      })
+      // 4. Deduct user credits if paying with credits
+      if (paymentMethod === 'credits') {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { credits: Number(user.credits) - totalCost }
+        })
+      }
 
       let firstBookingId = ''
 
@@ -125,7 +165,7 @@ export async function createBookingsAction(
             courtId,
             startTime,
             endTime,
-            status: BookingStatus.PAID,
+            status: paymentMethod === 'credits' ? BookingStatus.PAID : BookingStatus.PENDING,
             price: hourlyRate
           }
         })
@@ -134,15 +174,17 @@ export async function createBookingsAction(
           firstBookingId = booking.id
         }
 
-        // 6. Create ledger transaction entry
-        await tx.transaction.create({
-          data: {
-            userId: user.id,
-            amount: -hourlyRate,
-            type: 'BOOKING_DEBIT',
-            reference: `RESRV-C${court.number}-${startTime.toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
-          }
-        })
+        // 6. Create ledger transaction entry only if debited
+        if (paymentMethod === 'credits') {
+          await tx.transaction.create({
+            data: {
+              userId: user.id,
+              amount: -hourlyRate,
+              type: 'BOOKING_DEBIT',
+              reference: `RESRV-C${court.number}-${startTime.toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
+            }
+          })
+        }
       }
 
       return { id: firstBookingId }
