@@ -13,7 +13,7 @@ export default async function MyBookingsPage() {
 
   const allBookingsToday = await db.booking.findMany({
     where: {
-      status: { in: ['RESERVED', 'PAID', 'PENDING'] }
+      status: { in: ['RESERVED', 'PAID', 'PENDING', 'EXPIRED', 'CANCELLED'] }
     },
     include: {
       court: { select: { id: true, number: true, name: true, type: true } },

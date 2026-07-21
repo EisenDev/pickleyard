@@ -74,10 +74,15 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   
   // Real-time bookings state and polling
   const [bookings, setBookings] = useState<BookingItem[]>(allBookings)
+  const [myBookingsList, setMyBookingsList] = useState<MyBooking[]>(myBookings)
 
   useEffect(() => {
     setBookings(allBookings)
   }, [allBookings])
+
+  useEffect(() => {
+    setMyBookingsList(myBookings)
+  }, [myBookings])
 
   useEffect(() => {
     let active = true
@@ -98,9 +103,21 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
             userName: b.userName,
             userEmail: b.userEmail,
             userRole: b.userRole,
-            isOwn: b.userId === userId
+            isOwn: b.userId === userId,
+            price: b.price
           }))
           setBookings(mapped)
+
+          // Sync status updates for myBookingsList state
+          setMyBookingsList(prev => {
+            return prev.map(oldBooking => {
+              const latest = mapped.find((m: any) => m.id === oldBooking.id)
+              if (latest) {
+                return { ...oldBooking, status: latest.status }
+              }
+              return oldBooking
+            })
+          })
         }
       } catch (err) {
         console.error('Failed to poll real-time bookings:', err)
@@ -136,7 +153,9 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
       return (
         b.courtId === courtId &&
         bStart < slotHourEnd &&
-        bEnd > slotHourStart
+        bEnd > slotHourStart &&
+        b.status !== 'EXPIRED' &&
+        b.status !== 'CANCELLED'
       )
     })
   }
@@ -600,7 +619,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {(() => {
               const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
-              const listToRender = isAdminOrStaff ? bookings : myBookings
+              const listToRender = isAdminOrStaff ? bookings : myBookingsList
 
               // Filter bookings based on bookingSearch state
               const filteredList = listToRender.filter(b => {
@@ -616,6 +635,64 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                   userEmail.includes(searchLower) ||
                   courtName.includes(searchLower)
                 )
+              })
+
+              // Sort the list based on time priority:
+              // 1. Bookings for today always come first.
+              // 2. Active bookings right now come first within today.
+              // 3. Upcoming bookings today are sorted chronologically.
+              // 4. Past bookings today are sorted descending.
+              // 5. Future days bookings are sorted chronologically, then past days descending.
+              const sortedList = [...filteredList].sort((a, b) => {
+                const now = new Date()
+                const todayDateStr = now.toLocaleDateString('en-US')
+
+                const isTodayA = new Date(a.startTime).toLocaleDateString('en-US') === todayDateStr
+                const isTodayB = new Date(b.startTime).toLocaleDateString('en-US') === todayDateStr
+
+                // Today vs Other Days
+                if (isTodayA && !isTodayB) return -1
+                if (!isTodayA && isTodayB) return 1
+
+                const timeA = new Date(a.startTime).getTime()
+                const endA = new Date(a.endTime).getTime()
+                const timeB = new Date(b.startTime).getTime()
+                const endB = new Date(b.endTime).getTime()
+                const nowMs = now.getTime()
+
+                if (isTodayA && isTodayB) {
+                  const isActiveA = nowMs >= timeA && nowMs <= endA
+                  const isActiveB = nowMs >= timeB && nowMs <= endB
+
+                  // Active first
+                  if (isActiveA && !isActiveB) return -1
+                  if (!isActiveA && isActiveB) return 1
+
+                  // Upcoming vs Past
+                  const isUpcomingA = endA >= nowMs
+                  const isUpcomingB = endB >= nowMs
+
+                  if (isUpcomingA && !isUpcomingB) return -1
+                  if (!isUpcomingA && isUpcomingB) return 1
+
+                  if (isUpcomingA && isUpcomingB) {
+                    return timeA - timeB // upcoming chronological
+                  } else {
+                    return timeB - timeA // past descending
+                  }
+                } else {
+                  const isFutureA = timeA >= nowMs
+                  const isFutureB = timeB >= nowMs
+
+                  if (isFutureA && !isFutureB) return -1
+                  if (!isFutureA && isFutureB) return 1
+
+                  if (isFutureA && isFutureB) {
+                    return timeA - timeB // future chronological
+                  } else {
+                    return timeB - timeA // past descending
+                  }
+                }
               })
 
               return (
@@ -645,7 +722,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                     </div>
                   )}
 
-                  {filteredList.length === 0 ? (
+                  {sortedList.length === 0 ? (
                     <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '60px 24px', textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
                       <Calendar size={40} color="var(--color-text-disabled)" style={{ margin: '0 auto 16px' }} />
                       <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
@@ -665,7 +742,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                       maxHeight: '720px', 
                       boxShadow: 'var(--shadow-sm)' 
                     }}>
-                      {filteredList.map((b, i) => {
+                      {sortedList.map((b, i) => {
                         const isOP = 'userRole' in b && (b.userRole === 'ADMIN' || b.userRole === 'STAFF')
                         const priceVal = isOP ? 0.00 : ('price' in b ? b.price : 250.00)
                         const userNameStr = isOP ? 'Open Play' : ('userName' in b ? b.userName : 'Member')
@@ -674,7 +751,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                           <div key={b.id} style={{
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                             padding: '16px 24px',
-                            borderBottom: i < filteredList.length - 1 ? '1px solid var(--color-border)' : 'none',
+                            borderBottom: i < sortedList.length - 1 ? '1px solid var(--color-border)' : 'none',
                             flexWrap: 'wrap', gap: '12px'
                           }}>
                             <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
@@ -723,7 +800,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
         {activeTab === 'passes' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} className="animate-fade-up">
             {(() => {
-              const activePasses = myBookings.filter(b => 
+              const activePasses = myBookingsList.filter(b => 
                 (b.status === 'PENDING' || b.status === 'PAID' || b.status === 'RESERVED') &&
                 new Date(b.endTime).getTime() >= Date.now()
               )

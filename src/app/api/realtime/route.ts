@@ -109,7 +109,7 @@ export async function GET(req: Request) {
     if (!type || type === 'bookings') {
       const bookings = await db.booking.findMany({
         where: {
-          status: { in: ['RESERVED', 'PAID', 'PENDING'] }
+          status: { in: ['RESERVED', 'PAID', 'PENDING', 'EXPIRED', 'CANCELLED'] }
         },
         include: {
           court: { select: { id: true, number: true, name: true, type: true } },
@@ -129,7 +129,8 @@ export async function GET(req: Request) {
         userId: b.userId,
         userName: b.user?.name || 'Member',
         userEmail: b.user?.email || '',
-        userRole: b.user?.role || 'PLAYER'
+        userRole: b.user?.role || 'PLAYER',
+        price: Number(b.price)
       }))
     }
 
