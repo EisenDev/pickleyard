@@ -57,19 +57,45 @@ export default function LandingPage() {
   }, [])
 
   const courtsData = [
-    { id: '1', name: 'Court 1', image: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=600' },
-    { id: '2', name: 'Court 2', image: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&q=80&w=600' },
-    { id: '3', name: 'Court 3', image: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=600' },
-    { id: '4', name: 'Court 4', image: 'https://images.unsplash.com/photo-1599447421416-3414500d18a5?auto=format&fit=crop&q=80&w=600' },
-    { id: '5', name: 'Court 5', image: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&q=80&w=600' },
-    { id: '6', name: 'Court 6', image: 'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?auto=format&fit=crop&q=80&w=600' },
-    { id: '7', name: 'Court 7', image: 'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?auto=format&fit=crop&q=80&w=600' },
-    { id: '8', name: 'Court 8', image: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80&w=600' },
-    { id: '9', name: 'Court 9', image: 'https://images.unsplash.com/photo-1628155930542-3c7a64e2c833?auto=format&fit=crop&q=80&w=600' },
-    { id: '10', name: 'Court 10', image: 'https://images.unsplash.com/photo-1613918431208-67527b6e4922?auto=format&fit=crop&q=80&w=600' }
+    { id: '1', name: 'Court 1', image: '/court_illustration.jpg' },
+    { id: '2', name: 'Court 2', image: '/court_illustration.jpg' },
+    { id: '3', name: 'Court 3', image: '/court_illustration.jpg' },
+    { id: '4', name: 'Court 4', image: '/court_illustration.jpg' },
+    { id: '5', name: 'Court 5', image: '/court_illustration.jpg' },
+    { id: '6', name: 'Court 6', image: '/court_illustration.jpg' },
+    { id: '7', name: 'Court 7', image: '/court_illustration.jpg' },
+    { id: '8', name: 'Court 8', image: '/court_illustration.jpg' },
+    { id: '9', name: 'Court 9', image: '/court_illustration.jpg' },
+    { id: '10', name: 'Court 10', image: '/court_illustration.jpg' }
   ]
 
-  const maxIndex = isMobile ? 9 : 7
+  // Reset index when changing viewport mode
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [isMobile])
+
+  // Auto-slide effect for the courts carousel
+  useEffect(() => {
+    const totalPages = isMobile ? 10 : 3
+    const interval = setInterval(() => {
+      setActiveIndex(prev => {
+        if (prev >= totalPages - 1) return 0
+        return prev + 1
+      })
+    }, 5000) // Slide every 5 seconds
+    return () => clearInterval(interval)
+  }, [isMobile])
+
+  const displayPages = isMobile
+    ? courtsData.map(c => [c])
+    : [
+        courtsData.slice(0, 4),
+        courtsData.slice(4, 8),
+        courtsData.slice(8, 10)
+      ]
+
+  const totalPages = isMobile ? 10 : 3
+  const maxIndex = totalPages - 1
 
   const handlePrev = () => {
     setActiveIndex(prev => Math.max(prev - 1, 0))
@@ -83,9 +109,9 @@ export default function LandingPage() {
     <div style={{ background: 'var(--color-bg-primary)', minHeight: '100vh', overflowX: 'hidden' }}>
       {/* Navigation Header */}
       <header className="header-container">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 88, height: 88, objectFit: 'contain' }} />
-          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: '50%' }} />
+          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', paddingLeft: '4px' }}>
             PaddleYard
           </span>
         </div>
@@ -242,7 +268,7 @@ export default function LandingPage() {
             <div 
               className="court-visual-canvas" 
               style={{ 
-                backgroundImage: 'url(https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=1200)', 
+                backgroundImage: 'url(/hero_illustration.jpg)', 
                 backgroundSize: 'cover', 
                 backgroundPosition: 'center',
                 position: 'relative',
@@ -529,46 +555,53 @@ export default function LandingPage() {
               style={{
                 display: 'flex',
                 transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: `translateX(-${activeIndex * (isMobile ? 100 : 33.333)}%)`,
+                transform: `translateX(-${activeIndex * 100}%)`,
                 width: '100%'
               }}
             >
-              {courtsData.map((court, idx) => (
+              {displayPages.map((pageCourts, pageIdx) => (
                 <div 
-                  key={idx} 
+                  key={pageIdx} 
                   style={{ 
-                    flex: isMobile ? '0 0 100%' : '0 0 33.333%', 
-                    padding: '0 8px', 
-                    boxSizing: 'border-box' 
+                    flex: '0 0 100%', 
+                    width: '100%',
+                    display: isMobile ? 'flex' : 'grid',
+                    flexDirection: isMobile ? 'column' : undefined,
+                    gridTemplateColumns: isMobile ? undefined : '1fr 1fr',
+                    gap: '16px',
+                    boxSizing: 'border-box',
+                    padding: isMobile ? '0' : '0 8px'
                   }}
                 >
-                  <div className="showcase-card" style={{ width: '100%' }}>
-                    <div className="showcase-img-container">
-                      <img src={court.image} alt={court.name} className="showcase-img" />
-                      <div className="showcase-number">{court.id}</div>
-                    </div>
-                    <div className="showcase-footer">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Calendar size={13} style={{ color: 'var(--color-text-secondary)' }} />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>{court.name}</span>
+                  {pageCourts.map((court) => (
+                    <div key={court.id} className="showcase-card" style={{ width: '100%' }}>
+                      <div className="showcase-img-container">
+                        <img src={court.image} alt={court.name} className="showcase-img" />
+                        <div className="showcase-number">{court.id}</div>
                       </div>
-                      <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Indoor Court</span>
+                      <div className="showcase-footer">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Calendar size={13} style={{ color: 'var(--color-text-secondary)' }} />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)' }}>{court.name}</span>
+                        </div>
+                        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Indoor Court</span>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               ))}
             </div>
           </div>
         </div>
         
-        {/* Clickable indicators dots representing the 10 courts */}
+        {/* Clickable indicators dots representing the pages */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '32px' }}>
-          {Array.from({ length: 10 }).map((_, idx) => {
+          {Array.from({ length: isMobile ? 10 : 3 }).map((_, idx) => {
             const isActive = activeIndex === idx
             return (
               <button
                 key={idx}
-                onClick={() => setActiveIndex(Math.min(idx, maxIndex))}
+                onClick={() => setActiveIndex(idx)}
                 style={{
                   width: '8px',
                   height: '8px',
@@ -579,7 +612,7 @@ export default function LandingPage() {
                   cursor: 'pointer',
                   transition: 'all var(--duration-fast)'
                 }}
-                aria-label={`Go to court ${idx + 1}`}
+                aria-label={`Go to page ${idx + 1}`}
               />
             )
           })}
@@ -660,9 +693,9 @@ export default function LandingPage() {
         <div className="footer-grid">
           {/* Logo & Description */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }} className="footer-info-col">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 72, height: 72, objectFit: 'contain' }} />
-              <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-text-primary)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '50%' }} />
+              <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-text-primary)', paddingLeft: '4px' }}>
                 PickleYard
               </span>
             </div>
@@ -1163,7 +1196,7 @@ export default function LandingPage() {
         .showcase-img-container {
           position: relative;
           width: 100%;
-          aspect-ratio: 4/5;
+          aspect-ratio: 16/10;
           overflow: hidden;
         }
         .showcase-img {
