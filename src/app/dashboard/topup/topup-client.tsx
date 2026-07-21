@@ -15,27 +15,30 @@ type PaymentMethod = 'instapay' | 'gcash' | 'maya' | 'cash' | 'voucher'
 const PAYMENT_METHODS = [
   {
     id: 'instapay' as PaymentMethod,
-    label: 'InstaPay',
+    label: 'InstaPay (Coming Soon)',
     description: 'Real-time transfer via InstaPay network',
     icon: QrCode,
-    color: 'var(--color-primary)',
-    bg: 'var(--color-primary-subtle)'
+    color: 'var(--color-text-disabled)',
+    bg: 'var(--color-surface)',
+    disabled: true
   },
   {
     id: 'gcash' as PaymentMethod,
-    label: 'GCash',
+    label: 'GCash (Coming Soon)',
     description: 'Pay using your GCash e-wallet',
     icon: Smartphone,
-    color: '#0066cc',
-    bg: 'rgba(0,102,204,0.08)'
+    color: 'var(--color-text-disabled)',
+    bg: 'var(--color-surface)',
+    disabled: true
   },
   {
     id: 'maya' as PaymentMethod,
-    label: 'Maya (PayMaya)',
+    label: 'Maya (PayMaya) (Coming Soon)',
     description: 'Pay using Maya digital wallet',
     icon: Wallet,
-    color: '#00b074',
-    bg: 'rgba(0,176,116,0.08)'
+    color: 'var(--color-text-disabled)',
+    bg: 'var(--color-surface)',
+    disabled: true
   },
   {
     id: 'cash' as PaymentMethod,
@@ -366,35 +369,63 @@ export function TopUpClient({ userBalance, userId }: Props) {
                 {PAYMENT_METHODS.map(method => {
                   const Icon = method.icon
                   const isSelected = selectedMethod === method.id
+                  const isDisabled = (method as any).disabled
                   return (
                     <button
                       key={method.id}
-                      onClick={() => setSelectedMethod(method.id)}
+                      disabled={isDisabled}
+                      onClick={() => {
+                        if (isDisabled) return
+                        setSelectedMethod(method.id)
+                      }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '14px',
                         padding: '12px 16px',
                         borderRadius: 'var(--radius-md)',
-                        border: isSelected ? `1px solid ${method.color}` : '1px solid var(--color-border)',
-                        background: isSelected ? method.bg : 'var(--color-card)',
-                        cursor: 'pointer',
+                        border: isSelected 
+                          ? `1px solid ${method.color}` 
+                          : '1px solid var(--color-border)',
+                        background: isSelected 
+                          ? method.bg 
+                          : isDisabled 
+                            ? 'var(--color-surface)' 
+                            : 'var(--color-card)',
+                        cursor: isDisabled ? 'not-allowed' : 'pointer',
                         textAlign: 'left',
                         transition: 'all var(--duration-fast)',
-                        width: '100%'
+                        width: '100%',
+                        opacity: isDisabled ? 0.6 : 1
                       }}
                     >
                       <div style={{
                         width: 40, height: 40, borderRadius: 'var(--radius-md)',
-                        background: isSelected ? method.bg : 'var(--color-surface)',
+                        background: isSelected 
+                          ? method.bg 
+                          : isDisabled 
+                            ? 'var(--color-surface)' 
+                            : 'var(--color-surface)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                         border: `1px solid ${isSelected ? method.color : 'var(--color-border)'}`
                       }}>
-                        <Icon size={18} color={method.color} />
+                        <Icon size={18} color={isDisabled ? 'var(--color-text-disabled)' : method.color} />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{method.label}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '1px' }}>{method.description}</div>
+                        <div style={{ 
+                          fontSize: '14px', 
+                          fontWeight: 700, 
+                          color: isDisabled ? 'var(--color-text-disabled)' : 'var(--color-text-primary)' 
+                        }}>
+                          {method.label}
+                        </div>
+                        <div style={{ 
+                          fontSize: '11px', 
+                          color: isDisabled ? 'var(--color-text-disabled)' : 'var(--color-text-secondary)', 
+                          marginTop: '1px' 
+                        }}>
+                          {method.description}
+                        </div>
                       </div>
                       <ChevronRight size={16} color={isSelected ? method.color : 'var(--color-text-disabled)'} />
                     </button>

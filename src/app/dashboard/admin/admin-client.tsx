@@ -301,8 +301,12 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
       html5QrcodeScanner = new Html5QrcodeScanner(
         'qr-reader',
         { 
-          fps: 10, 
-          qrbox: { width: 180, height: 180 },
+          fps: 24, 
+          qrbox: (width: number, height: number) => {
+            const minEdge = Math.min(width, height);
+            const size = Math.floor(minEdge * 0.7);
+            return { width: size, height: size };
+          },
           aspectRatio: 1.0
         },
         /* verbose= */ false
@@ -695,7 +699,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
             }}
           >
             <Camera size={16} />
-            <span>Scan Open Play QR</span>
+            <span>Scan Kiosk QR</span>
           </button>
         </div>
 
@@ -1235,6 +1239,8 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
             padding: '24px',
             maxWidth: '480px',
             width: '90%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
             boxShadow: 'var(--shadow-lg)',
             display: 'flex',
             flexDirection: 'column',
@@ -1255,7 +1261,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
 
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
-                Scan Open Play Member QR
+                Scan Member / Cash QR Code
               </h3>
               <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: 4 }}>
                 Hold the player's mobile pass QR code in front of the kiosk scanner.
@@ -1265,6 +1271,8 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
             {/* Real Camera QR Scanner Frame */}
             <div style={{
               width: '100%',
+              maxWidth: '280px',
+              margin: '0 auto',
               borderRadius: 'var(--radius-lg)',
               overflow: 'hidden',
               background: '#000',
@@ -1292,7 +1300,6 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                     background: 'var(--color-surface)', color: 'var(--color-text-primary)',
                     fontSize: '13px', outline: 'none', boxSizing: 'border-box'
                   }}
-                  autoFocus
                 />
               </div>
 
