@@ -70,8 +70,8 @@ export function SignInModal({ isOpen, onClose, onSwitchToSignUp, initialError }:
 
         {/* Header */}
         <div className="signin-header">
-          <div className="signin-logo-mark" style={{ background: 'transparent', border: 'none' }}>
-            <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 44, height: 44, objectFit: 'contain' }} />
+          <div className="signin-logo-mark" style={{ background: 'transparent', border: 'none', width: 88, height: 88 }}>
+            <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 88, height: 88, objectFit: 'contain' }} />
           </div>
           <h2 className="signin-title">Welcome back</h2>
           <p className="signin-subtitle">Sign in to check court stacks & book</p>

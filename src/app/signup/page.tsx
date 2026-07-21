@@ -100,7 +100,7 @@ function SignUpPageInner() {
         <div className="signup-left-inner">
           {/* Logo */}
           <Link href="/" className="signup-logo-link">
-            <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+            <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 80, height: 80, objectFit: 'contain' }} />
             <span className="signup-logo-text">PaddleYard</span>
           </Link>
 
@@ -145,7 +145,7 @@ function SignUpPageInner() {
         <div className="signup-form-wrap">
           {/* Mobile-only logo */}
           <Link href="/" className="signup-logo-link signup-logo-mobile">
-            <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+            <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 80, height: 80, objectFit: 'contain' }} />
             <span className="signup-logo-text">PaddleYard</span>
           </Link>
 

@@ -84,7 +84,7 @@ export default function LandingPage() {
       {/* Navigation Header */}
       <header className="header-container">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 44, height: 44, objectFit: 'contain' }} />
+          <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 88, height: 88, objectFit: 'contain' }} />
           <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em' }}>
             PaddleYard
           </span>
@@ -331,6 +331,137 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── System Ecosystem Section ── */}
+      <section id="ecosystem" className="ecosystem-section" style={{ borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '80px 48px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              The PaddleYard Ecosystem
+            </span>
+            <h2 style={{ fontSize: '36px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', marginTop: '8px', margin: '8px 0 0' }}>
+              A Unified Pickleball Experience
+            </h2>
+            <p style={{ fontSize: '15px', color: 'var(--color-text-secondary)', marginTop: '12px', maxWidth: '600px', margin: '12px auto 0', lineHeight: 1.6 }}>
+              Our platform bridges front desk kiosk checking, live open play queues, private bookings, and point ledgers in one seamless application.
+            </p>
+          </div>
+
+          <div className="ecosystem-grid">
+            {[
+              {
+                title: '📅 Court Reservation Hub',
+                desc: 'Browse court layouts and book single or multi-hour sessions with instant credit sync. Calculates member rates, VIP perks, and court type fees dynamically.',
+                pill: 'Bookings & Scheduling'
+              },
+               {
+                 title: '⚡ Paddle Stack Matchmaker',
+                 desc: 'Our collaborative open-play rotation engine. Just scan at the lobby, choose your skill bracket, and let the system handle match rotations and queue timers.',
+                 pill: 'Lobby Open Play Queue'
+               },
+              {
+                title: '📱 Lobby Kiosk & Check-in',
+                desc: 'Quick kiosk scan functionality. Players check in at the court lobby using their digital pass QR code. Automatically verifies accounts and enters active play pools.',
+                pill: 'Self-Serve Kiosks'
+              },
+              {
+                title: '💸 Credit Balance Ledger',
+                desc: 'Top up securely using GCash, Maya, or cash over the counter. Check past bookings and debits in a live transaction ledger that updates in real-time.',
+                pill: 'Secure PayMongo Wallet'
+              }
+            ].map((eco, idx) => (
+              <div key={idx} className="ecosystem-card">
+                <span className="ecosystem-badge">{eco.pill}</span>
+                <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--color-text-primary)', margin: '16px 0 8px' }}>{eco.title}</h3>
+                <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: 0 }}>{eco.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── YP Rewards Sneakpeek Section ── */}
+      <section id="rewards" className="rewards-section" style={{ background: 'var(--color-bg-primary)', padding: '80px 0', borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 48px' }} className="rewards-container">
+          {/* Left Text */}
+          <div className="rewards-left">
+            <span style={{ fontSize: '12px', fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              🎁 Yard Points (YP) Rewards System
+            </span>
+            <h2 style={{ fontSize: '36px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', marginTop: '8px', margin: '8px 0 0', lineHeight: 1.15 }}>
+              Play More. Win More.<br />Get Rewarded.
+            </h2>
+            <p style={{ fontSize: '15px', color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: '16px 0 24px', fontWeight: 500 }}>
+              Earn Yard Points automatically every time you step on a court! YP values scale based on your skill rating and match outcomes, which you can redeem for premium club awards.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {[
+                { title: '🎮 Play and Earn', desc: 'All open play matches award points. Winners get full points (up to 65 YP for Advanced), while losers earn a 15% participation share.' },
+                { title: '⚖️ Skill Level Multipliers', desc: 'Points scale automatically to reward performance across brackets: Advanced (65 YP), Intermediate (50 YP), and Novice (35 YP).' },
+                { title: '🛍️ Premium Rewards Catalog', desc: 'Turn your YP balance into free court bookings, VIP memberships, custom paddles, grips, drinks, or tournament passes.' }
+              ].map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>✓</div>
+                  <div>
+                    <h4 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>{item.title}</h4>
+                    <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '4px 0 0', lineHeight: 1.4 }}>{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Visual (Interactive Rewards Catalog Widget Mockup) */}
+          <div className="rewards-right">
+            <div className="rewards-mock-card">
+              {/* Card Header: YP Balance */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '16px', marginBottom: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 700 }}>MY YARD POINTS</div>
+                  <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--color-primary)', marginTop: '2px' }}>2,450 YP</div>
+                </div>
+                <div style={{ background: 'var(--color-primary-subtle)', color: 'var(--color-primary)', padding: '6px 12px', borderRadius: 'var(--radius-full)', fontSize: '11px', fontWeight: 800 }}>
+                  PRO RANK
+                </div>
+              </div>
+
+              {/* Progress Goal */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
+                  <span>Next Goal: Free Court Booking</span>
+                  <span>2,450 / 3,000 YP</span>
+                </div>
+                <div style={{ height: '8px', background: 'var(--color-border)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+                  <div style={{ width: '81.6%', height: '100%', background: 'linear-gradient(90deg, var(--color-primary), #10b981)', borderRadius: 'var(--radius-full)' }} />
+                </div>
+              </div>
+
+              {/* Catalog Items list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-disabled)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                  Unlocking Soon
+                </div>
+                {[
+                  { name: '1-Hour Private Court booking', cost: '1,000 YP', status: 'UNLOCKED', bg: '#ecfdf5', text: '#10b981' },
+                  { name: 'PaddleYard Premium Paddle Grip', cost: '350 YP', status: 'UNLOCKED', bg: '#ecfdf5', text: '#10b981' },
+                  { name: 'Free VIP Day Membership Pass', cost: '3,000 YP', status: '81% UNLOCKED', bg: 'var(--color-surface)', text: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }
+                ].map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', borderRadius: 'var(--radius-md)', background: item.status === 'UNLOCKED' ? 'var(--color-surface)' : 'rgba(0,0,0,0.01)', border: item.border || '1px solid var(--color-border)' }}>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-primary)' }}>{item.name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px', fontWeight: 650 }}>Cost: {item.cost}</div>
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 850, padding: '4px 8px', borderRadius: 'var(--radius-sm)', background: item.bg, color: item.text }}>
+                      {item.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Our Indoor Courts (Side Slider Carousel) */}
       <section id="courts" className="courts-showcase-section">
         <div className="courts-showcase-container">
@@ -530,7 +661,7 @@ export default function LandingPage() {
           {/* Logo & Description */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }} className="footer-info-col">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+              <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 72, height: 72, objectFit: 'contain' }} />
               <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-text-primary)' }}>
                 PickleYard
               </span>
@@ -621,7 +752,7 @@ export default function LandingPage() {
 
       <style>{`
         .header-container {
-          height: 80px;
+          height: 100px;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -655,7 +786,7 @@ export default function LandingPage() {
 
         .mobile-drawer {
           position: fixed;
-          top: 80px;
+          top: 100px;
           left: 0;
           width: 100%;
           background: var(--color-card);
@@ -1218,11 +1349,90 @@ export default function LandingPage() {
           border-color: var(--color-border-hover);
         }
 
+        /* Ecosystem styling */
+        .ecosystem-section {
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .ecosystem-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 32px;
+        }
+        .ecosystem-card {
+          background: var(--color-card);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-2xl);
+          padding: 32px;
+          box-shadow: var(--shadow-sm);
+          text-align: left;
+          transition: transform var(--duration-fast), box-shadow var(--duration-fast);
+        }
+        .ecosystem-card:hover {
+          transform: translateY(-4px);
+          box-shadow: var(--shadow-md);
+        }
+        .ecosystem-badge {
+          background: var(--color-primary-subtle);
+          color: var(--color-primary);
+          font-size: 10px;
+          font-weight: 800;
+          padding: 4px 10px;
+          border-radius: var(--radius-full);
+          border: 1px solid rgba(0, 124, 128, 0.15);
+        }
+
+        /* Rewards styling */
+        .rewards-container {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 60px;
+          align-items: center;
+        }
+        .rewards-left {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          text-align: left;
+        }
+        .rewards-right {
+          display: flex;
+          justify-content: flex-end;
+        }
+        .rewards-mock-card {
+          background: var(--color-card);
+          border: 1.5px solid var(--color-border);
+          border-radius: var(--radius-2xl);
+          padding: 32px;
+          box-shadow: var(--shadow-lg);
+          width: 100%;
+          max-width: 440px;
+          box-sizing: border-box;
+          text-align: left;
+        }
+
         /* ── Responsive ── */
         @media (max-width: 1024px) {
           .features-container-grid {
             grid-template-columns: repeat(2, 1fr);
             gap: 24px;
+          }
+          .ecosystem-grid {
+            grid-template-columns: 1fr;
+          }
+          .rewards-container {
+            grid-template-columns: 1fr;
+            gap: 40px;
+          }
+          .rewards-right {
+            justify-content: center;
+          }
+          .rewards-left {
+            align-items: center;
+            text-align: center;
+          }
+          .rewards-left h2, .rewards-left p {
+            text-align: center;
           }
           .hero-container {
             grid-template-columns: 1fr;
@@ -1260,6 +1470,10 @@ export default function LandingPage() {
         @media (max-width: 768px) {
           .header-container {
             padding: 0 24px;
+            height: 80px;
+          }
+          .mobile-drawer {
+            top: 80px;
           }
           .desktop-nav, .desktop-actions {
             display: none;
