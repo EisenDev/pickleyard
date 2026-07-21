@@ -825,8 +825,7 @@ export async function adminReserveCourtForOpenPlayAction(data: {
       const courtName = court ? court.name : `Court ${courtId.slice(-4)}`
 
       for (const startTime of resolvedTimes) {
-        const endTime = new Date(startTime)
-        endTime.setHours(startTime.getHours() + 1)
+        const endTime = new Date(startTime.getTime() + 3600000)
 
         // Check for conflicts
         const conflict = await db.booking.findFirst({
@@ -852,8 +851,7 @@ export async function adminReserveCourtForOpenPlayAction(data: {
     // Create reservation for each court and time slot
     for (const courtId of targetCourtIds) {
       for (const startTime of resolvedTimes) {
-        const endTime = new Date(startTime)
-        endTime.setHours(startTime.getHours() + 1)
+        const endTime = new Date(startTime.getTime() + 3600000)
 
         await db.booking.create({
           data: {

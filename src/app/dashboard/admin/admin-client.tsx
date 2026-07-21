@@ -577,17 +577,25 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     if (!recordWinnerModal || selectedWinners.length !== 2 || activeLoadingId) return
     setActiveLoadingId('recordwinner-' + recordWinnerModal.courtId)
     setIsPending(true)
-    const res = await recordMatchResultAction(recordWinnerModal.courtId, selectedWinners)
-    setIsPending(false)
-    setActiveLoadingId(null)
-    if (res.success) {
+    try {
+      const res = await recordMatchResultAction(recordWinnerModal.courtId, selectedWinners)
+      if (res.success) {
+        setRecordWinnerModal(null)
+        setConfirmRecord(false)
+        showNotice(true, `✅ Match result recorded! Yard Points awarded to all players.`)
+        await fetchRealtimeData()
+      } else {
+        showNotice(false, res.error || 'Failed to record result.')
+        setRecordWinnerModal(null)
+      }
+    } catch (err: any) {
+      console.error('Error recording match result:', err)
+      showNotice(false, err.message || 'An unexpected error occurred.')
       setRecordWinnerModal(null)
+    } finally {
+      setIsPending(false)
+      setActiveLoadingId(null)
       setConfirmRecord(false)
-      showNotice(true, `✅ Match result recorded! Yard Points awarded to all players.`)
-      fetchRealtimeData()
-    } else {
-      showNotice(false, res.error || 'Failed to record result.')
-      setRecordWinnerModal(null)
     }
   }
 
@@ -1853,8 +1861,15 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                 const isDisabled = !isSelected && selectedWinners.length >= 2
                 const skillColors: Record<string, string> = { NOVICE: '#10b981', INTERMEDIATE: '#f59e0b', ADVANCED: '#6366f1' }
                 const skillColor = skillColors[player.skillLevel] || '#6366f1'
-                const participationYP = player.skillLevel === 'ADVANCED' ? 50 : player.skillLevel === 'INTERMEDIATE' ? 35 : 20
-                const totalYP = isSelected ? participationYP + 15 : participationYP
+                
+                let totalYP = 35
+                if (player.skillLevel === 'ADVANCED') {
+                  totalYP = isSelected ? 65 : 10
+                } else if (player.skillLevel === 'INTERMEDIATE') {
+                  totalYP = isSelected ? 50 : 8
+                } else {
+                  totalYP = isSelected ? 35 : 5
+                }
 
                 return (
                   <button
@@ -1883,7 +1898,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                     </div>
                     <div style={{ fontSize: '12px', fontWeight: 800, color: isSelected ? '#f59e0b' : 'var(--color-text-secondary)', textAlign: 'right' }}>
                       <div>+{totalYP} YP</div>
-                      {isSelected && <div style={{ fontSize: '10px', color: '#10b981' }}>+15 WIN BONUS</div>}
+                      {isSelected && <div style={{ fontSize: '10px', color: '#10b981' }}>WINNER</div>}
                     </div>
                   </button>
                 )
@@ -1894,7 +1909,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
             {selectedWinners.length === 2 && !confirmRecord && (
               <div style={{ background: 'var(--color-success-subtle)', borderRadius: 'var(--radius-md)', padding: '12px 14px', border: '1px solid #bbf7d0' }}>
                 <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--color-success)' }}>
-                  ✅ Ready to record. All 4 players earn participation YP. Winners get +15 bonus.
+                  ✅ Ready to record. Winners get full points, losers get 15% participation YP.
                 </p>
               </div>
             )}

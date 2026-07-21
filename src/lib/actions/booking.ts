@@ -71,10 +71,16 @@ export async function createBookingsAction(
 
       // 3. Check for booking conflicts
       for (const startTime of startTimes) {
-        const endTime = new Date(startTime)
-        endTime.setHours(startTime.getHours() + 1)
+        const endTime = new Date(startTime.getTime() + 3600000)
 
-        const bookingHour = startTime.getHours()
+        const bookingHour = parseInt(
+          new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Manila',
+            hour: 'numeric',
+            hour12: false
+          }).format(startTime)
+        )
+
         if (bookingHour < startHour || bookingHour >= endHour) {
           throw new Error(`Selected booking slot is outside of operational hours (${startHour}:00 to ${endHour}:00).`)
         }
@@ -111,8 +117,7 @@ export async function createBookingsAction(
 
       // 5. Create reservation bookings
       for (const startTime of startTimes) {
-        const endTime = new Date(startTime)
-        endTime.setHours(startTime.getHours() + 1)
+        const endTime = new Date(startTime.getTime() + 3600000)
 
         const booking = await tx.booking.create({
           data: {
