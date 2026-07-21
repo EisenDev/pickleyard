@@ -32,7 +32,7 @@ export function ProfileClient({ user }: Props) {
   const skillLabel = user.duprRating >= 4.0 ? 'Advanced' : user.duprRating >= 3.0 ? 'Intermediate' : 'Novice'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: 820 }} className="animate-fade-up">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%' }} className="animate-fade-up">
       {/* Header */}
       <div>
         <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', margin: 0 }}>My Profile</h1>
@@ -42,7 +42,18 @@ export function ProfileClient({ user }: Props) {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', gap: '0' }}>
+      <div 
+        style={{ 
+          display: 'flex', 
+          borderBottom: '1px solid var(--color-border)', 
+          gap: '0',
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none'
+        }} 
+        className="profile-tabs-scroll"
+      >
         {([
           { id: 'info', label: 'Profile Information', icon: User },
           { id: 'membership', label: 'Membership', icon: Award },
@@ -57,7 +68,8 @@ export function ProfileClient({ user }: Props) {
               color: tab === t.id ? 'var(--color-primary)' : 'var(--color-text-secondary)',
               borderBottom: tab === t.id ? '2px solid var(--color-primary)' : '2px solid transparent',
               transition: 'all var(--duration-fast)',
-              display: 'flex', alignItems: 'center', gap: '6px'
+              display: 'flex', alignItems: 'center', gap: '6px',
+              flexShrink: 0
             }}
           >
             <t.icon size={14} />
@@ -68,7 +80,7 @@ export function ProfileClient({ user }: Props) {
 
       {/* Profile Info Tab */}
       {tab === 'info' && (
-        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '32px', boxShadow: 'var(--shadow-sm)' }}>
+        <div className="profile-card">
           {/* Avatar */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '32px' }}>
             <div style={{ position: 'relative' }}>
@@ -146,7 +158,7 @@ export function ProfileClient({ user }: Props) {
 
       {/* Membership Tab */}
       {tab === 'membership' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} className="profile-membership-panel">
           <div style={{
             background: 'linear-gradient(135deg, var(--color-primary) 0%, #005F63 100%)',
             borderRadius: 'var(--radius-xl)', padding: '32px', color: 'white',
@@ -191,7 +203,7 @@ export function ProfileClient({ user }: Props) {
 
       {/* Club ID Tab */}
       {tab === 'clubid' && (
-        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '32px', boxShadow: 'var(--shadow-sm)', maxWidth: 480, margin: '0 auto', width: '100%' }}>
+        <div className="profile-clubid-panel">
           <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', textAlign: 'center', marginBottom: '24px', margin: '0 0 24px' }}>
             PaddleYard Club ID Card
           </h3>
@@ -242,8 +254,42 @@ export function ProfileClient({ user }: Props) {
       )}
 
       <style>{`
+        .profile-tabs-scroll::-webkit-scrollbar {
+          display: none;
+        }
+        .profile-card {
+          background: var(--color-card);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-xl);
+          padding: 32px;
+          box-shadow: var(--shadow-sm);
+          max-width: 820px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .profile-membership-panel {
+          max-width: 820px;
+          width: 100%;
+        }
+        .profile-clubid-panel {
+          background: var(--color-card);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-xl);
+          padding: 32px;
+          box-shadow: var(--shadow-sm);
+          max-width: 480px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        @media (max-width: 768px) {
+          .profile-card, .profile-clubid-panel {
+            padding: 20px 16px;
+          }
+        }
         @media (max-width: 640px) {
-          .profile-fields-grid { grid-template-columns: 1fr !important; }
+          .profile-fields-grid { 
+            grid-template-columns: 1fr !important; 
+          }
         }
       `}</style>
     </div>

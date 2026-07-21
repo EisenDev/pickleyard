@@ -323,6 +323,11 @@ body {
   .sidebar-bottom-items {
     display: none !important;
   }
+  
+  :root {
+    --spacing-page-x: 16px;
+    --spacing-page-y: 16px;
+  }
 }
 
 
