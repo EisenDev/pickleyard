@@ -47,7 +47,7 @@ export default async function LedgerPage({ searchParams }: PageProps) {
   let stats = { day: 0, week: 0, month: 0, year: 0 }
   if (isAdminOrStaff) {
     const allTopups = await db.transaction.findMany({
-      where: { type: 'TOPUP' }
+      where: { type: { in: ['TOPUP', 'CASH_TOPUP'] } }
     })
 
     const now = new Date()
