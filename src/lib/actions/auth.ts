@@ -161,12 +161,10 @@ export async function signInAction(
       }
     })
 
-    try {
-      await sendLoginOtpEmail(emailNormalized, code)
-    } catch (err: any) {
-      console.error('Failed to send login OTP:', err)
-      return { success: false, error: 'Failed to send verification code. Please check SMTP settings.' }
-    }
+    // Send email in the background without holding up the user response!
+    sendLoginOtpEmail(emailNormalized, code).catch(err => {
+      console.error('Background login OTP send failed:', err)
+    })
 
     return { success: false, error: 'OTP_REQUIRED' }
   }
@@ -254,11 +252,12 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
         `
       }
 
-      try {
-        await transporter.sendMail(mailOptions)
-      } catch (err) {
-        console.warn('Failed to send signup OTP via SMTP (SMTP port probably blocked):', err)
-      }
+      // Send email in the background without holding up the user response!
+      transporter.sendMail(mailOptions).then(() => {
+        console.log(`Signup OTP email sent successfully to ${emailNormalized}`)
+      }).catch(err => {
+        console.warn('Background signup OTP send failed (SMTP port probably blocked):', err)
+      })
     } else {
       console.warn('SMTP credentials missing. Skipped sending email, printed code in logs.')
     }
