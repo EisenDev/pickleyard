@@ -72,13 +72,65 @@ export async function signUpAction(
   return { success: true }
 }
 
-async function sendLoginOtpEmail(email: string, code: string) {
-  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER
-  const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_PASS
+async function sendEmailViaResend(to: string, subject: string, html: string) {
+  const apiKey = process.env.RESEND_API_KEY
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
 
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY is not defined')
+  }
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      from: fromEmail,
+      to,
+      subject,
+      html,
+    }),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Resend API error: ${res.status} - ${errText}`)
+  }
+
+  const data = await res.json()
+  return data
+}
+
+async function sendLoginOtpEmail(email: string, code: string) {
   console.log('\n=============================================')
   console.log(`[PADDLEYARD LOGIN OTP] Code: ${code} for ${email}`)
   console.log('=============================================\n')
+
+  const html = `
+    <div style="font-family: sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 8px;">
+      <h2 style="color: #007C80; margin-bottom: 20px;">Admin/Staff Login Verification</h2>
+      <p>Please use the following 6-digit verification code to complete your login:</p>
+      <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; padding: 14px; background: #f0fdfa; color: #007C80; text-align: center; border-radius: 6px; margin: 24px 0; border: 1px solid #ccfbf1;">
+        ${code}
+      </div>
+      <p style="color: #666; font-size: 13px;">This code is valid for 15 minutes. If you did not request this login, you can safely ignore this email.</p>
+    </div>
+  `
+
+  if (process.env.RESEND_API_KEY) {
+    try {
+      await sendEmailViaResend(email, `Your PaddleYard Login Verification Code: ${code}`, html)
+      console.log(`[RESEND] Login OTP email successfully dispatched to ${email}`)
+      return
+    } catch (err) {
+      console.error('Failed to send login OTP via Resend:', err)
+    }
+  }
+
+  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER
+  const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_PASS
 
   if (smtpUser && smtpPass) {
     const transporter = nodemailer.createTransport({
@@ -97,16 +149,7 @@ async function sendLoginOtpEmail(email: string, code: string) {
       to: email,
       subject: `Your PaddleYard Login Verification Code: ${code}`,
       text: `Your PaddleYard verification code is: ${code}. This code is valid for 15 minutes.`,
-      html: `
-        <div style="font-family: sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 8px;">
-          <h2 style="color: #007C80; margin-bottom: 20px;">Admin/Staff Login Verification</h2>
-          <p>Please use the following 6-digit verification code to complete your login:</p>
-          <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; padding: 14px; background: #f0fdfa; color: #007C80; text-align: center; border-radius: 6px; margin: 24px 0; border: 1px solid #ccfbf1;">
-            ${code}
-          </div>
-          <p style="color: #666; font-size: 13px;">This code is valid for 15 minutes. If you did not request this login, you can safely ignore this email.</p>
-        </div>
-      `
+      html
     }
 
     try {
@@ -220,46 +263,57 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
     console.log(`[PADDLEYARD SIGNUP OTP] Code: ${code} for ${emailNormalized}`)
     console.log('=============================================\n')
 
-    const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER
-    const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_PASS
+    const htmlContent = `
+      <div style="font-family: sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #007C80; margin-bottom: 20px;">Verify your email address</h2>
+        <p>Welcome to PaddleYard! Please verify your email by entering the 6-digit code below on the signup page:</p>
+        <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; padding: 14px; background: #f0fdfa; color: #007C80; text-align: center; border-radius: 6px; margin: 24px 0; border: 1px solid #ccfbf1;">
+          ${code}
+        </div>
+        <p style="color: #666; font-size: 13px;">This code is valid for 15 minutes. If you did not request this code, you can safely ignore this email.</p>
+      </div>
+    `
 
-    if (smtpUser && smtpPass) {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: smtpUser,
-          pass: smtpPass
-        },
-        connectionTimeout: 4000,
-        greetingTimeout: 4000,
-        socketTimeout: 6000
-      })
-
-      const mailOptions = {
-        from: `"PaddleYard" <${smtpUser}>`,
-        to: emailNormalized,
-        subject: `Your PaddleYard Verification Code: ${code}`,
-        text: `Your PaddleYard verification code is: ${code}. This code is valid for 15 minutes.`,
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 8px;">
-            <h2 style="color: #007C80; margin-bottom: 20px;">Verify your email address</h2>
-            <p>Welcome to PaddleYard! Please verify your email by entering the 6-digit code below on the signup page:</p>
-            <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; padding: 14px; background: #f0fdfa; color: #007C80; text-align: center; border-radius: 6px; margin: 24px 0; border: 1px solid #ccfbf1;">
-              ${code}
-            </div>
-            <p style="color: #666; font-size: 13px;">This code is valid for 15 minutes. If you did not request this code, you can safely ignore this email.</p>
-          </div>
-        `
-      }
-
+    if (process.env.RESEND_API_KEY) {
       // Send email in the background without holding up the user response!
-      transporter.sendMail(mailOptions).then(() => {
-        console.log(`Signup OTP email sent successfully to ${emailNormalized}`)
+      sendEmailViaResend(emailNormalized, `Your PaddleYard Verification Code: ${code}`, htmlContent).then(() => {
+        console.log(`[RESEND] Signup OTP email sent successfully to ${emailNormalized}`)
       }).catch(err => {
-        console.warn('Background signup OTP send failed (SMTP port probably blocked):', err)
+        console.warn('Background signup OTP send failed via Resend:', err)
       })
     } else {
-      console.warn('SMTP credentials missing. Skipped sending email, printed code in logs.')
+      const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER
+      const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_PASS
+
+      if (smtpUser && smtpPass) {
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: smtpUser,
+            pass: smtpPass
+          },
+          connectionTimeout: 4000,
+          greetingTimeout: 4000,
+          socketTimeout: 6000
+        })
+
+        const mailOptions = {
+          from: `"PaddleYard" <${smtpUser}>`,
+          to: emailNormalized,
+          subject: `Your PaddleYard Verification Code: ${code}`,
+          text: `Your PaddleYard verification code is: ${code}. This code is valid for 15 minutes.`,
+          html: htmlContent
+        }
+
+        // Send email in the background without holding up the user response!
+        transporter.sendMail(mailOptions).then(() => {
+          console.log(`Signup OTP email sent successfully to ${emailNormalized}`)
+        }).catch(err => {
+          console.warn('Background signup OTP send failed (SMTP port probably blocked):', err)
+        })
+      } else {
+        console.warn('SMTP credentials missing. Skipped sending email, printed code in logs.')
+      }
     }
 
     return { success: true }
