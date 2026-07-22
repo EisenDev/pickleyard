@@ -124,58 +124,60 @@ export default function LandingPage() {
     <div style={{ background: 'var(--color-bg-primary)', minHeight: '100vh', overflowX: 'hidden' }}>
       {/* Navigation Header */}
       <header className={`header-container ${scrolled ? 'scrolled' : ''}`}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: '50%' }} />
-          <span className="logo-text" style={{ fontSize: 20, fontWeight: 800, color: 'inherit', letterSpacing: '-0.02em', paddingLeft: '2px' }}>
-            PaddleYard
-          </span>
-        </div>
+        <div className="header-inner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: '50%' }} />
+            <span className="logo-text" style={{ fontSize: 20, fontWeight: 800, color: 'inherit', letterSpacing: '-0.02em', paddingLeft: '2px' }}>
+              PaddleYard
+            </span>
+          </div>
 
-        {/* Desktop Nav Links */}
-        <nav className="desktop-nav">
-          <Link href="#courts" className="nav-link">Courts</Link>
-          <Link href="#features" className="nav-link">Why PaddleYard</Link>
-          <Link href="#how-it-works" className="nav-link">How It Works</Link>
-        </nav>
+          {/* Desktop Nav Links */}
+          <nav className="desktop-nav">
+            <Link href="#courts" className="nav-link">Courts</Link>
+            <Link href="#features" className="nav-link">Why PaddleYard</Link>
+            <Link href="#how-it-works" className="nav-link">How It Works</Link>
+          </nav>
 
-        {/* Desktop Actions */}
-        <div className="desktop-actions">
-          {session ? (
-            <Link href="/dashboard" className="get-started-btn">
-              Go to Dashboard
-            </Link>
-          ) : (
-            <>
-              <button
-                onClick={() => setIsSignInOpen(true)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  fontSize: 14,
-                  color: 'inherit',
-                  cursor: 'pointer',
-                  fontWeight: 650,
-                  transition: 'color var(--duration-fast)'
-                }}
-                className="login-btn-link"
-              >
-                Log in
-              </button>
-              <Link href="/signup" className="get-started-btn">
-                Book a Court
+          {/* Desktop Actions */}
+          <div className="desktop-actions">
+            {session ? (
+              <Link href="/dashboard" className="get-started-btn">
+                Go to Dashboard
               </Link>
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setIsSignInOpen(true)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    fontSize: 14,
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    fontWeight: 650,
+                    transition: 'color var(--duration-fast)'
+                  }}
+                  className="login-btn-link"
+                >
+                  Log in
+                </button>
+                <Link href="/signup" className="get-started-btn">
+                  Book a Court
+                </Link>
+              </>
+            )}
+          </div>
 
-        {/* Mobile Menu Trigger */}
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="mobile-menu-trigger"
-          aria-label="Toggle navigation menu"
-        >
-          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+          {/* Mobile Menu Trigger */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="mobile-menu-trigger"
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </header>
 
       {/* Mobile Drawer Navigation */}
@@ -722,13 +724,15 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Title & Desc */}
-              <h3 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-primary)', margin: '14px 0 4px' }}>
-                {item.title}
-              </h3>
-              <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.4, margin: 0 }}>
-                {item.desc}
-              </p>
+              {/* Title & Desc Container */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'inherit', textAlign: 'inherit', flex: 1 }}>
+                <h3 className="stepper-step-title" style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
+                  {item.title}
+                </h3>
+                <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.4, margin: 0 }}>
+                  {item.desc}
+                </p>
+              </div>
             </div>
           ))}
         </div>
@@ -858,13 +862,21 @@ export default function LandingPage() {
           height: 80px;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          padding: 0 64px;
           z-index: 500;
           background: transparent;
           border-bottom: 1px solid transparent;
           color: white;
           transition: all 0.3s ease;
+        }
+
+        .header-inner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 0 48px;
         }
 
         .header-container.scrolled {
@@ -948,6 +960,10 @@ export default function LandingPage() {
         }
         .nav-link:hover {
           color: var(--color-text-primary);
+        }
+
+        .stepper-step-title {
+          margin: 14px 0 4px;
         }
 
         .nav-link-mobile {
@@ -1464,15 +1480,29 @@ export default function LandingPage() {
             text-align: left !important;
             gap: 16px !important;
           }
+          .stepper-step-title {
+            margin: 2px 0 4px !important;
+          }
         }
 
         @media (max-width: 768px) {
           .header-container {
-            padding: 0 24px;
             height: 72px;
+          }
+          .header-inner {
+            padding: 0 24px;
           }
           .header-container.scrolled {
             height: 56px;
+          }
+          .desktop-nav {
+            display: none !important;
+          }
+          .desktop-actions {
+            display: none !important;
+          }
+          .mobile-menu-trigger {
+            display: block !important;
           }
           .mobile-drawer {
             top: 72px;
