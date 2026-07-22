@@ -14,7 +14,12 @@ import {
   X,
   MapPin,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Users,
+  QrCode,
+  Sparkles,
+  Trophy,
+  Award
 } from 'lucide-react'
 
 // Isolated component so useSearchParams doesn't block static prerendering of LandingPage
@@ -210,46 +215,47 @@ export default function LandingPage() {
           {/* Left Hero Content */}
           <div className="hero-left-content animate-fade-up">
             <div className="badge-courts">
-              <span className="badge-courts-dot" />
-              <span>INDOOR COURTS. ALL DAY.</span>
+              <span className="badge-courts-dot" style={{ background: '#10B981' }} />
+              <span>• INDOOR COURTS. ALL DAY.</span>
             </div>
 
-            <h1 className="hero-title">
-              Book Your<br />
-              Pickleball Court<br />
-              <span className="title-accent-success">Play More.</span>
+            <h1 className="hero-title" style={{ fontSize: '56px', fontWeight: 900, lineHeight: 1.08, letterSpacing: '-0.025em' }}>
+              Less Waiting.<br />
+              <span style={{ color: 'var(--color-primary)' }}>More Playing.</span>
             </h1>
 
             <p className="hero-subtitle">
-              Premium indoor pickleball courts. Easy booking. Real-time availability.
+              Premium indoor pickleball courts. Easy booking, real-time queues, and a better way to play.
             </p>
 
-            <div className="hero-actions">
+            <div className="hero-actions" style={{ marginTop: '4px' }}>
               {session ? (
                 <>
-                  <Link href="/dashboard/bookings" className="get-started-btn hero-cta-btn">
-                    Book a Court 📅
+                  <Link href="/dashboard/bookings" className="get-started-btn hero-cta-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+                    <span>Book a Court</span>
+                    <Calendar size={15} />
                   </Link>
-                  <Link href="/dashboard/bookings" className="sec-btn hero-cta-btn">
+                  <Link href="/dashboard/bookings" className="sec-btn hero-cta-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
                     <span>View Courts</span>
-                    <MapPin size={14} style={{ marginLeft: 6 }} />
+                    <MapPin size={15} />
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link href="/signup" className="get-started-btn hero-cta-btn">
-                    Book a Court 📅
+                  <Link href="/signup" className="get-started-btn hero-cta-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+                    <span>Book a Court</span>
+                    <Calendar size={15} />
                   </Link>
-                  <button className="sec-btn hero-cta-btn" onClick={() => setIsSignInOpen(true)}>
+                  <button className="sec-btn hero-cta-btn" onClick={() => setIsSignInOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                     <span>View Courts</span>
-                    <MapPin size={14} style={{ marginLeft: 6 }} />
+                    <MapPin size={15} />
                   </button>
                 </>
               )}
             </div>
 
             {/* Rating Stars proof */}
-            <div className="user-proof">
+            <div className="user-proof" style={{ marginTop: '4px' }}>
               <div className="avatars-row">
                 <span className="avatar-circle" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&fit=crop&q=60)' }}></span>
                 <span className="avatar-circle" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&fit=crop&q=60)' }}></span>
@@ -257,13 +263,36 @@ export default function LandingPage() {
                 <span className="avatar-circle" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&fit=crop&q=60)' }}></span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>★★★★★</span>
-                <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 600 }}>Trusted by 500+ players</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', letterSpacing: '0.05em' }}>★★★★★</span>
+                <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 650 }}>Trusted by players who love the game.</span>
               </div>
+            </div>
+
+            {/* Bottom row feature tags */}
+            <div className="hero-features-flex" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '16px' }}>
+              {[
+                { label: 'Live Queue', icon: Users },
+                { label: 'QR Check-In', icon: QrCode },
+                { label: 'Smart Assignment', icon: Sparkles },
+                { label: 'Rewards', icon: Trophy },
+                { label: 'Real-Time Booking', icon: Clock }
+              ].map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '90px', textAlign: 'center' }}>
+                  <div style={{
+                    width: '42px', height: '42px', borderRadius: '50%',
+                    background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--color-primary)'
+                  }}>
+                    <item.icon size={16} />
+                  </div>
+                  <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-text-primary)' }}>{item.label}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Right Hero / Visual Image (Bigger Pickleball Court Image) */}
+          {/* Right Hero / Immersive visual image spanning 60-70% */}
           <div className="hero-right-visual animate-fade-up">
             <div 
               className="court-visual-canvas" 
@@ -272,42 +301,79 @@ export default function LandingPage() {
                 backgroundSize: 'cover', 
                 backgroundPosition: 'center',
                 position: 'relative',
-                borderRadius: 'var(--radius-xl)',
+                width: '100%',
+                borderRadius: 'var(--radius-2xl)',
                 overflow: 'hidden',
-                boxShadow: 'var(--shadow-lg)'
+                boxShadow: 'var(--shadow-xl)',
+                border: '1px solid var(--color-border)'
               }}
             >
-              {/* Floating Active Next Available Card Mockup */}
-              <div className="hero-card next-available-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="badge-pill">
-                    <span className="pulse-dot" />
-                    <span>NEXT AVAILABLE</span>
-                  </span>
+              {/* Fade layer merging photograph into left side page background */}
+              <div style={{
+                position: 'absolute', top: 0, left: 0, bottom: 0, width: '40%',
+                background: 'linear-gradient(to right, var(--color-bg-primary) 0%, rgba(247, 249, 249, 0.8) 40%, rgba(247, 249, 249, 0) 100%)',
+                zIndex: 15, pointerEvents: 'none'
+              }} className="hero-gradient-overlay" />
+
+              {/* Floating Card 1: NEXT UP (Top Right) */}
+              <div style={{
+                position: 'absolute', top: '24px', right: '24px',
+                background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255, 255, 255, 0.4)', borderRadius: '12px',
+                padding: '16px', width: '190px', boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                zIndex: 30
+              }} className="float-card-next">
+                <span style={{ fontSize: '9px', fontWeight: 850, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>NEXT UP</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                  <strong style={{ fontSize: '13px', color: 'var(--color-text-primary)' }}>Court 3</strong>
+                  <span style={{ fontSize: '9px', fontWeight: 800, background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px' }}>OPEN PLAY</span>
                 </div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12 }}>
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--color-text-primary)' }}>
-                      Today, May 25
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', marginTop: 2 }}>
-                      6:00 PM – 7:00 PM
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--color-text-disabled)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <MapPin size={10} />
-                      <span>Court 2</span>
-                    </div>
-                  </div>
+                <div style={{ marginTop: '12px' }}>
+                  <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>Start in</span>
+                  <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--color-text-primary)', marginTop: '2px' }}>05:30</div>
                 </div>
-                {session ? (
-                  <Link href="/dashboard/bookings" className="book-now-floating-btn">
-                    Book Now
-                  </Link>
-                ) : (
-                  <button onClick={() => setIsSignInOpen(true)} className="book-now-floating-btn">
-                    Book Now
-                  </button>
-                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid rgba(0,0,0,0.05)', fontSize: '10px', color: 'var(--color-text-secondary)' }}>
+                  <span>Your position</span>
+                  <strong style={{ color: 'var(--color-text-primary)' }}>#2</strong>
+                </div>
+              </div>
+
+              {/* Floating Card 2: TODAY SLOT BOOKINGS (Bottom Right) */}
+              <div style={{
+                position: 'absolute', bottom: '24px', right: '24px',
+                background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255, 255, 255, 0.4)', borderRadius: '12px',
+                padding: '16px', width: '230px', boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                zIndex: 30
+              }} className="float-card-slots">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '6px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '9px', fontWeight: 850, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>TODAY</span>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-primary)' }}>May 25, 2026</span>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+                  {[
+                    { time: '06:00 PM – 07:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' },
+                    { time: '07:00 PM – 08:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' },
+                    { time: '08:00 PM – 09:00 PM', status: 'Filling Fast', color: '#f59e0b', bg: '#fffbeb' },
+                    { time: '09:00 PM – 10:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' }
+                  ].map((s, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10.5px' }}>
+                      <span style={{ color: 'var(--color-text-secondary)' }}>{s.time}</span>
+                      <span style={{ fontSize: '8.5px', fontWeight: 800, background: s.bg, color: s.color, padding: '2px 5px', borderRadius: '4px' }}>{s.status}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <Link href={session ? "/dashboard/bookings" : "/signup"} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  height: '32px', background: 'var(--color-primary)', color: 'white',
+                  borderRadius: '6px', fontSize: '11px', fontWeight: 800, textDecoration: 'none',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <span>Book Now</span>
+                  <span>→</span>
+                </Link>
               </div>
             </div>
           </div>
@@ -620,49 +686,61 @@ export default function LandingPage() {
       </section>
 
       {/* How it Works Section */}
-      <section id="how-it-works" className="how-section">
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <section id="how-it-works" className="how-section" style={{ background: 'var(--color-bg-primary)', borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             How It Works
           </span>
-          <h2 style={{ fontSize: 32, fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', marginTop: '8px', margin: '8px 0 0' }}>
-            Book in 3 Simple Steps
+          <h2 style={{ fontSize: '32px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', marginTop: '8px', margin: '8px 0 0' }}>
+            Book & Play in 6 Easy Steps
           </h2>
         </div>
 
-        <div className="steps-container-grid">
+        <div className="stepper-horizontal-wrapper" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
+          {/* Dashboard Connector Line (Dashed) */}
+          <div className="stepper-line-track" style={{
+            position: 'absolute', top: '24px', left: '4%', right: '4%', height: '2px',
+            borderTop: '2px dashed var(--color-border)', zIndex: 1
+          }} />
+
           {[
-            {
-              step: '1',
-              title: 'Choose a Court',
-              desc: 'Pick your preferred indoor court.',
-              icon: Calendar
-            },
-            {
-              step: '2',
-              title: 'Pick a Time',
-              desc: 'Select the date and time you want.',
-              icon: Clock
-            },
-            {
-              step: '3',
-              title: 'Book & Play',
-              desc: 'Confirm, pay, and you\'re all set!',
-              icon: CreditCard
-            }
+            { step: '1', title: 'Book a Court', desc: 'Choose your date, time, and court.', icon: Calendar },
+            { step: '2', title: 'Check In', desc: 'Scan the QR code at the venue.', icon: QrCode },
+            { step: '3', title: 'Join the Queue', desc: 'Enter the open play queue or lobby.', icon: Users },
+            { step: '4', title: 'Get Assigned', desc: "We'll assign you to the next available court.", icon: Sparkles },
+            { step: '5', title: 'Play & Enjoy', desc: 'Play your match and have fun!', icon: Trophy },
+            { step: '6', title: 'Earn Rewards', desc: 'Earn points and redeem exciting rewards.', icon: Award }
           ].map((item, idx) => (
-            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '20px' }} className="step-arrow-wrapper">
-              <div className="step-card">
-                <div className="step-icon-badge">
-                  <item.icon size={20} />
-                  <div className="step-number-pill">{item.step}</div>
+            <div key={idx} className="stepper-step-node" style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              width: '15%', minWidth: '120px', zIndex: 5, textAlign: 'center'
+            }}>
+              {/* Stepper Node Circle */}
+              <div style={{
+                position: 'relative', width: '48px', height: '48px', borderRadius: '50%',
+                background: 'var(--color-card)', border: '2.5px solid var(--color-border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--color-primary)', boxShadow: 'var(--shadow-sm)'
+              }}>
+                <item.icon size={16} />
+                <div style={{
+                  position: 'absolute', top: '-6px', right: '-6px',
+                  width: '16px', height: '16px', borderRadius: '50%',
+                  background: 'var(--color-primary)', color: 'white',
+                  fontSize: '9px', fontWeight: 900, display: 'flex',
+                  alignItems: 'center', justifyContent: 'center'
+                }} className="stepper-number-badge">
+                  {item.step}
                 </div>
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--color-text-primary)', margin: '14px 0 4px 0' }}>{item.title}</h3>
-                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.4, margin: 0 }}>{item.desc}</p>
               </div>
-              {idx < 2 && (
-                <span className="step-arrow">→</span>
-              )}
+
+              {/* Title & Desc */}
+              <h3 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-primary)', margin: '14px 0 4px' }}>
+                {item.title}
+              </h3>
+              <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.4, margin: 0 }}>
+                {item.desc}
+              </p>
             </div>
           ))}
         </div>
@@ -789,8 +867,8 @@ export default function LandingPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0 48px;
-          max-width: 1280px;
+          padding: 0 64px;
+          max-width: 1440px;
           margin: 0 auto;
           position: relative;
           z-index: 50;
@@ -891,24 +969,24 @@ export default function LandingPage() {
         /* Hero Layout */
         .hero-section {
           background-color: var(--color-bg-primary);
-          min-height: 80vh;
+          min-height: 85vh;
           display: flex;
           align-items: center;
-          padding-top: 60px;
-          padding-bottom: 80px;
+          padding-top: 40px;
+          padding-bottom: 60px;
           position: relative;
           overflow: hidden;
           border-bottom: 1px solid var(--color-border);
         }
 
         .hero-container {
-          max-width: 1280px;
+          max-width: 1440px;
           margin: 0 auto;
-          padding: 0 48px;
+          padding: 0 64px;
           width: 100%;
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 60px;
+          grid-template-columns: 1.15fr 1.4fr;
+          gap: 48px;
           align-items: center;
           position: relative;
           z-index: 10;
@@ -917,7 +995,7 @@ export default function LandingPage() {
         .hero-left-content {
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 20px;
           position: relative;
           z-index: 10;
         }
@@ -945,10 +1023,10 @@ export default function LandingPage() {
         }
 
         .hero-title {
-          font-size: 58px;
-          font-weight: 800;
+          font-size: 56px;
+          font-weight: 900;
           color: var(--color-text-primary);
-          line-height: 1.1;
+          line-height: 1.08;
           letter-spacing: -0.025em;
           text-align: left;
           margin: 0;
@@ -977,9 +1055,9 @@ export default function LandingPage() {
           display: flex;
           align-items: center;
           gap: 16px;
-          margin-top: 12px;
+          margin-top: 8px;
           border-top: 1px solid var(--color-border);
-          padding-top: 24px;
+          padding-top: 20px;
           max-width: 440px;
         }
         .avatars-row {
@@ -1004,406 +1082,86 @@ export default function LandingPage() {
           display: flex;
           justify-content: flex-end;
           position: relative;
+          width: 100%;
         }
         .court-visual-canvas {
           position: relative;
           width: 100%;
-          aspect-ratio: 4/3;
+          aspect-ratio: 16/10;
           border: 1px solid var(--color-border);
           border-radius: var(--radius-2xl);
-          box-shadow: var(--shadow-lg);
+          box-shadow: var(--shadow-xl);
           overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
-        .next-available-card {
-          position: absolute;
-          bottom: 24px;
-          left: 24px;
-          padding: 24px;
-          width: 250px;
-          display: flex;
-          flex-direction: column;
-          background: var(--color-card);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-xl);
-          box-shadow: var(--shadow-xl);
-          z-index: 20;
-          box-sizing: border-box;
-          animation: float-animation 6s ease-in-out infinite;
-        }
-        @keyframes float-animation {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-8px); }
-        }
-
-        .badge-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          background: #ecfdf5;
-          color: #10b981;
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 0.08em;
-          padding: 4px 10px;
-          border-radius: var(--radius-full);
-          border: 1px solid rgba(16, 185, 129, 0.15);
-        }
-        .pulse-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: var(--radius-full);
-          background: #10b981;
-          animation: pulse-glow 1.5s infinite;
-        }
-        @keyframes pulse-glow {
-          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-          70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
-          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
-
-        .book-now-floating-btn {
-          width: 100%;
-          height: 38px;
-          background: var(--color-text-primary);
-          border: none;
-          border-radius: var(--radius-md);
-          font-size: 13px;
-          font-weight: 700;
-          color: white;
-          cursor: pointer;
-          margin-top: 14px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-decoration: none;
-          transition: background var(--duration-fast);
-        }
-        .book-now-floating-btn:hover {
-          background: #000000 !important;
-        }
-
-        /* Features */
+        /* Features Section */
         .features-section {
-          max-width: 1280px;
-          margin: 0 auto;
-          padding: 40px 48px;
+          padding: 80px 0;
+          background: var(--color-bg-primary);
+          border-bottom: 1px solid var(--color-border);
         }
         .features-container-grid {
+          max-width: 1440px;
+          margin: 0 auto;
+          padding: 0 64px;
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 24px;
-          background: var(--color-card);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-2xl);
-          padding: 40px;
-          box-shadow: var(--shadow-sm);
+          gap: 32px;
         }
         .feature-item-card {
+          background: var(--color-card);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-xl);
+          padding: 28px 24px;
+          box-shadow: var(--shadow-sm);
           display: flex;
           flex-direction: column;
           gap: 12px;
-          text-align: center;
-          align-items: center;
+          transition: transform var(--duration-fast), box-shadow var(--duration-fast);
+        }
+        .feature-item-card:hover {
+          transform: translateY(-4px);
+          box-shadow: var(--shadow-md);
         }
         .feature-icon-wrapper {
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          background: #ecfdf5;
-          color: #10b981;
+          width: 44px;
+          height: 44px;
+          border-radius: var(--radius-lg);
+          background: var(--color-primary-subtle);
+          color: var(--color-primary);
           display: flex;
           align-items: center;
           justify-content: center;
+          margin-bottom: 4px;
         }
 
-        /* Showcase Section */
-        .courts-showcase-section {
-          max-width: 1280px;
-          margin: 0 auto;
-          padding: 80px 48px;
-        }
-        .courts-showcase-container {
-          display: grid;
-          grid-template-columns: 1fr 1.8fr;
-          gap: 60px;
-          align-items: center;
-        }
-        .courts-showcase-left {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-          text-align: left;
-        }
-        .courts-showcase-title {
-          font-size: 38px;
-          font-weight: 800;
-          color: var(--color-text-primary);
-          line-height: 1.15;
-          letter-spacing: -0.02em;
-          margin: 0;
-        }
-        .courts-showcase-desc {
-          font-size: 15px;
-          color: var(--color-text-secondary);
-          line-height: 1.6;
-          margin: 0;
-          font-weight: 500;
-        }
-        .courts-showcase-list {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .courts-showcase-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-size: 14px;
-          font-weight: 700;
-          color: var(--color-text-primary);
-        }
-        .explore-btn {
-          align-self: flex-start;
-          background: var(--color-text-primary);
-          color: white;
-          padding: 12px 24px;
-          font-size: 13px;
-          font-weight: 700;
-          border-radius: var(--radius-md);
-          text-decoration: none;
-          transition: background var(--duration-fast);
-        }
-        .explore-btn:hover {
-          background: #000000;
-        }
-
-        .showcase-card {
-          background: var(--color-card);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-xl);
-          overflow: hidden;
-          box-shadow: var(--shadow-sm);
-          display: flex;
-          flex-direction: column;
-        }
-        .showcase-img-container {
-          position: relative;
-          width: 100%;
-          aspect-ratio: 16/10;
-          overflow: hidden;
-        }
-        .showcase-img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          transition: transform var(--duration-normal);
-        }
-        .showcase-card:hover .showcase-img {
-          transform: scale(1.04);
-        }
-        .showcase-number {
-          position: absolute;
-          top: 12px;
-          left: 16px;
-          font-size: 64px;
-          font-weight: 800;
-          color: #10b981;
-          line-height: 1;
-        }
-        .showcase-footer {
-          padding: 14px;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          text-align: left;
-          border-top: 1px solid var(--color-border);
-        }
-
-        .carousel-nav-btn:hover:not(:disabled) {
-          background: var(--color-primary-subtle) !important;
-          color: var(--color-primary) !important;
-          border-color: var(--color-primary-muted) !important;
-        }
-
-        /* How it works */
-        .how-section {
-          max-width: 1280px;
-          margin: 0 auto;
-          padding: 80px 48px;
-        }
-        .steps-container-grid {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
-        }
-        .step-arrow-wrapper {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          flex: 1;
-          justify-content: center;
-        }
-        .step-card {
-          background: var(--color-card);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-xl);
-          padding: 28px;
-          width: 100%;
-          max-width: 280px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-          box-shadow: var(--shadow-sm);
-          box-sizing: border-box;
-        }
-        .step-icon-badge {
-          position: relative;
-          width: 56px;
-          height: 56px;
-          border-radius: 50%;
-          background: #ecfdf5;
-          color: #10b981;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .step-number-pill {
-          position: absolute;
-          top: -4px;
-          right: -4px;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: #10b981;
-          color: white;
-          font-size: 11px;
-          font-weight: 800;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 2px solid var(--color-card);
-        }
-        .step-arrow {
-          font-size: 24px;
-          color: var(--color-text-disabled);
-          font-weight: 700;
-        }
-
-        /* CTA Ready Banner */
-        .cta-banner-section {
-          max-width: 1280px;
-          margin: 0 auto;
-          padding: 0 48px 80px 48px;
-          box-sizing: border-box;
-        }
-        .cta-banner-container {
-          background: var(--color-card);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-2xl);
-          padding: 32px 48px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          box-shadow: var(--shadow-md);
-          box-sizing: border-box;
-        }
-        .paddle-ball-badge {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          background: #ecfdf5;
-          color: #10b981;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-        .banner-cta-button {
-          background: var(--color-text-primary);
-          color: white;
-          padding: 12px 24px;
-          font-size: 13px;
-          font-weight: 700;
-          border-radius: var(--radius-md);
-          text-decoration: none;
-          transition: background var(--duration-fast);
-          display: inline-flex;
-          align-items: center;
-          white-space: nowrap;
-        }
-        .banner-cta-button:hover {
-          background: #000000;
-        }
-
-        /* Footer */
-        .footer-section {
-          background: var(--color-card);
-          border-top: 1px solid var(--color-border);
-          padding: 80px 48px 40px;
-        }
-        .footer-grid {
-          max-width: 1280px;
-          margin: 0 auto;
-          display: grid;
-          grid-template-columns: 1.5fr 1fr 1fr 1fr;
-          gap: 40px;
-        }
-        .footer-link {
-          text-decoration: none;
-          color: var(--color-text-secondary);
-          transition: color var(--duration-fast);
-          text-align: left;
-        }
-        .footer-link:hover {
-          color: var(--color-text-primary);
-        }
-        .social-icon {
-          width: 32px;
-          height: 32px;
-          border-radius: var(--radius-full);
-          border: 1px solid var(--color-border);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: var(--color-text-secondary);
-          transition: all var(--duration-fast);
-        }
-        .social-icon:hover {
-          color: var(--color-text-primary);
-          border-color: var(--color-border-hover);
-        }
-
-        /* Ecosystem styling */
+        /* Ecosystem Section */
         .ecosystem-section {
-          width: 100%;
-          box-sizing: border-box;
+          border-top: 1px solid var(--color-border);
+          border-bottom: 1px solid var(--color-border);
+          background: var(--color-surface);
         }
         .ecosystem-grid {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: 1fr 1fr;
           gap: 32px;
         }
         .ecosystem-card {
           background: var(--color-card);
           border: 1px solid var(--color-border);
-          border-radius: var(--radius-2xl);
+          border-radius: var(--radius-xl);
           padding: 32px;
           box-shadow: var(--shadow-sm);
-          text-align: left;
-          transition: transform var(--duration-fast), box-shadow var(--duration-fast);
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          transition: transform var(--duration-fast);
         }
         .ecosystem-card:hover {
-          transform: translateY(-4px);
-          box-shadow: var(--shadow-md);
+          transform: translateY(-2px);
         }
         .ecosystem-badge {
           background: var(--color-primary-subtle);
@@ -1412,43 +1170,311 @@ export default function LandingPage() {
           font-weight: 800;
           padding: 4px 10px;
           border-radius: var(--radius-full);
-          border: 1px solid rgba(0, 124, 128, 0.15);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
-        /* Rewards styling */
+        /* Rewards Catalog Preview */
         .rewards-container {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 60px;
+          gap: 80px;
           align-items: center;
         }
         .rewards-left {
           display: flex;
           flex-direction: column;
-          gap: 20px;
-          text-align: left;
+          align-items: flex-start;
         }
         .rewards-right {
           display: flex;
           justify-content: flex-end;
+          width: 100%;
         }
         .rewards-mock-card {
           background: var(--color-card);
-          border: 1.5px solid var(--color-border);
+          border: 1px solid var(--color-border);
           border-radius: var(--radius-2xl);
           padding: 32px;
           box-shadow: var(--shadow-lg);
-          width: 100%;
           max-width: 440px;
+          width: 100%;
           box-sizing: border-box;
-          text-align: left;
         }
 
-        /* ── Responsive ── */
-        @media (max-width: 1024px) {
+        /* Showcase Section */
+        .courts-showcase-section {
+          padding: 80px 0;
+          background: var(--color-surface);
+          border-bottom: 1px solid var(--color-border);
+        }
+        .courts-showcase-container {
+          max-width: 1440px;
+          margin: 0 auto;
+          padding: 0 64px;
+          display: grid;
+          grid-template-columns: 1fr 1.6fr;
+          gap: 80px;
+          align-items: center;
+        }
+        .courts-showcase-left {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          text-align: left;
+        }
+        .courts-showcase-title {
+          font-size: 36px;
+          font-weight: 800;
+          color: var(--color-text-primary);
+          letter-spacing: -0.025em;
+          margin: 0 0 16px;
+          line-height: 1.15;
+        }
+        .courts-showcase-desc {
+          fontSize: 15px;
+          color: var(--color-text-secondary);
+          line-height: 1.6;
+          margin: 0 0 32px;
+          font-weight: 500;
+        }
+        .courts-showcase-list {
+          list-style: none;
+          padding: 0;
+          margin: 0 0 32px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .courts-showcase-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 14px;
+          color: var(--color-text-primary);
+          font-weight: 650;
+        }
+        .showcase-card {
+          background: var(--color-card);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-xl);
+          overflow: hidden;
+          box-shadow: var(--shadow-sm);
+        }
+        .showcase-img-container {
+          position: relative;
+          aspect-ratio: 16/10;
+          width: 100%;
+          overflow: hidden;
+          background: var(--color-surface);
+        }
+        .showcase-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .showcase-number {
+          position: absolute;
+          top: 16px;
+          left: 16px;
+          width: 32px;
+          height: 32px;
+          background: var(--color-primary);
+          color: white;
+          font-weight: 900;
+          font-size: 15px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: var(--shadow-sm);
+        }
+        .showcase-footer {
+          padding: 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-top: 1px solid var(--color-border-subtle);
+        }
+
+        /* How it Works Section */
+        .how-section {
+          padding: 80px 64px;
+          max-width: 1440px;
+          margin: 0 auto;
+        }
+
+        /* Ready Banner */
+        .cta-banner-section {
+          padding: 0 64px 80px;
+          background: var(--color-bg-primary);
+          max-width: 1440px;
+          margin: 0 auto;
+        }
+        .cta-banner-container {
+          background: linear-gradient(135deg, var(--color-primary) 0%, #005F63 100%);
+          border-radius: var(--radius-2xl);
+          padding: 48px 64px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          box-shadow: var(--shadow-md);
+          color: white;
+        }
+        .paddle-ball-badge {
+          width: 52px;
+          height: 52px;
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.15);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--color-accent);
+          flex-shrink: 0;
+        }
+        .banner-cta-button {
+          background: var(--color-accent);
+          color: var(--color-primary-dark, #012123);
+          font-size: 14px;
+          font-weight: 800;
+          padding: 14px 28px;
+          border-radius: var(--radius-lg);
+          text-decoration: none;
+          box-shadow: 0 4px 12px rgba(244, 124, 0, 0.2);
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          transition: transform var(--duration-fast);
+        }
+        .banner-cta-button:hover {
+          transform: translateY(-2px);
+        }
+
+        /* Footer */
+        .footer-section {
+          background: var(--color-card);
+          border-top: 1px solid var(--color-border);
+          padding: 80px 64px 32px;
+        }
+        .footer-grid {
+          max-width: 1440px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: 2fr 1fr 1fr;
+          gap: 80px;
+          margin-bottom: 64px;
+        }
+
+        /* Float card animations */
+        .float-card-next {
+          animation: float-next 6s ease-in-out infinite;
+        }
+        .float-card-slots {
+          animation: float-slots 6s ease-in-out infinite;
+          animation-delay: 1.5s;
+        }
+        @keyframes float-next {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-8px) scale(1.02); }
+        }
+        @keyframes float-slots {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-6px) scale(1.01); }
+        }
+
+        /* ── Responsive media queries ── */
+        @media (max-width: 1120px) {
           .features-container-grid {
             grid-template-columns: repeat(2, 1fr);
             gap: 24px;
+          }
+          .hero-container {
+            grid-template-columns: 1fr;
+            text-align: center;
+            gap: 40px;
+          }
+          .hero-left-content {
+            align-items: center;
+          }
+          .hero-title {
+            text-align: center;
+          }
+          .hero-subtitle {
+            text-align: center;
+            max-width: 100%;
+          }
+          .hero-right-visual {
+            justify-content: center;
+            max-width: 600px;
+            margin: 0 auto;
+          }
+          .court-visual-canvas {
+            aspect-ratio: 4/3;
+          }
+          .hero-gradient-overlay {
+            display: none !important;
+          }
+          .float-card-next, .float-card-slots {
+            position: static !important;
+            width: 100% !important;
+            margin-top: 16px;
+            animation: none !important;
+          }
+          .court-visual-canvas {
+            display: flex;
+            flex-direction: column;
+            height: auto;
+            padding: 24px;
+            box-sizing: border-box;
+            background-image: none !important; /* hide on smaller views, show cards */
+          }
+          .stepper-line-track {
+            display: none !important;
+          }
+          .stepper-horizontal-wrapper {
+            flex-direction: column !important;
+            gap: 24px !important;
+            align-items: flex-start !important;
+            padding-left: 20px !important;
+          }
+          .stepper-step-node {
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: flex-start !important;
+            text-align: left !important;
+            gap: 16px !important;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .header-container {
+            padding: 0 24px;
+            height: 80px;
+          }
+          .hero-container {
+            padding: 0 24px;
+          }
+          .hero-title {
+            font-size: 36px;
+          }
+          .hero-actions {
+            flex-direction: column;
+            width: 100%;
+            gap: 12px;
+          }
+          .hero-cta-btn {
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+          }
+          .features-section {
+            padding: 60px 24px;
+          }
+          .features-container-grid {
+            grid-template-columns: 1fr;
+            padding: 0;
           }
           .ecosystem-grid {
             grid-template-columns: 1fr;
@@ -1467,22 +1493,8 @@ export default function LandingPage() {
           .rewards-left h2, .rewards-left p {
             text-align: center;
           }
-          .hero-container {
-            grid-template-columns: 1fr;
-            text-align: center;
-            gap: 40px;
-          }
-          .hero-left-content {
-            align-items: center;
-          }
-          .hero-title, .hero-subtitle {
-            text-align: center;
-          }
-          .hero-right-visual {
-            justify-content: center;
-            margin: 0 auto;
-            width: 100%;
-            max-width: 580px;
+          .courts-showcase-section {
+            padding: 60px 24px;
           }
           .courts-showcase-container {
             grid-template-columns: 1fr;
@@ -1495,64 +1507,8 @@ export default function LandingPage() {
           .courts-showcase-title, .courts-showcase-desc {
             text-align: center;
           }
-          .footer-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        @media (max-width: 768px) {
-          .header-container {
-            padding: 0 24px;
-            height: 80px;
-          }
-          .mobile-drawer {
-            top: 80px;
-          }
-          .desktop-nav, .desktop-actions {
-            display: none;
-          }
-          .mobile-menu-trigger {
-            display: block;
-          }
-          .hero-container {
-            padding: 0 24px;
-          }
-          .hero-title {
-            font-size: 38px;
-          }
-          .hero-actions {
-            flex-direction: column;
-            width: 100%;
-            gap: 12px;
-          }
-          .hero-cta-btn {
-            width: 100%;
-            text-align: center;
-            box-sizing: border-box;
-          }
-          .features-section {
-            padding: 40px 24px;
-          }
-          .features-container-grid {
-            grid-template-columns: 1fr;
-            padding: 24px;
-          }
-          .courts-showcase-section {
-            padding: 60px 24px;
-          }
           .how-section {
             padding: 60px 24px;
-          }
-          .steps-container-grid {
-            flex-direction: column;
-            gap: 24px;
-          }
-          .step-arrow-wrapper {
-            flex-direction: column;
-            width: 100%;
-          }
-          .step-arrow {
-            display: none;
           }
           .cta-banner-section {
             padding: 0 24px 60px;
@@ -1572,9 +1528,6 @@ export default function LandingPage() {
             width: 100%;
             justify-content: center;
             box-sizing: border-box;
-          }
-          .footer-section {
-            padding: 60px 24px 20px;
           }
           .footer-grid {
             grid-template-columns: 1fr;
