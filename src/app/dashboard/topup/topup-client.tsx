@@ -266,11 +266,14 @@ export function TopUpClient({ userBalance, userId }: Props) {
                     style={{ width: '150px', height: '150px', display: 'block', objectFit: 'contain' }} 
                   />
                 </div>
+                <div style={{ fontSize: '11px', fontFamily: 'monospace', background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '5px 10px', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)' }}>
+                  Pass ID: <strong>{`CASH-TOPUP:userId=${userId.slice(-6).toUpperCase()}&amount=${finalAmount}`}</strong>
+                </div>
                 <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Cash Payment QR Pass
                 </span>
                 <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: 0, lineHeight: '1.5', textAlign: 'center' }}>
-                  Present this QR to the front desk staff. They will scan it and credit <strong>₱{(finalAmount || 0).toFixed(2)}</strong> to your account instantly.
+                  Present this QR to the front desk staff. They will scan it or input the Pass ID above to credit <strong>₱{(finalAmount || 0).toFixed(2)}</strong> to your account.
                 </p>
               </div>
             )}

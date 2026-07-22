@@ -498,6 +498,30 @@ export async function checkAndRotateExpiredMatchesAction(): Promise<ActionState>
       }
     }
 
+    // 0.1. Activate any early checked-in bookings (RESERVED status) whose time slot has started
+    const activeCheckedInBookings = await db.booking.findMany({
+      where: {
+        status: 'RESERVED',
+        startTime: { lte: now },
+        endTime: { gte: now }
+      },
+      include: { court: true }
+    })
+
+    for (const b of activeCheckedInBookings) {
+      if (b.court.status !== 'OCCUPIED' || !b.court.gameStartedAt) {
+        await db.court.update({
+          where: { id: b.courtId },
+          data: {
+            status: 'OCCUPIED',
+            gameStartedAt: b.startTime,
+            gameDurationSecond: Math.max(900, Math.floor((b.endTime.getTime() - now.getTime()) / 1000))
+          }
+        })
+        rotationsPerformed++
+      }
+    }
+
     // 0. Auto-release any courts closed by bookings if the booking has ended
     const allCourts = await db.court.findMany()
     for (const c of allCourts) {
@@ -909,13 +933,51 @@ export async function getBookingDetailsForScanAction(bookingId: string) {
   if (!admin) return { success: false, error: 'Unauthorized. Staff permissions required.' }
 
   try {
-    const booking = await db.booking.findUnique({
-      where: { id: bookingId },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        court: { select: { id: true, name: true, number: true } }
+    let targetId = bookingId.trim()
+    
+    // Parse QR payload formats
+    if (targetId.startsWith('BOOKING-PASS:bookingId=')) {
+      targetId = targetId.replace('BOOKING-PASS:bookingId=', '')
+    }
+
+    // Handle manual short-codes (e.g. BK-XXXXXX or BK-PASS:XXXXXX or XXXXXX)
+    let suffix = ''
+    if (targetId.toUpperCase().startsWith('BK-PASS:')) {
+      suffix = targetId.slice(8).toUpperCase()
+    } else if (targetId.toUpperCase().startsWith('BK-')) {
+      suffix = targetId.slice(3).toUpperCase()
+    } else if (targetId.length === 6 && /^[a-zA-Z0-9]+$/.test(targetId)) {
+      suffix = targetId.toUpperCase()
+    }
+
+    let booking = null
+    if (suffix) {
+      const matches = await db.booking.findMany({
+        where: {
+          id: { endsWith: suffix.toLowerCase() },
+          status: { in: ['RESERVED', 'PAID', 'PENDING'] }
+        },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          court: { select: { id: true, name: true, number: true } }
+        }
+      })
+      if (matches.length === 1) {
+        booking = matches[0]
+      } else if (matches.length > 1) {
+        return { success: false, error: 'Multiple bookings match this code. Please enter full ID.' }
+      } else {
+        return { success: false, error: 'No booking found matching this code suffix.' }
       }
-    })
+    } else {
+      booking = await db.booking.findUnique({
+        where: { id: targetId },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          court: { select: { id: true, name: true, number: true } }
+        }
+      })
+    }
 
     if (!booking) {
       return { success: false, error: 'Booking not found.' }
@@ -970,8 +1032,8 @@ export async function adminConfirmBookingCheckinAction(bookingId: string): Promi
                       startTime.getMonth() === now.getMonth() &&
                       startTime.getDate() === now.getDate()
 
-      // Allow checking in 15 minutes before the booking starts, until it finishes
-      const isTimeMatch = now.getTime() >= (startTime.getTime() - 15 * 60 * 1000) &&
+      // Allow checking in 30 minutes before the booking starts, until it finishes
+      const isTimeMatch = now.getTime() >= (startTime.getTime() - 30 * 60 * 1000) &&
                           now.getTime() <= endTime.getTime()
 
       const isUnpaid = booking.status === 'PENDING'
@@ -979,7 +1041,7 @@ export async function adminConfirmBookingCheckinAction(bookingId: string): Promi
 
       if (isCheckinActive) {
         // SCENARIO 1: Booking is for today and it is time to play!
-        // Perform FULL check-in (mark as RESERVED, occupy court, collect payment if unpaid)
+        // Perform check-in (mark as RESERVED, collect payment if unpaid)
         await tx.booking.update({
           where: { id: bookingId },
           data: { status: 'RESERVED' }
@@ -996,15 +1058,18 @@ export async function adminConfirmBookingCheckinAction(bookingId: string): Promi
           })
         }
 
-        // Occupy court on dashboard (mark gameStartedAt/duration)
-        await tx.court.update({
-          where: { id: booking.courtId },
-          data: {
-            status: 'OCCUPIED',
-            gameStartedAt: new Date(),
-            gameDurationSecond: Math.max(900, Math.floor((endTime.getTime() - now.getTime()) / 1000))
-          }
-        })
+        const hasStarted = now.getTime() >= startTime.getTime()
+        if (hasStarted) {
+          // Occupy court immediately if the booked start time has already arrived
+          await tx.court.update({
+            where: { id: booking.courtId },
+            data: {
+              status: 'OCCUPIED',
+              gameStartedAt: now,
+              gameDurationSecond: Math.max(900, Math.floor((endTime.getTime() - now.getTime()) / 1000))
+            }
+          })
+        }
 
         return { booking, checkedIn: true, message: isUnpaid ? 'Cash payment confirmed & checked in successfully!' : 'Arrival confirmed & checked in!' }
       } else {

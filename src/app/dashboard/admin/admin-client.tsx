@@ -297,23 +297,31 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
   const [isBookingLoading, setIsBookingLoading] = useState(false)
 
   useEffect(() => {
-    if (scanText.trim().startsWith('CASH-TOPUP:')) {
-      const decoded = decodeURIComponent(scanText.trim())
+    const text = scanText.trim()
+    const isBookingPass = text.startsWith('BOOKING-PASS:')
+    const isManualBK = text.toUpperCase().startsWith('BK-')
+    const isShortCode = text.length === 6 && /^[a-zA-Z0-9]+$/.test(text)
+
+    if (text.startsWith('CASH-TOPUP:')) {
+      const decoded = decodeURIComponent(text)
       const amountMatch = decoded.match(/amount=([^&]+)/)
       if (amountMatch) {
         setOverrideCashAmount(amountMatch[1])
       }
       setScannedBooking(null)
-    } else if (scanText.trim().startsWith('BOOKING-PASS:')) {
+    } else if (isBookingPass || isManualBK || isShortCode) {
       setOverrideCashAmount('')
-      const decoded = decodeURIComponent(scanText.trim())
-      const bookingIdMatch = decoded.match(/bookingId=([^&]+)/)
-      const parsedBookingId = bookingIdMatch ? bookingIdMatch[1] : null
-      
-      if (parsedBookingId) {
+      let lookupId = text
+      if (isBookingPass) {
+        const decoded = decodeURIComponent(text)
+        const bookingIdMatch = decoded.match(/bookingId=([^&]+)/)
+        lookupId = bookingIdMatch ? bookingIdMatch[1] : ''
+      }
+
+      if (lookupId) {
         setIsBookingLoading(true)
         setAdminMessage(null)
-        getBookingDetailsForScanAction(parsedBookingId).then(res => {
+        getBookingDetailsForScanAction(lookupId).then(res => {
           setIsBookingLoading(false)
           if (res.success && res.booking) {
             setScannedBooking(res.booking)
@@ -1468,17 +1476,17 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
               <div id="qr-reader" style={{ width: '100%', border: 'none' }} />
             </div>
 
-            {/* Input Member's QR ID */}
+            {/* Input Member's QR ID / Pass ID */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Input Member's QR ID:
+                Input Member QR ID / Pass ID:
               </label>
               
               <div style={{ position: 'relative' }}>
                 <QrCode style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--color-text-disabled)' }} size={16} />
                 <input
                   type="text"
-                  placeholder="e.g. CMRQ569LW000"
+                  placeholder="e.g. CMRQ569LW000 or BK-3B4F8C"
                   value={scanText}
                   onChange={e => setScanText(e.target.value)}
                   style={{
@@ -1492,7 +1500,8 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
 
               {scanText.trim() && (() => {
                 const isCashQr = scanText.trim().startsWith('CASH-TOPUP:')
-                const isBookingQr = scanText.trim().startsWith('BOOKING-PASS:')
+                const text = scanText.trim()
+                const isBookingQr = text.startsWith('BOOKING-PASS:') || text.toUpperCase().startsWith('BK-') || (text.length === 6 && /^[a-zA-Z0-9]+$/.test(text))
                 
                 if (isBookingQr) {
                   if (isBookingLoading) {
@@ -1672,7 +1681,10 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                   const decoded = decodeURIComponent(scanText.trim())
                   const userIdMatch = decoded.match(/userId=([^&]+)/)
                   const parsedUserId = userIdMatch ? userIdMatch[1] : null
-                  const matchedScanUser = users.find(u => u.id === parsedUserId)
+                  let matchedScanUser = users.find(u => u.id === parsedUserId)
+                  if (!matchedScanUser && parsedUserId && parsedUserId.length === 6) {
+                    matchedScanUser = users.find(u => u.id.toLowerCase().endsWith(parsedUserId.toLowerCase()))
+                  }
 
                   if (!matchedScanUser) {
                     return (

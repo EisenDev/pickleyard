@@ -866,6 +866,10 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                           <img src={qrUrl} alt="Booking QR Pass" style={{ width: '150px', height: '150px', display: 'block' }} />
                         </div>
 
+                        <div style={{ fontSize: '11px', fontFamily: 'monospace', background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '4px 8px', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)' }}>
+                          Pass ID: <strong>BK-{pass.id.slice(-6).toUpperCase()}</strong>
+                        </div>
+
                         <div style={{ textAlign: 'center' }}>
                           <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
                             {new Date(pass.startTime).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}
