@@ -94,11 +94,11 @@ jobs:
                   SMTP_PASS: ${SMTP_PASS}
                   RESEND_API_KEY: ${RESEND_API_KEY}
                   RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
-                  NODE_OPTIONS: "--max-old-space-size=512"
+                  NODE_OPTIONS: "--max-old-space-size=1024"
                 deploy:
                   resources:
                     limits:
-                      memory: 512M
+                      memory: 1024M
             EOF
 
             # 3. Log in to GitHub Package Registry on the target server
