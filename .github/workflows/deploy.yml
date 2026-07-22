@@ -55,11 +55,11 @@ jobs:
     needs: build-and-push
 
     steps:
-      - name: SSH and Deploy to Azure Server
+      - name: SSH and Deploy to DigitalOcean Server
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 20.198.217.229
-          username: azureuser
+          host: 159.65.4.123
+          username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 45s
           command_timeout: 10m
