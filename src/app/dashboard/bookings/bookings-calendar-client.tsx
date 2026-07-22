@@ -800,36 +800,58 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
         {activeTab === 'passes' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} className="animate-fade-up">
             {(() => {
-              const activePasses = myBookingsList.filter(b => 
-                (b.status === 'PENDING' || b.status === 'PAID' || b.status === 'RESERVED') &&
-                new Date(b.endTime).getTime() >= Date.now()
+              const allPasses = myBookingsList.filter(b => 
+                b.status === 'PENDING' || b.status === 'PAID' || b.status === 'RESERVED'
               )
 
-              if (activePasses.length === 0) {
+              if (allPasses.length === 0) {
                 return (
                   <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '60px 24px', textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
                     <QrCode size={40} color="var(--color-text-disabled)" style={{ margin: '0 auto 16px' }} />
                     <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                      No active passes found
+                      No passes found
                     </h3>
                     <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
-                      You have no active or upcoming court reservations that require counter check-in.
+                      You have no court reservations that require counter check-in.
                     </p>
                   </div>
                 )
               }
 
+              const sortedPasses = [...allPasses].sort((a, b) => {
+                const now = Date.now()
+                const aEnd = new Date(a.endTime).getTime()
+                const bEnd = new Date(b.endTime).getTime()
+                const aPast = aEnd < now
+                const bPast = bEnd < now
+
+                if (aPast && !bPast) return 1    // a is past, b is active -> a goes after b
+                if (!aPast && bPast) return -1   // a is active, b is past -> a goes before b
+
+                const aStart = new Date(a.startTime).getTime()
+                const bStart = new Date(b.startTime).getTime()
+
+                if (!aPast) {
+                  // Both active: sort ascending (earlier/closer first, i.e. TODAY first)
+                  return aStart - bStart
+                } else {
+                  // Both past: sort descending (most recent past first)
+                  return bStart - aStart
+                }
+              })
+
               return (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-                  {activePasses.map(pass => {
+                  {sortedPasses.map(pass => {
                     const isPending = pass.status === 'PENDING'
                     const isPaid = pass.status === 'PAID'
+                    const isPast = new Date(pass.endTime).getTime() < Date.now()
                     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=BOOKING-PASS:bookingId=${pass.id}`
                     
                     return (
                       <div key={pass.id} style={{
                         background: 'var(--color-card)',
-                        border: `1.5px solid ${isPending ? 'var(--color-warning)' : 'var(--color-border)'}`,
+                        border: `1.5px solid ${isPast ? 'var(--color-border)' : isPending ? 'var(--color-warning)' : 'var(--color-border)'}`,
                         borderRadius: 'var(--radius-xl)',
                         padding: '24px',
                         boxShadow: 'var(--shadow-md)',
@@ -837,7 +859,9 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                         flexDirection: 'column',
                         alignItems: 'center',
                         gap: '16px',
-                        position: 'relative'
+                        position: 'relative',
+                        opacity: isPast ? 0.55 : 1,
+                        transition: 'opacity 0.2s ease'
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                           <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
@@ -846,11 +870,11 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                           <span style={{
                             fontSize: '9px', fontWeight: 800, padding: '3px 8px',
                             borderRadius: 'var(--radius-full)',
-                            background: isPending ? 'var(--color-warning-subtle)' : isPaid ? 'var(--color-success-subtle)' : 'var(--color-primary-subtle)',
-                            color: isPending ? 'var(--color-warning)' : isPaid ? 'var(--color-success)' : 'var(--color-primary)',
+                            background: isPast ? 'var(--color-surface-hover)' : isPending ? 'var(--color-warning-subtle)' : isPaid ? 'var(--color-success-subtle)' : 'var(--color-primary-subtle)',
+                            color: isPast ? 'var(--color-text-secondary)' : isPending ? 'var(--color-warning)' : isPaid ? 'var(--color-success)' : 'var(--color-primary)',
                             textTransform: 'uppercase'
                           }}>
-                            {isPending ? 'Pay cash' : isPaid ? 'Paid' : 'Checked In'}
+                            {isPast ? 'Past Session' : isPending ? 'Pay cash' : isPaid ? 'Paid' : 'Checked In'}
                           </span>
                         </div>
 
@@ -863,7 +887,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                           alignItems: 'center',
                           justifyContent: 'center'
                         }}>
-                          <img src={qrUrl} alt="Booking QR Pass" style={{ width: '150px', height: '150px', display: 'block' }} />
+                          <img src={qrUrl} alt="Booking QR Pass" style={{ width: '150px', height: '150px', display: 'block', filter: isPast ? 'grayscale(1) contrast(0.8)' : 'none' }} />
                         </div>
 
                         <div style={{ fontSize: '11px', fontFamily: 'monospace', background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '4px 8px', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)' }}>
@@ -877,7 +901,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                           <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
                             {new Date(pass.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(pass.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
                           </div>
-                          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)', marginTop: '8px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 800, color: isPast ? 'var(--color-text-secondary)' : 'var(--color-primary)', marginTop: '8px' }}>
                             Fee: ₱{pass.price.toFixed(2)}
                           </div>
                         </div>
@@ -893,7 +917,9 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                           textAlign: 'center',
                           boxSizing: 'border-box'
                         }}>
-                          {isPending ? (
+                          {isPast ? (
+                            <span>This session has ended.</span>
+                          ) : isPending ? (
                             <span>⚠️ Show this QR pass at the front counter to pay <strong>₱{pass.price.toFixed(2)}</strong>. You must pay within 5 mins of play time.</span>
                           ) : isPaid ? (
                             <span>🟢 Fully paid via credits. Scan this QR pass at the counter to verify your arrival and check in.</span>
