@@ -40,6 +40,7 @@ export async function createShopProductAction(data: {
   category: string
   pointsCost: number
   stock: number
+  durationHours?: number
 }): Promise<ActionState> {
   const session = await auth()
   if (!session?.user?.email) return { success: false, error: 'Unauthorized.' }
@@ -57,6 +58,7 @@ export async function createShopProductAction(data: {
         category: data.category,
         pointsCost: data.pointsCost,
         stock: data.stock,
+        durationHours: data.durationHours ?? 1
       }
     })
     revalidatePath('/dashboard/admin/settings')
@@ -73,6 +75,7 @@ export async function updateShopProductAction(id: string, data: {
   pointsCost: number
   stock: number
   isActive: boolean
+  durationHours?: number
 }): Promise<ActionState> {
   const session = await auth()
   if (!session?.user?.email) return { success: false, error: 'Unauthorized.' }
@@ -92,6 +95,7 @@ export async function updateShopProductAction(id: string, data: {
         pointsCost: data.pointsCost,
         stock: data.stock,
         isActive: data.isActive,
+        durationHours: data.durationHours ?? 1
       }
     })
     revalidatePath('/dashboard/admin/settings')

@@ -531,16 +531,20 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     })
   }
 
-  const handleChargeCheckin = async () => {
+  const handleChargeCheckin = async (paymentMethod: 'CREDITS' | 'CASH') => {
     if (!selectedUser || activeLoadingId) return
     setActiveLoadingId('checkin')
     setIsPending(true)
-    const res = await scanCheckinAction(selectedUser.id, modalSkillLevel)
+    const res = await scanCheckinAction(selectedUser.id, modalSkillLevel, paymentMethod)
     setIsPending(false)
     setActiveLoadingId(null)
     if (res.success) {
-      const isCash = getUserStackEntry(selectedUser.id)?.paymentMethod === 'CASH'
-      setAdminMessage({ success: true, text: isCash ? 'Member checked in successfully. Cash payment confirmed!' : 'Member checked in successfully. ₱150 fee debited!' })
+      setAdminMessage({
+        success: true,
+        text: paymentMethod === 'CASH'
+          ? 'Member checked in successfully. Cash payment confirmed!'
+          : 'Member checked in successfully. ₱150 fee debited!'
+      })
       fetchRealtimeData()
       setTimeout(() => { setIsCheckinModalOpen(false); setIsScannerOpen(false); setScanText('') }, 1200)
     } else {
@@ -1907,15 +1911,13 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
 
             {/* Actions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-              <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', width: '100%' }}>
                 <button
                   type="button"
                   disabled={isPending}
-                  onClick={() => {
-                    setIsCheckinModalOpen(false)
-                  }}
+                  onClick={() => setIsCheckinModalOpen(false)}
                   style={{
-                    flex: 1, height: '40px', borderRadius: 'var(--radius-md)',
+                    flex: 1, minWidth: '80px', height: '40px', borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--color-border)', background: 'var(--color-card)',
                     color: 'var(--color-text-secondary)', fontSize: '13px', fontWeight: 700,
                     cursor: 'pointer'
@@ -1923,36 +1925,38 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                 >
                   Cancel
                 </button>
-                
+
+                {getUserStackEntry(selectedUser.id)?.paymentMethod !== 'CASH' && (
+                  <button
+                    type="button"
+                    disabled={isPending || (liveCredits ?? selectedUser.credits) < 150}
+                    onClick={() => handleChargeCheckin('CREDITS')}
+                    style={{
+                      flex: 1.5, minWidth: '120px', height: '40px', borderRadius: 'var(--radius-md)', border: 'none',
+                      background: 'var(--color-primary)', color: 'white',
+                      fontSize: '13px', fontWeight: 700, cursor: (isPending || (liveCredits ?? selectedUser.credits) < 150) ? 'not-allowed' : 'pointer',
+                      opacity: (isPending || (liveCredits ?? selectedUser.credits) < 150) ? 0.6 : 1,
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
+                  >
+                    Pay with Credits
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  disabled={isPending || (getUserStackEntry(selectedUser.id)?.paymentMethod !== 'CASH' && (liveCredits ?? selectedUser.credits) < 150)}
-                  onClick={handleChargeCheckin}
+                  disabled={isPending}
+                  onClick={() => handleChargeCheckin('CASH')}
                   style={{
-                    flex: 1.5, height: '40px', borderRadius: 'var(--radius-md)', border: 'none',
+                    flex: 1.8, minWidth: '160px', height: '40px', borderRadius: 'var(--radius-md)', border: 'none',
                     background: 'var(--color-success)', color: 'white',
-                    fontSize: '13px', fontWeight: 700, cursor: (isPending || (getUserStackEntry(selectedUser.id)?.paymentMethod !== 'CASH' && (liveCredits ?? selectedUser.credits) < 150)) ? 'not-allowed' : 'pointer',
-                    opacity: (isPending || (getUserStackEntry(selectedUser.id)?.paymentMethod !== 'CASH' && (liveCredits ?? selectedUser.credits) < 150)) ? 0.6 : 1,
-                    boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                    fontSize: '13px', fontWeight: 700, cursor: isPending ? 'not-allowed' : 'pointer',
+                    boxShadow: 'var(--shadow-sm)'
                   }}
                 >
-                  {isPending ? 'Processing...' : (getUserStackEntry(selectedUser.id)?.paymentMethod === 'CASH' ? 'Confirm Payment and Check-in' : 'Confirm')}
+                  {isPending ? 'Processing...' : 'Cash Received - Proceed Checkin'}
                 </button>
               </div>
-
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={handleForceQueue}
-                style={{
-                  width: '100%', height: '34px', borderRadius: 'var(--radius-md)',
-                  border: '1px dashed var(--color-border)', background: 'transparent',
-                  color: 'var(--color-text-disabled)', fontSize: '11px', fontWeight: 600,
-                  cursor: 'pointer', marginTop: '4px'
-                }}
-              >
-                Force Check In (No Charge)
-              </button>
             </div>
           </div>
         </div>

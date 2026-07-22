@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { createBookingAction, createBookingsAction } from '@/lib/actions/booking'
 import { adminReserveCourtForOpenPlayAction } from '@/lib/actions/admin'
-import { ShieldCheck, AlertTriangle, Calendar, List, Plus, Clock, MapPin, ChevronLeft, ChevronRight, ArrowLeft, X, Search, QrCode } from 'lucide-react'
+import { ShieldCheck, AlertTriangle, Calendar, List, Plus, Clock, MapPin, ChevronLeft, ChevronRight, ArrowLeft, X, Search, QrCode, Gift } from 'lucide-react'
 import Link from 'next/link'
 
 interface Court {
@@ -38,6 +38,12 @@ interface MyBooking {
   price: number
 }
 
+interface CourtVoucher {
+  id: string
+  name: string
+  durationHours: number
+}
+
 interface Props {
   courts: Court[]
   allBookings: BookingItem[]
@@ -47,6 +53,7 @@ interface Props {
   userRole: string
   startHour: number
   endHour: number
+  courtVouchers?: CourtVoucher[]
 }
 
 function formatHour(h: number) {
@@ -62,7 +69,7 @@ function formatDateToYYYYMMDD(d: Date) {
   return `${year}-${month}-${day}`
 }
 
-export function BookingsCalendarClient({ courts, allBookings, myBookings, userBalance, userId, userRole, startHour, endHour }: Props) {
+export function BookingsCalendarClient({ courts, allBookings, myBookings, userBalance, userId, userRole, startHour, endHour, courtVouchers = [] }: Props) {
   const HOURS = Array.from({ length: Math.max(1, endHour - startHour) }, (_, i) => i + startHour)
   const [activeTab, setActiveTab] = useState<'calendar' | 'list' | 'passes'>('calendar')
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'credits' | 'cash'>('credits')
@@ -138,6 +145,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   const [modalCourtIds, setModalCourtIds] = useState<string[]>([]) // support multiple courts for admins
   const [modalDate, setModalDate] = useState<string>('')
   const [modalHours, setModalHours] = useState<number[]>([])
+  const [selectedVouchers, setSelectedVouchers] = useState<Record<number, string>>({})
 
   const filteredCourts = selectedCourt === 'all' ? courts : courts.filter(c => c.id === selectedCourt)
 
@@ -166,6 +174,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
     setModalCourtIds([courtId])
     setModalDate(formatDateToYYYYMMDD(selectedDate))
     setModalHours([hour])
+    setSelectedVouchers({})
     
     // Auto check balance
     const court = courts.find(c => c.id === courtId)
@@ -186,6 +195,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
     setModalCourtIds([])
     setModalDate(formatDateToYYYYMMDD(selectedDate))
     setModalHours([])
+    setSelectedVouchers({})
     setSelectedPaymentMethod(userBalance >= 250 ? 'credits' : 'cash')
     setIsModalOpen(true)
   }
@@ -224,13 +234,14 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
     if (!isModalOpen) return
     const court = courts.find(c => c.id === modalCourtId)
     const hourlyRate = court?.type === 'ROOFTOP' ? 300 : 250
-    const totalCost = hourlyRate * modalHours.length
+    const voucherCount = modalHours.filter(h => !!selectedVouchers[h]).length
+    const totalCost = hourlyRate * Math.max(0, modalHours.length - voucherCount)
     if (userBalance >= totalCost) {
       setSelectedPaymentMethod('credits')
     } else {
       setSelectedPaymentMethod('cash')
     }
-  }, [modalHours.length, modalCourtId, isModalOpen, userBalance, courts])
+  }, [modalHours.length, modalCourtId, isModalOpen, userBalance, courts, selectedVouchers])
 
   const toggleHourSelection = (hour: number) => {
     setModalHours(prev => {
@@ -285,7 +296,16 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
         }
       } else {
         // Regular Player Court Booking
-        const result = await createBookingsAction(modalCourtId, startTimesISO, selectedPaymentMethod)
+        const voucherSelections: Record<string, string> = {}
+        modalHours.forEach(hour => {
+          const vId = selectedVouchers[hour]
+          if (vId) {
+            const slotTime = new Date(modalDate + 'T00:00:00')
+            slotTime.setHours(hour, 0, 0, 0)
+            voucherSelections[slotTime.toISOString()] = vId
+          }
+        })
+        const result = await createBookingsAction(modalCourtId, startTimesISO, selectedPaymentMethod, voucherSelections)
         if (result.success) {
           setMessage({ success: true, text: 'Court booked successfully!' })
           setSelectedDate(new Date(modalDate + 'T00:00:00'))
@@ -316,6 +336,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                 {userRole === 'ADMIN' || userRole === 'STAFF' ? 'Monitor active court reservations and scheduling.' : 'Book active courts and view your scheduled reservations.'}
               </p>
             </div>
+
             {(userRole === 'ADMIN' || userRole === 'STAFF') ? (
               <button
                 onClick={handleOpenBookingModalGeneral}
@@ -365,6 +386,29 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
               </div>
             )}
           </div>
+
+          {/* Vouchers notice banner */}
+          {userRole !== 'ADMIN' && userRole !== 'STAFF' && courtVouchers.length > 0 && (
+            <div style={{
+              background: 'rgba(59, 130, 246, 0.08)',
+              border: '1px solid rgba(59, 130, 246, 0.2)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '16px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              boxShadow: 'var(--shadow-sm)',
+              marginTop: '16px'
+            }}>
+              <Gift size={20} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <strong style={{ fontSize: '14px', color: 'var(--color-text-primary)', display: 'block' }}>Available Court Time Vouchers</strong>
+                <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', display: 'block', marginTop: '2px' }}>
+                  You have {courtVouchers.length} active court time voucher(s) available. You can select and apply them to pay for your slots when checking out a court reservation!
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Alert Message */}
@@ -983,7 +1027,8 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
         const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
         const court = courts.find(c => c.id === modalCourtId)
         const hourlyRate = court?.type === 'ROOFTOP' ? 300 : 250
-        const totalCost = hourlyRate * modalHours.length
+        const voucherCount = modalHours.filter(h => !!selectedVouchers[h]).length
+        const totalCost = hourlyRate * Math.max(0, modalHours.length - voucherCount)
         const hasInsufficientBalance = !isAdminOrStaff && userBalance < totalCost
 
         return (
@@ -1206,6 +1251,76 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                   })}
                 </div>
               </div>
+
+              {/* Voucher Application Section (Player booking only) */}
+              {!isAdminOrStaff && courtVouchers.length > 0 && modalHours.length > 0 && (
+                <div style={{
+                  display: 'flex', flexDirection: 'column', gap: '8px',
+                  background: 'var(--color-surface)', padding: '12px',
+                  borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)'
+                }}>
+                  <label style={{
+                    fontSize: '11px', fontWeight: 700, color: 'var(--color-primary)',
+                    textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px'
+                  }}>
+                    <Gift size={12} />
+                    Apply Court Time Vouchers
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                    {modalHours.map(hour => {
+                      const appliedVoucherId = selectedVouchers[hour] || ''
+                      const availableVouchers = courtVouchers.filter(v => {
+                        const boundHour = Object.keys(selectedVouchers).find(h => selectedVouchers[parseInt(h)] === v.id)
+                        return !boundHour || parseInt(boundHour) === hour
+                      })
+
+                      return (
+                        <div key={hour} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          gap: '12px', background: 'var(--color-card)', padding: '6px 10px',
+                          borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-subtle)'
+                        }}>
+                          <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--color-text-primary)' }}>
+                            {formatHour(hour)} slot:
+                          </span>
+                          <select
+                            value={appliedVoucherId}
+                            onChange={e => {
+                              const val = e.target.value
+                              setSelectedVouchers(prev => {
+                                const copy = { ...prev }
+                                if (val) {
+                                  copy[hour] = val
+                                } else {
+                                  delete copy[hour]
+                                }
+                                return copy
+                              })
+                            }}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: 'var(--radius-sm)',
+                              border: '1px solid var(--color-border)',
+                              background: 'var(--color-surface)',
+                              color: 'var(--color-text-primary)',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              outline: 'none'
+                            }}
+                          >
+                            <option value="">No Voucher (Credits/Cash)</option>
+                            {availableVouchers.map(v => (
+                              <option key={v.id} value={v.id}>
+                                {v.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Payment Method Select (Player booking only) */}
               {!isAdminOrStaff && (

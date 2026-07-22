@@ -13,6 +13,7 @@ import { Star, Plus, Edit2, Trash2, CheckCircle, XCircle, AlertCircle, Save, Pac
 interface Product {
   id: string; name: string; description: string; category: string
   pointsCost: number; stock: number; isActive: boolean
+  durationHours?: number
 }
 interface Redemption {
   id: string; userName: string; userEmail?: string; productName: string
@@ -68,7 +69,7 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [productForm, setProductForm] = useState({
-    name: '', description: '', category: 'DRINK', pointsCost: 600, stock: -1, isActive: true
+    name: '', description: '', category: 'DRINK', pointsCost: 600, stock: -1, isActive: true, durationHours: 1
   })
 
   const showNotice = (success: boolean, text: string) => {
@@ -100,12 +101,12 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
 
   // ── Product Form ──────────────────────────────────────────────────────────
   const openAddProduct = () => {
-    setProductForm({ name: '', description: '', category: 'DRINK', pointsCost: 600, stock: -1, isActive: true })
+    setProductForm({ name: '', description: '', category: 'DRINK', pointsCost: 600, stock: -1, isActive: true, durationHours: 1 })
     setEditingProduct(null)
     setShowAddProduct(true)
   }
   const openEditProduct = (p: Product) => {
-    setProductForm({ name: p.name, description: p.description, category: p.category, pointsCost: p.pointsCost, stock: p.stock, isActive: p.isActive })
+    setProductForm({ name: p.name, description: p.description, category: p.category, pointsCost: p.pointsCost, stock: p.stock, isActive: p.isActive, durationHours: p.durationHours ?? 1 })
     setEditingProduct(p)
     setShowAddProduct(true)
   }
@@ -529,6 +530,19 @@ export function YardPointsAdminClient({ settings: initialSettings, products: ini
                 {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+
+            {productForm.category === 'COURT_TIME' && (
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px' }}>Voucher Duration (Hours) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={productForm.durationHours}
+                  onChange={e => setProductForm(prev => ({ ...prev, durationHours: Math.max(1, parseInt(e.target.value) || 1) }))}
+                  style={{ width: '100%', height: '38px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0 12px', fontSize: '14px', color: 'var(--color-text-primary)', background: 'var(--color-surface)', boxSizing: 'border-box' }}
+                />
+              </div>
+            )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <input

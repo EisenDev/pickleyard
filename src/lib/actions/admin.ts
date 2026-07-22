@@ -55,6 +55,14 @@ export async function scanCheckinAction(
             reference: `CASH-OPEN-PLAY`
           }
         })
+        await tx.transaction.create({
+          data: {
+            userId: user.id,
+            amount: -fee,
+            type: 'EVENT_DEBIT',
+            reference: `OPEN-PLAY-${new Date().toLocaleDateString([], { month: '2-digit', day: '2-digit' })}-CASH`
+          }
+        })
       } else {
         // Credits payment check and deduction
         if (Number(user.credits) < fee) {
@@ -1168,6 +1176,14 @@ export async function adminConfirmBookingCheckinAction(bookingId: string): Promi
               reference: `CASH-GROUP-RESRV`
             }
           })
+          await tx.transaction.create({
+            data: {
+              userId,
+              amount: -totalAmountToCollect,
+              type: 'BOOKING_DEBIT',
+              reference: `RESRV-GROUP-CASH`
+            }
+          })
         }
 
         const hasStarted = now.getTime() >= finalStartTime.getTime()
@@ -1199,6 +1215,14 @@ export async function adminConfirmBookingCheckinAction(bookingId: string): Promi
               amount: totalAmountToCollect,
               type: 'CASH_TOPUP',
               reference: `CASH-GROUP-PAID`
+            }
+          })
+          await tx.transaction.create({
+            data: {
+              userId,
+              amount: -totalAmountToCollect,
+              type: 'BOOKING_DEBIT',
+              reference: `RESRV-GROUP-CASH`
             }
           })
 

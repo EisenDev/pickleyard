@@ -14,9 +14,6 @@ export default async function OpenPlayPage() {
   })
   if (!user) return null
 
-  const openPlayCost = 150
-  const isBalanceLow = Number(user.credits) < openPlayCost
-
   // Fetch current user's active queue stack status
   const userQueue = await db.paddleStack.findFirst({
     where: {
@@ -24,6 +21,9 @@ export default async function OpenPlayPage() {
       status: { in: ['PENDING', 'WAITING', 'PLAYING', 'MATCHED'] }
     }
   })
+
+  const openPlayCost = 150
+  const isBalanceLow = Number(user.credits) < openPlayCost && userQueue?.paymentMethod !== 'CASH'
 
   const activeCourt = userQueue?.courtId
     ? await db.court.findUnique({ where: { id: userQueue.courtId } })
@@ -86,6 +86,26 @@ export default async function OpenPlayPage() {
             >
               <ShieldAlert size={14} />
               <span>Insufficient credits for check-in (₱150 needed)</span>
+            </div>
+          )}
+
+          {userQueue?.paymentMethod === 'CASH' && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(245, 158, 11, 0.08)',
+                color: '#d97706',
+                border: '1px solid rgba(245, 158, 11, 0.2)',
+                borderRadius: 'var(--radius-md)',
+                padding: '8px 14px',
+                fontSize: '12px',
+                fontWeight: 650
+              }}
+            >
+              <Clock size={14} />
+              <span>Pending counter cash payment (₱150 needed)</span>
             </div>
           )}
 

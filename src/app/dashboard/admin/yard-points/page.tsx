@@ -52,6 +52,7 @@ export default async function AdminYardPointsPage() {
         pointsCost: p.pointsCost,
         stock: p.stock,
         isActive: p.isActive,
+        durationHours: p.durationHours
       }))}
       pendingRedemptions={pendingRedemptions.map(r => ({
         id: r.id,

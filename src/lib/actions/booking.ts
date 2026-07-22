@@ -30,15 +30,18 @@ export type BookingResult =
 export async function createBookingAction(
   courtId: string,
   startTimeString: string,
-  paymentMethod: 'credits' | 'cash' = 'credits'
+  paymentMethod: 'credits' | 'cash' = 'credits',
+  voucherId?: string
 ): Promise<BookingResult> {
-  return createBookingsAction(courtId, [startTimeString], paymentMethod)
+  const voucherSelections = voucherId ? { [startTimeString]: voucherId } : undefined
+  return createBookingsAction(courtId, [startTimeString], paymentMethod, voucherSelections)
 }
 
 export async function createBookingsAction(
   courtId: string,
   startTimeStrings: string[],
-  paymentMethod: 'credits' | 'cash' = 'credits'
+  paymentMethod: 'credits' | 'cash' = 'credits',
+  voucherSelections?: Record<string, string> // maps startTimeString -> voucherId (RedemptionRequest ID)
 ): Promise<BookingResult> {
   const session = await auth()
   if (!session?.user?.email) {
@@ -82,11 +85,28 @@ export async function createBookingsAction(
       const endHour = endHourSetting ? parseInt(endHourSetting.value) : 22
 
       const hourlyRate = court.type === 'ROOFTOP' ? 300.00 : 250.00
-      const totalCost = hourlyRate * startTimes.length
+
+      // Map time strings to check if paid by voucher
+      const slotPayments = startTimeStrings.map(timeStr => {
+        const voucherId = voucherSelections?.[timeStr]
+        return {
+          timeStr,
+          time: new Date(timeStr),
+          isVoucher: !!voucherId,
+          voucherId
+        }
+      })
+
+      let totalCost = 0
+      for (const slot of slotPayments) {
+        if (!slot.isVoucher) {
+          totalCost += hourlyRate
+        }
+      }
 
       // 2. Validate Payment Method
       if (paymentMethod === 'credits') {
-        if (Number(user.credits) < totalCost) {
+        if (totalCost > 0 && Number(user.credits) < totalCost) {
           throw new Error(`Insufficient credits. Booking cost: ₱${totalCost.toFixed(2)}, Balance: ₱${Number(user.credits).toFixed(2)}`)
         }
       } else {
@@ -156,7 +176,7 @@ export async function createBookingsAction(
         })
 
         if (conflict) {
-          throw new Error(`This court is already reserved at ${formatLocalTime(startTime)}.`)
+          throw new Error(`This court is already reserved at ${formatLocalTime(startTime)}.`);
         }
 
         // User overlapping booking check (cannot book multiple courts at the same time)
@@ -178,12 +198,12 @@ export async function createBookingsAction(
         })
 
         if (userConflict) {
-          throw new Error(`You already have an active booking at ${formatLocalTime(startTime)} on another court. Double booking is not allowed.`)
+          throw new Error(`You already have an active booking at ${formatLocalTime(startTime)} on another court. Double booking is not allowed.`);
         }
       }
 
-      // 4. Deduct user credits if paying with credits
-      if (paymentMethod === 'credits') {
+      // 4. Deduct user credits if paying with credits and totalCost > 0
+      if (paymentMethod === 'credits' && totalCost > 0) {
         await tx.user.update({
           where: { id: user.id },
           data: { credits: Number(user.credits) - totalCost }
@@ -193,7 +213,8 @@ export async function createBookingsAction(
       let firstBookingId = ''
 
       // 5. Create reservation bookings
-      for (const startTime of startTimes) {
+      for (const slot of slotPayments) {
+        const startTime = slot.time
         const endTime = new Date(startTime.getTime() + 3600000)
 
         const booking = await tx.booking.create({
@@ -202,8 +223,8 @@ export async function createBookingsAction(
             courtId,
             startTime,
             endTime,
-            status: paymentMethod === 'credits' ? BookingStatus.PAID : BookingStatus.PENDING,
-            price: hourlyRate
+            status: (paymentMethod === 'credits' || slot.isVoucher) ? BookingStatus.PAID : BookingStatus.PENDING,
+            price: slot.isVoucher ? 0 : hourlyRate
           }
         })
 
@@ -211,16 +232,36 @@ export async function createBookingsAction(
           firstBookingId = booking.id
         }
 
-        // 6. Create ledger transaction entry only if debited
-        if (paymentMethod === 'credits') {
-          await tx.transaction.create({
+        if (slot.isVoucher && slot.voucherId) {
+          // Mark the voucher (RedemptionRequest) as used
+          const voucher = await tx.redemptionRequest.findUnique({
+            where: { id: slot.voucherId },
+            include: { product: true }
+          })
+          if (!voucher || voucher.userId !== user.id || voucher.status !== 'APPROVED' || voucher.isUsed || voucher.product.category !== 'COURT_TIME') {
+            throw new Error('Selected court time voucher is invalid or already used.')
+          }
+
+          await tx.redemptionRequest.update({
+            where: { id: slot.voucherId },
             data: {
-              userId: user.id,
-              amount: -hourlyRate,
-              type: 'BOOKING_DEBIT',
-              reference: `RESRV-C${court.number}-${startTime.toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
+              isUsed: true,
+              usedAt: new Date(),
+              bookingId: booking.id
             }
           })
+        } else {
+          // 6. Create ledger transaction entry only if debited
+          if (paymentMethod === 'credits') {
+            await tx.transaction.create({
+              data: {
+                userId: user.id,
+                amount: -hourlyRate,
+                type: 'BOOKING_DEBIT',
+                reference: `RESRV-C${court.number}-${startTime.toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
+              }
+            })
+          }
         }
       }
 

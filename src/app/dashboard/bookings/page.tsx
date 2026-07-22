@@ -40,6 +40,19 @@ export default async function MyBookingsPage() {
   const startHour = startHourSetting ? parseInt(startHourSetting.value) : 8
   const endHour = endHourSetting ? parseInt(endHourSetting.value) : 22
 
+  // Fetch active approved court vouchers for the player
+  const courtVouchers = await db.redemptionRequest.findMany({
+    where: {
+      userId: user.id,
+      status: 'APPROVED',
+      isUsed: false,
+      product: { category: 'COURT_TIME' }
+    },
+    include: {
+      product: { select: { name: true, durationHours: true } }
+    }
+  })
+
   return (
     <BookingsCalendarClient
       courts={courts.map(c => ({ id: c.id, number: c.number, name: c.name, type: c.type, status: c.status }))}
@@ -70,6 +83,11 @@ export default async function MyBookingsPage() {
       userRole={user.role}
       startHour={startHour}
       endHour={endHour}
+      courtVouchers={courtVouchers.map(v => ({
+        id: v.id,
+        name: v.product.name,
+        durationHours: v.product.durationHours
+      }))}
     />
   )
 }

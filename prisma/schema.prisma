@@ -194,15 +194,16 @@ model YardPointLog {
 }
 
 model ShopProduct {
-  id          String   @id @default(cuid())
-  name        String
-  description String?  @db.Text
-  category    String   // DRINK, VOUCHER, COURT_TIME, MERCHANDISE, OTHER
-  pointsCost  Int
-  stock       Int      @default(-1) // -1 for unlimited
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String
+  description   String?  @db.Text
+  category      String   // DRINK, VOUCHER, COURT_TIME, MERCHANDISE, OTHER
+  pointsCost    Int
+  stock         Int      @default(-1) // -1 for unlimited
+  durationHours Int      @default(1)  // Duration in hours (only for COURT_TIME)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   redemptions RedemptionRequest[]
 
@@ -216,6 +217,9 @@ model RedemptionRequest {
   pointsDeducted  Int
   status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
   notes           String?  @db.Text // Extra info (e.g. Voucher Code or rejection reason)
+  isUsed          Boolean  @default(false)
+  usedAt          DateTime?
+  bookingId       String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

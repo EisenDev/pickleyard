@@ -427,7 +427,31 @@ export function LedgerClient({
                   ) : (
                     transactions.map(t => {
                       const isTopup = t.type === 'TOPUP' || t.type === 'CASH_TOPUP'
-                      const displayType = isTopup ? 'Cash Top-up' : 'Booking Debit'
+                      let displayType = 'Statement'
+                      const ref = (t.reference || '').toUpperCase()
+                      if (t.type === 'CASH_TOPUP') {
+                        if (ref.includes('OPEN-PLAY')) {
+                          displayType = 'Counter Cash Payment (Open Play)'
+                        } else {
+                          displayType = 'Counter Cash Payment (Booking)'
+                        }
+                      } else if (t.type === 'TOPUP') {
+                        displayType = 'Wallet Credits Top-up'
+                      } else if (t.type === 'BOOKING_DEBIT') {
+                        if (ref.includes('CASH')) {
+                          displayType = 'Booking Charge (Cash Paid)'
+                        } else {
+                          displayType = 'Booking Charge (Wallet Credits)'
+                        }
+                      } else if (t.type === 'EVENT_DEBIT') {
+                        if (ref.includes('CASH') || ref.includes('OPEN-PLAY')) {
+                          displayType = 'Open Play Charge (Cash Paid)'
+                        } else {
+                          displayType = 'Open Play Charge (Wallet Credits)'
+                        }
+                      } else {
+                        displayType = isTopup ? 'Cash Top-up' : 'Booking Debit'
+                      }
 
                       return (
                         <tr key={t.id} style={{ borderBottom: '1px solid var(--color-border-subtle)', color: 'var(--color-text-primary)' }}>
