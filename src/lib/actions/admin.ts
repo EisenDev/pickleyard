@@ -435,10 +435,10 @@ export async function recordMatchResultAction(
         const l1 = losers[0]
         const l2 = losers[1]
 
-        const ratingW1 = Number(w1.user?.duprRating ?? 3.0)
-        const ratingW2 = Number(w2.user?.duprRating ?? 3.0)
-        const ratingL1 = Number(l1.user?.duprRating ?? 3.0)
-        const ratingL2 = Number(l2.user?.duprRating ?? 3.0)
+        const ratingW1 = w1.user?.duprRating && w1.user.duprRating > 0 ? Number(w1.user.duprRating) : 3.0
+        const ratingW2 = w2.user?.duprRating && w2.user.duprRating > 0 ? Number(w2.user.duprRating) : 3.0
+        const ratingL1 = l1.user?.duprRating && l1.user.duprRating > 0 ? Number(l1.user.duprRating) : 3.0
+        const ratingL2 = l2.user?.duprRating && l2.user.duprRating > 0 ? Number(l2.user.duprRating) : 3.0
 
         const avgWinners = (ratingW1 + ratingW2) / 2
         const avgLosers = (ratingL1 + ratingL2) / 2
@@ -488,7 +488,7 @@ export async function recordMatchResultAction(
         const totalPoints = isWinner ? winnerPoints : Math.round(winnerPoints * (loserPercentage / 100))
 
         const duprData = duprUpdates[entry.userId]
-        const oldDupr = duprData?.oldRating ?? Number(entry.user?.duprRating ?? 3.0)
+        const oldDupr = duprData?.oldRating ?? (entry.user?.duprRating && entry.user.duprRating > 0 ? Number(entry.user.duprRating) : 3.0)
         const newDupr = duprData?.newRating ?? oldDupr
 
         // Update user yard points & DUPR rating

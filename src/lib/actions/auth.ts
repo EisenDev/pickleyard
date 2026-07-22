@@ -3,8 +3,9 @@
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
-import { signIn } from '@/lib/auth'
+import { auth, signIn } from '@/lib/auth'
 import { AuthError } from 'next-auth'
+import { headers } from 'next/headers'
 
 const SignUpSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -492,5 +493,190 @@ async function checkAndApplySignupPromo(tx: any, userId: string) {
     }
   } catch (error) {
     console.error('Error applying signup promo:', error)
+  }
+}
+
+export async function changePasswordAction(
+  formData: FormData
+): Promise<ActionResult> {
+  const session = await auth()
+  if (!session?.user?.email) {
+    return { success: false, error: 'Unauthorized.' }
+  }
+
+  const currentPassword = formData.get('currentPassword') as string
+  const newPassword = formData.get('newPassword') as string
+  const confirmNewPassword = formData.get('confirmNewPassword') as string
+
+  if (!currentPassword || !newPassword || !confirmNewPassword) {
+    return { success: false, error: 'All fields are required.' }
+  }
+
+  if (newPassword !== confirmNewPassword) {
+    return { success: false, error: 'New passwords do not match.' }
+  }
+
+  if (newPassword.length < 8) {
+    return { success: false, error: 'New password must be at least 8 characters long.' }
+  }
+  if (!/[A-Z]/.test(newPassword)) {
+    return { success: false, error: 'New password must contain at least one uppercase letter.' }
+  }
+  if (!/[0-9]/.test(newPassword)) {
+    return { success: false, error: 'New password must contain at least one number.' }
+  }
+
+  try {
+    const user = await db.user.findUnique({
+      where: { email: session.user.email }
+    })
+    if (!user || !user.hashedPassword) {
+      return { success: false, error: 'User not found.' }
+    }
+
+    const currentMatch = await bcrypt.compare(currentPassword, user.hashedPassword)
+    if (!currentMatch) {
+      return { success: false, error: 'Incorrect current password.' }
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 12)
+    await db.user.update({
+      where: { id: user.id },
+      data: { hashedPassword: hashed }
+    })
+
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to update password.' }
+  }
+}
+
+export async function sendPasswordResetAction(email: string): Promise<ActionResult> {
+  if (!email || !email.includes('@')) {
+    return { success: false, error: 'Invalid email address' }
+  }
+
+  const emailNormalized = email.toLowerCase().trim()
+
+  try {
+    const user = await db.user.findUnique({ where: { email: emailNormalized } })
+    if (!user) {
+      return { success: true }
+    }
+
+    const { randomBytes } = await import('crypto')
+    const token = randomBytes(32).toString('hex')
+    const expires = new Date(Date.now() + 1 * 60 * 60 * 1000)
+
+    await db.verificationToken.deleteMany({
+      where: { identifier: emailNormalized }
+    })
+
+    await db.verificationToken.create({
+      data: {
+        identifier: emailNormalized,
+        token,
+        expires
+      }
+    })
+
+    const headersList = await headers()
+    const origin = headersList.get('origin') || 'https://paddleyrd.com'
+    const resetLink = `${origin}/reset-password?token=${token}`
+
+    const htmlContent = `
+      <div style="font-family: sans-serif; padding: 24px; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="https://paddleyrd.com/paddleyard-logo.png" alt="PaddleYard Logo" style="width: 72px; height: 72px; border-radius: 50%; object-fit: contain; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 4px;" />
+        </div>
+        <h2 style="color: #007C80; margin-top: 0; margin-bottom: 16px; font-size: 20px; font-weight: 700; text-align: center;">Reset your password</h2>
+        <p style="color: #475569; font-size: 14px; line-height: 1.5; margin-bottom: 20px; text-align: center;">You requested a password reset for your PaddleYard account. Please click the button below to choose a new password:</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${resetLink}" style="background-color: #007C80; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 4px 6px rgba(0, 124, 128, 0.25);">
+            Reset Password
+          </a>
+        </div>
+        <p style="color: #94a3b8; font-size: 12px; line-height: 1.4; margin-top: 24px; margin-bottom: 0; text-align: center;">If you did not request a password reset, you can safely ignore this email. This link will expire in 1 hour.</p>
+      </div>
+    `
+
+    if (process.env.RESEND_API_KEY) {
+      await sendEmailViaResend(emailNormalized, 'Reset your PaddleYard password', htmlContent)
+      console.log(`[RESEND] Password reset link sent to ${emailNormalized}`)
+    } else {
+      console.warn('RESEND_API_KEY missing. Password reset link could not be sent.')
+      return { success: false, error: 'Email service is currently unavailable. Please contact support.' }
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error in sendPasswordResetAction:', error)
+    return { success: false, error: error.message || 'Failed to send password reset email.' }
+  }
+}
+
+export async function resetPasswordWithTokenAction(
+  token: string,
+  formData: FormData
+): Promise<ActionResult> {
+  const newPassword = formData.get('newPassword') as string
+  const confirmNewPassword = formData.get('confirmNewPassword') as string
+
+  if (!token) {
+    return { success: false, error: 'Token is required.' }
+  }
+
+  if (!newPassword || !confirmNewPassword) {
+    return { success: false, error: 'Please fill in all fields.' }
+  }
+
+  if (newPassword !== confirmNewPassword) {
+    return { success: false, error: 'Passwords do not match.' }
+  }
+
+  if (newPassword.length < 8) {
+    return { success: false, error: 'Password must be at least 8 characters long.' }
+  }
+  if (!/[A-Z]/.test(newPassword)) {
+    return { success: false, error: 'Password must contain at least one uppercase letter.' }
+  }
+  if (!/[0-9]/.test(newPassword)) {
+    return { success: false, error: 'Password must contain at least one number.' }
+  }
+
+  try {
+    const tokenRecord = await db.verificationToken.findUnique({
+      where: { token }
+    })
+
+    if (!tokenRecord) {
+      return { success: false, error: 'Invalid or expired reset link.' }
+    }
+
+    if (new Date() > tokenRecord.expires) {
+      await db.verificationToken.delete({ where: { token } })
+      return { success: false, error: 'Reset link has expired.' }
+    }
+
+    const email = tokenRecord.identifier
+    const user = await db.user.findUnique({ where: { email } })
+    if (!user) {
+      return { success: false, error: 'User account not found.' }
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12)
+
+    await db.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: { hashedPassword }
+      })
+      await tx.verificationToken.delete({ where: { token } })
+    })
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error in resetPasswordWithTokenAction:', error)
+    return { success: false, error: error.message || 'Failed to reset password.' }
   }
 }

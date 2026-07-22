@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { User, Award, QrCode, Camera, Mail, Phone, CreditCard, Shield } from 'lucide-react'
+import { User, Award, QrCode, Camera, Mail, Phone, CreditCard, Shield, KeyRound } from 'lucide-react'
+import { ChangePasswordForm } from '../settings/change-password-form'
 
 interface Props {
   user: {
@@ -15,7 +16,7 @@ interface Props {
   }
 }
 
-type Tab = 'info' | 'membership' | 'clubid'
+type Tab = 'info' | 'membership' | 'clubid' | 'password'
 
 const MEMBERSHIP_COLORS: Record<string, { color: string; bg: string; border: string; gradient: string; label: string }> = {
   STANDARD: {
@@ -46,7 +47,8 @@ export function ProfileClient({ user }: Props) {
 
   const badge = MEMBERSHIP_COLORS[user.membership] || MEMBERSHIP_COLORS.STANDARD
   const initials = (user.name || user.email).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  const skillLabel = user.duprRating >= 6.0 ? 'Elite' : user.duprRating >= 4.5 ? 'Advanced' : user.duprRating >= 3.5 ? 'Intermediate' : 'Novice'
+  const displayDupr = user.duprRating && user.duprRating > 0 ? user.duprRating : 3.0
+  const skillLabel = displayDupr >= 6.0 ? 'Elite' : displayDupr >= 4.5 ? 'Advanced' : displayDupr >= 3.5 ? 'Intermediate' : 'Novice'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%' }} className="animate-fade-up">
@@ -77,6 +79,7 @@ export function ProfileClient({ user }: Props) {
           { id: 'info', label: 'Profile Information', icon: User },
           { id: 'membership', label: 'Membership Benefits', icon: Award },
           { id: 'clubid', label: 'Digital Club ID', icon: QrCode },
+          { id: 'password', label: 'Change Password', icon: KeyRound },
         ] as { id: Tab; label: string; icon: any }[]).map(t => (
           <button
             key={t.id}
@@ -160,7 +163,7 @@ export function ProfileClient({ user }: Props) {
                 <span style={{ color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Shield size={14} /> DUPR Rating
                 </span>
-                <strong style={{ color: 'var(--color-primary)', fontSize: '14px' }}>{user.duprRating.toFixed(2)} ({skillLabel})</strong>
+                <strong style={{ color: 'var(--color-primary)', fontSize: '14px' }}>{displayDupr.toFixed(2)} ({skillLabel})</strong>
               </div>
             </div>
           </div>
@@ -245,7 +248,7 @@ export function ProfileClient({ user }: Props) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '16px', marginTop: '24px' }}>
               <div>
                 <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)' }}>Verified Rating</span>
-                <div style={{ fontSize: '20px', fontWeight: 850 }}>{user.duprRating.toFixed(2)} DUPR</div>
+                <div style={{ fontSize: '20px', fontWeight: 850 }}>{displayDupr.toFixed(2)} DUPR</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)' }}>Skill Assignment</span>
@@ -328,7 +331,7 @@ export function ProfileClient({ user }: Props) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px', marginTop: '16px' }}>
                 <div>
                   <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)' }}>DUPR RATING</span>
-                  <div style={{ fontSize: '16px', fontWeight: 850 }}>{user.duprRating.toFixed(2)}</div>
+                  <div style={{ fontSize: '16px', fontWeight: 850 }}>{displayDupr.toFixed(2)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)' }}>SKILL LEVEL</span>
@@ -374,6 +377,17 @@ export function ProfileClient({ user }: Props) {
               Present this QR to counter staff or scan at the lobby camera scanner to verify check-in logs and open play matches.
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Tab 4: Change Password */}
+      {tab === 'password' && (
+        <div style={{
+          background: 'var(--color-card)', border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-xl)', padding: '32px', boxShadow: 'var(--shadow-sm)',
+          maxWidth: '600px', width: '100%'
+        }}>
+          <ChangePasswordForm />
         </div>
       )}
 

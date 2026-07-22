@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { User, Mail, Star, Crown, CreditCard, Calendar } from 'lucide-react'
+import { ChangePasswordForm } from './change-password-form'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,8 @@ export default async function SettingsPage() {
 
   const isAdmin = user.role === 'ADMIN' || user.role === 'STAFF'
   const tier = TIER_STYLE[user.membership] ?? TIER_STYLE.STANDARD
-  const skillLabel = user.duprRating >= 4.0 ? 'Advanced' : user.duprRating >= 3.0 ? 'Intermediate' : 'Novice'
+  const displayDupr = user.duprRating && user.duprRating > 0 ? user.duprRating : 3.0
+  const skillLabel = displayDupr >= 4.0 ? 'Advanced' : displayDupr >= 3.0 ? 'Intermediate' : 'Novice'
   const initials = (user.name || user.email).split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
 
   const fieldStyle: React.CSSProperties = {
@@ -69,7 +71,7 @@ export default async function SettingsPage() {
                 </span>
                 {!isAdmin && (
                   <span style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>
-                    {skillLabel} · {user.duprRating.toFixed(2)} DUPR
+                    {skillLabel} · {displayDupr.toFixed(2)} DUPR
                   </span>
                 )}
               </div>
@@ -133,7 +135,7 @@ export default async function SettingsPage() {
                   <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     DUPR Rating
                   </label>
-                  <input type="text" readOnly value={`${user.duprRating.toFixed(2)} — ${skillLabel}`} style={fieldStyle} />
+                  <input type="text" readOnly value={`${displayDupr.toFixed(2)} — ${skillLabel}`} style={fieldStyle} />
                 </div>
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -150,6 +152,14 @@ export default async function SettingsPage() {
               </>
             )}
           </div>
+        </div>
+
+        {/* Change Password box */}
+        <div style={{
+          background: 'var(--color-card)', border: '1px solid var(--color-border)',
+          borderRadius: '18px', padding: '24px', boxShadow: 'var(--shadow-sm)'
+        }}>
+          <ChangePasswordForm />
         </div>
 
         {/* Read-only notice */}

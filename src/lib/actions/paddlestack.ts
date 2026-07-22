@@ -51,11 +51,15 @@ export async function joinPaddleStackAction(
     const { randomBytes } = await import('crypto')
     const qrId = 'OPQ-' + randomBytes(4).toString('hex').toUpperCase()
 
+    // Enforce skillLevel matching user DUPR rating
+    const rating = user.duprRating && user.duprRating > 0 ? Number(user.duprRating) : 3.0
+    const resolvedSkillLevel: SkillLevel = rating >= 4.5 ? 'ADVANCED' : rating >= 3.5 ? 'INTERMEDIATE' : 'NOVICE'
+
     // Create stack queue item in PENDING status (Unpaid/unscanned)
     await db.paddleStack.create({
       data: {
         userId: user.id,
-        skillLevel,
+        skillLevel: resolvedSkillLevel,
         status: 'PENDING',
         joinedAt: new Date(),
         qrId,
