@@ -28,7 +28,7 @@ const navItems = [
   { href: '/dashboard/bookings', label: 'My Bookings', icon: Calendar },
   { href: '/dashboard/events', label: 'Events', icon: Award },
   { href: '/dashboard/yard-points', label: 'Yard Points', icon: Star },
-  { href: '/dashboard/transactions', label: 'Transactions', icon: CreditCard },
+  { href: '/dashboard/ledger', label: 'Ledger', icon: CreditCard },
   { href: '/dashboard/topup', label: 'Top Up', icon: Wallet },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
 ]
@@ -38,7 +38,7 @@ const adminNavItems = [
   { href: '/dashboard/paddlestack', label: 'Paddle Stack Board', icon: Layers },
   { href: '/dashboard/bookings', label: 'Booking Monitor', icon: Calendar },
   { href: '/dashboard/events', label: 'Club Events', icon: Award },
-  { href: '/dashboard/transactions', label: 'Transaction Ledger', icon: CreditCard },
+  { href: '/dashboard/ledger', label: 'Ledger', icon: CreditCard },
   { href: '/dashboard/admin/users', label: 'User Management', icon: Users },
   { href: '/dashboard/admin/yard-points', label: 'Yard Points Mgr', icon: Star },
   { href: '/dashboard/admin/settings', label: 'Time & Cost Control', icon: Settings },

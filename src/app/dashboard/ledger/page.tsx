@@ -1,12 +1,23 @@
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { TransactionsClient } from './transactions-client'
+import { LedgerClient } from './ledger-client'
 
 export const dynamic = 'force-dynamic'
 
-export default async function TransactionsPage() {
+interface PageProps {
+  searchParams: Promise<{
+    tab?: string
+    range?: string
+  }>
+}
+
+export default async function LedgerPage({ searchParams }: PageProps) {
   const session = await auth()
   if (!session?.user?.email) return null
+
+  const resolvedParams = await searchParams
+  const activeTab = resolvedParams.tab || 'bookings'
+  const range = resolvedParams.range || '48h'
 
   // Fetch current user details
   const user = await db.user.findUnique({
@@ -62,6 +73,37 @@ export default async function TransactionsPage() {
     stats = { day: dSum, week: wSum, month: mSum, year: ySum }
   }
 
+  // Calculate range filter date threshold
+  let dateFilter = undefined
+  const now = new Date()
+  if (range === '48h') {
+    dateFilter = new Date(now.getTime() - 48 * 3600 * 1000)
+  } else if (range === '1m') {
+    dateFilter = new Date(now.getTime() - 30 * 24 * 3600 * 1000)
+  } else if (range === '3m') {
+    dateFilter = new Date(now.getTime() - 90 * 24 * 3600 * 1000)
+  } else if (range === '1y') {
+    dateFilter = new Date(now.getTime() - 365 * 24 * 3600 * 1000)
+  }
+
+  // Query Bookings Ledger
+  const bookingsFilter: any = {}
+  if (!isAdminOrStaff) {
+    bookingsFilter.userId = user.id
+  }
+  if (dateFilter) {
+    bookingsFilter.startTime = { gte: dateFilter }
+  }
+
+  const bookings = await db.booking.findMany({
+    where: bookingsFilter,
+    include: {
+      court: { select: { id: true, name: true, number: true } },
+      user: { select: { id: true, name: true, email: true } }
+    },
+    orderBy: { startTime: 'desc' }
+  })
+
   // Format database types to frontend schema
   const formattedTransactions = transactions.map((t: any) => ({
     id: t.id,
@@ -69,15 +111,31 @@ export default async function TransactionsPage() {
     type: t.type,
     reference: t.reference,
     createdAt: t.createdAt,
-    userName: t.user?.name || undefined
+    userName: t.user?.name || undefined,
+    userEmail: t.user?.email || undefined
+  }))
+
+  const formattedBookings = bookings.map((b: any) => ({
+    id: b.id,
+    courtName: b.court.name,
+    courtNumber: b.court.number,
+    startTime: b.startTime,
+    endTime: b.endTime,
+    status: b.status,
+    price: Number(b.price),
+    userName: b.user.name || 'Member',
+    userEmail: b.user.email
   }))
 
   return (
-    <TransactionsClient
+    <LedgerClient
       transactions={formattedTransactions}
+      bookings={formattedBookings}
       userBalance={Number(user.credits)}
       userRole={user.role}
       stats={stats}
+      initialTab={activeTab}
+      initialRange={range}
     />
   )
 }

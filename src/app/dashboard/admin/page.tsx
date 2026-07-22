@@ -71,21 +71,7 @@ export default async function AdminDashboardPage() {
     orderBy: { startTime: 'asc' }
   })
 
-  // Fetch booking ledger (past 48 hours bookings) for lookup
-  const ledgerStart = new Date(now.getTime() - 48 * 3600 * 1000)
-  const bookingLedger = await db.booking.findMany({
-    where: {
-      startTime: { gte: ledgerStart },
-      user: {
-        role: { notIn: ['ADMIN', 'STAFF'] }
-      }
-    },
-    include: {
-      user: { select: { name: true, email: true } },
-      court: { select: { name: true } }
-    },
-    orderBy: { startTime: 'desc' }
-  })
+
 
   // Fetch lobby active queue expiry and operational hours settings
   const expirySetting = await db.systemSetting.findUnique({
@@ -143,16 +129,7 @@ export default async function AdminDashboardPage() {
         endTime: b.endTime.toISOString(),
         status: b.status
       }))}
-      bookingLedger={bookingLedger.map(b => ({
-        id: b.id,
-        courtName: b.court.name,
-        startTime: b.startTime.toISOString(),
-        endTime: b.endTime.toISOString(),
-        status: b.status,
-        price: Number(b.price),
-        userName: b.user?.name || 'Member',
-        userEmail: b.user?.email || ''
-      }))}
+
       expiryHours={expiryHours}
       opStartHour={startHour}
       opEndHour={endHour}

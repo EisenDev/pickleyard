@@ -1,0 +1,476 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter, usePathname } from 'next/navigation'
+import { CreditCard, ArrowDownLeft, ArrowUpRight, TrendingUp, Calendar, BookOpen } from 'lucide-react'
+
+interface TransactionItem {
+  id: string
+  amount: number
+  type: string
+  reference: string | null
+  createdAt: Date
+  userName?: string
+  userEmail?: string
+}
+
+interface BookingLedgerItem {
+  id: string
+  courtName: string
+  courtNumber: number
+  startTime: Date
+  endTime: Date
+  status: string
+  price: number
+  userName: string
+  userEmail: string
+}
+
+interface LedgerClientProps {
+  transactions: TransactionItem[]
+  bookings: BookingLedgerItem[]
+  userBalance: number
+  userRole: string
+  stats: {
+    day: number
+    week: number
+    month: number
+    year: number
+  }
+  initialTab: string
+  initialRange: string
+}
+
+export function LedgerClient({
+  transactions,
+  bookings,
+  userBalance,
+  userRole,
+  stats,
+  initialTab,
+  initialRange
+}: LedgerClientProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
+
+  const [tab, setTab] = useState<'bookings' | 'transactions'>(initialTab as any || 'bookings')
+  const [range, setRange] = useState<string>(initialRange || '48h')
+
+  const handleRangeChange = (newRange: string) => {
+    setRange(newRange)
+    const params = new URLSearchParams()
+    params.set('tab', tab)
+    params.set('range', newRange)
+    router.push(`${pathname}?${params.toString()}`)
+  }
+
+  const handleTabChange = (newTab: 'bookings' | 'transactions') => {
+    setTab(newTab)
+    const params = new URLSearchParams()
+    params.set('tab', newTab)
+    params.set('range', range)
+    router.push(`${pathname}?${params.toString()}`)
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }} className="animate-fade-up">
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h1 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+            {isAdminOrStaff ? 'Club Activity & Financial Ledger' : 'My Statement Ledger'}
+          </h1>
+          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+            {isAdminOrStaff 
+              ? 'View centralized booking records, payment confirmations, and transaction Statements.' 
+              : 'Track your personal court reservations, top-ups, and balance ledger statements.'}
+          </p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--color-border)', marginBottom: '8px' }}>
+        <button
+          onClick={() => handleTabChange('bookings')}
+          style={{
+            padding: '12px 16px',
+            background: 'none',
+            border: 'none',
+            borderBottom: tab === 'bookings' ? '2.5px solid var(--color-primary)' : '2.5px solid transparent',
+            color: tab === 'bookings' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+            fontWeight: 800,
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontFamily: 'inherit'
+          }}
+        >
+          Bookings Ledger
+        </button>
+        <button
+          onClick={() => handleTabChange('transactions')}
+          style={{
+            padding: '12px 16px',
+            background: 'none',
+            border: 'none',
+            borderBottom: tab === 'transactions' ? '2.5px solid var(--color-primary)' : '2.5px solid transparent',
+            color: tab === 'transactions' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+            fontWeight: 800,
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontFamily: 'inherit'
+          }}
+        >
+          {isAdminOrStaff ? 'Transaction Ledger' : 'Financial Statements'}
+        </button>
+      </div>
+
+      {/* Tab Contents: Bookings Ledger */}
+      {tab === 'bookings' && (
+        <div style={{
+          background: 'var(--color-card)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-xl)',
+          padding: '24px',
+          boxShadow: 'var(--shadow-sm)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '20px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Calendar size={18} color="var(--color-primary)" />
+                Court Reservation Records
+              </h2>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px', margin: '4px 0 0' }}>
+                Unified list of scheduling status updates, check-ins, and late expirations.
+              </p>
+            </div>
+
+            {/* Time filters */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {[
+                { id: '48h', label: 'Past 48 Hours' },
+                { id: '1m', label: '1 Month' },
+                { id: '3m', label: '3 Months' },
+                { id: '1y', label: 'Annual' },
+                { id: 'all', label: 'All records' }
+              ].map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => handleRangeChange(r.id)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-full)',
+                    border: '1.5px solid',
+                    borderColor: range === r.id ? 'var(--color-primary)' : 'var(--color-border)',
+                    background: range === r.id ? 'var(--color-primary-subtle)' : 'var(--color-card)',
+                    color: range === r.id ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  <th style={{ padding: '12px 8px', fontWeight: 700 }}>Player</th>
+                  <th style={{ padding: '12px 8px', fontWeight: 700 }}>Court</th>
+                  <th style={{ padding: '12px 8px', fontWeight: 700 }}>Schedule</th>
+                  <th style={{ padding: '12px 8px', fontWeight: 700 }}>Fee Due</th>
+                  <th style={{ padding: '12px 8px', fontWeight: 700 }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bookings.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '32px 8px', textAlign: 'center', color: 'var(--color-text-disabled)' }}>
+                      No court reservations recorded for this selected time window.
+                    </td>
+                  </tr>
+                ) : (
+                  bookings.map(b => {
+                    const isPending = b.status === 'PENDING'
+                    const isPaid = b.status === 'PAID'
+                    const isReserved = b.status === 'RESERVED'
+                    const isExpired = b.status === 'EXPIRED'
+
+                    return (
+                      <tr key={b.id} style={{ borderBottom: '1px solid var(--color-border-subtle)', color: 'var(--color-text-primary)' }}>
+                        <td style={{ padding: '12px 8px' }}>
+                          <div style={{ fontWeight: 700 }}>{b.userName}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>{b.userEmail}</div>
+                        </td>
+                        <td style={{ padding: '12px 8px', fontWeight: 650 }}>{b.courtName}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <div>{new Date(b.startTime).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>
+                            {new Date(b.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} - {new Date(b.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 8px', fontWeight: 700 }}>₱{b.price.toFixed(2)}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <span style={{
+                            fontSize: '9px',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            background: isReserved ? 'var(--color-info-subtle)' : isPaid ? 'var(--color-success-subtle)' : isPending ? 'var(--color-warning-subtle)' : 'var(--color-danger-subtle)',
+                            color: isReserved ? 'var(--color-info)' : isPaid ? 'var(--color-success)' : isPending ? 'var(--color-warning)' : 'var(--color-danger)',
+                            textTransform: 'uppercase'
+                          }}>
+                            {isPending ? 'Cash Due' : isReserved ? 'Checked In' : isPaid ? 'Paid' : isExpired ? 'Expired (Late)' : b.status}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Contents: Transactions Ledger */}
+      {tab === 'transactions' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '32px' }} className="transactions-main-grid">
+          {/* Left Column: Balance / Income Stats */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {isAdminOrStaff ? (
+              /* Admin Stats widgets */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 850, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  📊 Club Revenue Dashboard
+                </div>
+                
+                {/* Day Income */}
+                <div style={{
+                  background: 'var(--color-card)',
+                  border: '1.5px solid #bbf7d0',
+                  borderRadius: 'var(--radius-xl)',
+                  padding: '20px',
+                  boxShadow: 'var(--shadow-sm)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '10px', color: '#10b981', fontWeight: 800, textTransform: 'uppercase' }}>Day Income</span>
+                    <h3 style={{ fontSize: '24px', fontWeight: 900, color: 'var(--color-text-primary)', margin: '4px 0 0', letterSpacing: '-0.02em' }}>
+                      ₱{stats.day.toFixed(2)}
+                    </h3>
+                  </div>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981' }} />
+                </div>
+
+                {/* Week Income */}
+                <div style={{
+                  background: 'var(--color-card)',
+                  border: '1.5px solid #bfdbfe',
+                  borderRadius: 'var(--radius-xl)',
+                  padding: '20px',
+                  boxShadow: 'var(--shadow-sm)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '10px', color: '#3b82f6', fontWeight: 800, textTransform: 'uppercase' }}>Week Income</span>
+                    <h3 style={{ fontSize: '24px', fontWeight: 900, color: 'var(--color-text-primary)', margin: '4px 0 0', letterSpacing: '-0.02em' }}>
+                      ₱{stats.week.toFixed(2)}
+                    </h3>
+                  </div>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#3b82f6' }} />
+                </div>
+
+                {/* Month Income */}
+                <div style={{
+                  background: 'var(--color-card)',
+                  border: '1.5px solid #e9d5ff',
+                  borderRadius: 'var(--radius-xl)',
+                  padding: '20px',
+                  boxShadow: 'var(--shadow-sm)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '10px', color: '#a855f7', fontWeight: 800, textTransform: 'uppercase' }}>Month Income</span>
+                    <h3 style={{ fontSize: '24px', fontWeight: 900, color: 'var(--color-text-primary)', margin: '4px 0 0', letterSpacing: '-0.02em' }}>
+                      ₱{stats.month.toFixed(2)}
+                    </h3>
+                  </div>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#a855f7' }} />
+                </div>
+
+                {/* Annual Income */}
+                <div style={{
+                  background: 'linear-gradient(135deg, var(--color-primary) 0%, #005F63 100%)',
+                  borderRadius: 'var(--radius-xl)',
+                  padding: '22px 20px',
+                  color: 'white',
+                  boxShadow: 'var(--shadow-md)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', fontWeight: 800, textTransform: 'uppercase' }}>Annual Income</span>
+                    <h3 style={{ fontSize: '26px', fontWeight: 900, color: 'white', margin: '4px 0 0', letterSpacing: '-0.02em' }}>
+                      ₱{stats.year.toFixed(2)}
+                    </h3>
+                  </div>
+                  <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--color-accent)' }} />
+                </div>
+              </div>
+            ) : (
+              /* Player Balance & Top Up */
+              <>
+                <div style={{
+                  background: 'linear-gradient(135deg, var(--color-primary) 0%, #005F63 100%)',
+                  borderRadius: 'var(--radius-xl)',
+                  padding: '28px',
+                  color: 'white',
+                  boxShadow: 'var(--shadow-md)'
+                }}>
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>AVAILABLE BALANCE</span>
+                  <h2 style={{ fontSize: '36px', fontWeight: 800, marginTop: '8px', letterSpacing: '-0.02em', margin: '8px 0 0' }}>
+                    ₱{userBalance.toFixed(2)}
+                  </h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-accent)', fontWeight: 700, marginTop: '16px' }}>
+                    <TrendingUp size={14} />
+                    <span>Verified Membership Active</span>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'var(--color-card)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-xl)',
+                  padding: '24px',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '12px', margin: 0 }}>
+                    Add Credits
+                  </h3>
+                  <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '20px', lineHeight: 1.5 }}>
+                    Top up your balance using InstaPay, GCash, Maya, Bank Transfer, or Cash at the front desk.
+                  </p>
+                  <Link
+                    href="/dashboard/topup"
+                    style={{
+                      height: '42px',
+                      background: 'var(--color-primary)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--radius-lg)',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: 'var(--shadow-primary-btn)'
+                    }}
+                  >
+                    <CreditCard size={15} />
+                    <span>Go to Top Up Page</span>
+                  </Link>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Right Column: Statement Table */}
+          <div style={{
+            background: 'var(--color-card)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-xl)',
+            padding: '24px',
+            boxShadow: 'var(--shadow-sm)',
+            overflow: 'hidden'
+          }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '20px', margin: 0 }}>
+              {isAdminOrStaff ? 'All Club Statements' : 'Historical Statements'}
+            </h3>
+
+            <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '580px', paddingRight: '4px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                    {isAdminOrStaff && <th style={{ padding: '10px 8px', fontWeight: 700 }}>User</th>}
+                    <th style={{ padding: '10px 8px', fontWeight: 700 }}>Description</th>
+                    <th style={{ padding: '10px 8px', fontWeight: 700 }}>Reference</th>
+                    <th style={{ padding: '10px 8px', fontWeight: 700 }}>Date</th>
+                    <th style={{ padding: '10px 8px', fontWeight: 700, textAlign: 'right' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={isAdminOrStaff ? 5 : 4} style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--color-text-disabled)' }}>
+                        No transactions recorded on this account yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    transactions.map(t => {
+                      const isTopup = t.type === 'TOPUP' || t.type === 'CASH_TOPUP'
+                      const displayType = isTopup ? 'Cash Top-up' : 'Booking Debit'
+
+                      return (
+                        <tr key={t.id} style={{ borderBottom: '1px solid var(--color-border-subtle)', color: 'var(--color-text-primary)' }}>
+                          {isAdminOrStaff && (
+                            <td style={{ padding: '10px 8px' }}>
+                              <div style={{ fontWeight: 700 }}>{t.userName || 'Member'}</div>
+                              <div style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>{t.userEmail}</div>
+                            </td>
+                          )}
+                          <td style={{ padding: '10px 8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {isTopup ? (
+                                <ArrowDownLeft size={13} color="#10b981" />
+                              ) : (
+                                <ArrowUpRight size={13} color="#ef4444" />
+                              )}
+                              <span style={{ fontWeight: 650 }}>{displayType}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '10px 8px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
+                            {t.reference || 'SYSTEM_AUTO'}
+                          </td>
+                          <td style={{ padding: '10px 8px', color: 'var(--color-text-secondary)' }}>
+                            {new Date(t.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' })}
+                          </td>
+                          <td style={{
+                            padding: '10px 8px',
+                            textAlign: 'right',
+                            fontWeight: 700,
+                            color: isTopup ? '#10b981' : '#ef4444'
+                          }}>
+                            {isTopup ? '+' : '-'}₱{t.amount.toFixed(2)}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

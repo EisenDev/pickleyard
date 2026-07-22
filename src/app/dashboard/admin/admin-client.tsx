@@ -74,7 +74,6 @@ interface Props {
   stacks: StackEntry[]
   users: UserListItem[]
   bookings: Booking[]
-  bookingLedger: BookingLedgerItem[]
   expiryHours: number
   opStartHour: number
   opEndHour: number
@@ -151,7 +150,7 @@ function ClockCountdown({ sessionExpiresAt }: { sessionExpiresAt: Date | string 
   return <span>{hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}</span>
 }
 
-export function AdminClient({ courts: initialCourts, stacks: initialStacks, users, bookings, bookingLedger, expiryHours, opStartHour, opEndHour }: Props) {
+export function AdminClient({ courts: initialCourts, stacks: initialStacks, users, bookings, expiryHours, opStartHour, opEndHour }: Props) {
   const [courts, setCourts] = useState<Court[]>(initialCourts)
   const [stacks, setStacks] = useState<StackEntry[]>(initialStacks)
   const [isPending, setIsPending] = useState(false)
@@ -1284,139 +1283,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
           </div>
         </div>
 
-        {/* Booking History Ledger (Failed/Late vs. Success Bookings) */}
-        <div style={{
-          background: 'var(--color-card)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '24px',
-          boxShadow: 'var(--shadow-sm)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-          marginTop: '12px'
-        }}>
-          <div>
-            <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Calendar size={18} color="var(--color-primary)" />
-              Court Booking Check-In Ledger (Past 48 Hours)
-            </h2>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px', margin: '4px 0 0' }}>
-              Reference ledger for cashier collections, no-show court releases, and payment confirmations.
-            </p>
-          </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                  <th style={{ padding: '10px 8px', fontWeight: 700 }}>Player</th>
-                  <th style={{ padding: '10px 8px', fontWeight: 700 }}>Court</th>
-                  <th style={{ padding: '10px 8px', fontWeight: 700 }}>Schedule</th>
-                  <th style={{ padding: '10px 8px', fontWeight: 700 }}>Fee Due</th>
-                  <th style={{ padding: '10px 8px', fontWeight: 700 }}>Status</th>
-                  <th style={{ padding: '10px 8px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bookingLedger.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--color-text-disabled)' }}>
-                      No court reservations recorded in the past 48 hours.
-                    </td>
-                  </tr>
-                ) : (
-                  bookingLedger.map(b => {
-                    const isPending = b.status === 'PENDING'
-                    const isPaid = b.status === 'PAID'
-                    const isReserved = b.status === 'RESERVED'
-                    const isExpired = b.status === 'EXPIRED'
-                    const isCancelled = b.status === 'CANCELLED'
-
-                    return (
-                      <tr key={b.id} style={{ borderBottom: '1px solid var(--color-border-subtle)', color: 'var(--color-text-primary)' }}>
-                        <td style={{ padding: '10px 8px' }}>
-                          <div style={{ fontWeight: 700 }}>{b.userName}</div>
-                          <div style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>{b.userEmail}</div>
-                        </td>
-                        <td style={{ padding: '10px 8px', fontWeight: 650 }}>{b.courtName}</td>
-                        <td style={{ padding: '10px 8px' }}>
-                          <div>{new Date(b.startTime).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}</div>
-                          <div style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>
-                            {new Date(b.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })} - {new Date(b.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' })}
-                          </div>
-                        </td>
-                        <td style={{ padding: '10px 8px', fontWeight: 700 }}>₱{b.price.toFixed(2)}</td>
-                        <td style={{ padding: '10px 8px' }}>
-                          <span style={{
-                            fontSize: '9px', fontWeight: 800, padding: '2px 8px', borderRadius: 'var(--radius-full)',
-                            background: isReserved ? 'var(--color-info-subtle)' : isPaid ? 'var(--color-success-subtle)' : isPending ? 'var(--color-warning-subtle)' : 'var(--color-danger-subtle)',
-                            color: isReserved ? 'var(--color-info)' : isPaid ? 'var(--color-success)' : isPending ? 'var(--color-warning)' : 'var(--color-danger)',
-                            textTransform: 'uppercase'
-                          }}>
-                            {isPending ? 'Cash Due' : isReserved ? 'Checked In' : isPaid ? 'Paid' : isExpired ? 'Expired (Late)' : b.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '10px 8px', textAlign: 'right' }}>
-                          {isPending && (
-                            <button
-                              onClick={async () => {
-                                if (confirm(`Collect ₱${b.price.toFixed(2)} cash from ${b.userName} and check in?`)) {
-                                  const res = await adminConfirmBookingCheckinAction(b.id)
-                                  if (res.success) {
-                                    alert('Booking check-in successful!')
-                                    router.refresh()
-                                  } else {
-                                    alert(res.error || 'Failed to check in.')
-                                  }
-                                }
-                              }}
-                              style={{
-                                padding: '4px 10px', background: 'var(--color-accent)', border: 'none', borderRadius: 'var(--radius-sm)',
-                                color: 'white', fontWeight: 700, fontSize: '10px', cursor: 'pointer'
-                              }}
-                            >
-                              Collect Cash & Check In
-                            </button>
-                          )}
-                          {isPaid && (
-                            <button
-                              onClick={async () => {
-                                const res = await adminConfirmBookingCheckinAction(b.id)
-                                if (res.success) {
-                                  alert('Check-in confirmed!')
-                                  router.refresh()
-                                } else {
-                                  alert(res.error || 'Failed to check in.')
-                                }
-                              }}
-                              style={{
-                                padding: '4px 10px', background: 'var(--color-primary)', border: 'none', borderRadius: 'var(--radius-sm)',
-                                color: 'white', fontWeight: 700, fontSize: '10px', cursor: 'pointer'
-                              }}
-                            >
-                              Check In Player
-                            </button>
-                          )}
-                          {(isExpired || isCancelled) && (
-                            <span style={{ fontSize: '11px', color: 'var(--color-text-disabled)', fontStyle: 'italic' }}>
-                              {isExpired ? 'No Show Penalty' : 'Cancelled'}
-                            </span>
-                          )}
-                          {isReserved && (
-                            <span style={{ fontSize: '11px', color: 'var(--color-success)', fontWeight: 650 }}>
-                              Active Play
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
 
       {/* ── CAMERA SCANNER MODAL (Outside of animated wrapper to prevent viewport trapping!) ── */}
