@@ -27,9 +27,10 @@ export const authConfig: NextAuthConfig = {
       if (account?.provider === 'google') {
         const email = user.email
         if (!email) return false
+        const emailNormalized = email.toLowerCase().trim()
 
         // Check if user exists in DB
-        const existing = await db.user.findUnique({ where: { email } })
+        const existing = await db.user.findUnique({ where: { email: emailNormalized } })
 
         if (!existing) {
           // Check if this came from the signup page via google_signup flag
@@ -88,8 +89,9 @@ export const authConfig: NextAuthConfig = {
         if (!parsed.success) return null
 
         const { email, password, otp } = parsed.data
+        const emailNormalized = email.toLowerCase().trim()
 
-        const user = await db.user.findUnique({ where: { email } })
+        const user = await db.user.findUnique({ where: { email: emailNormalized } })
         if (!user?.hashedPassword) return null
 
         const passwordMatch = await bcrypt.compare(password, user.hashedPassword)
@@ -99,7 +101,7 @@ export const authConfig: NextAuthConfig = {
           if (!otp) return null
 
           const tokenRecord = await db.verificationToken.findFirst({
-            where: { identifier: email, token: otp }
+            where: { identifier: emailNormalized, token: otp }
           })
 
           if (!tokenRecord || tokenRecord.expires < new Date()) {
@@ -109,7 +111,7 @@ export const authConfig: NextAuthConfig = {
           await db.verificationToken.delete({
             where: {
               identifier_token: {
-                identifier: email,
+                identifier: emailNormalized,
                 token: otp
               }
             }

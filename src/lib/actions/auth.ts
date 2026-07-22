@@ -43,8 +43,9 @@ export async function signUpAction(
   }
 
   const { name, email, password } = parsed.data
+  const emailNormalized = email.toLowerCase().trim()
 
-  const existingUser = await db.user.findUnique({ where: { email } })
+  const existingUser = await db.user.findUnique({ where: { email: emailNormalized } })
   if (existingUser) {
     return { success: false, error: 'An account with this email already exists' }
   }
@@ -53,7 +54,7 @@ export async function signUpAction(
 
   await db.$transaction(async (tx) => {
     const newUser = await tx.user.create({
-      data: { name, email, hashedPassword },
+      data: { name, email: emailNormalized, hashedPassword },
     })
     await checkAndApplySignupPromo(tx, newUser.id)
   })
@@ -123,8 +124,9 @@ export async function signInAction(
   }
 
   const { email, password } = parsed.data
+  const emailNormalized = email.toLowerCase().trim()
 
-  const user = await db.user.findUnique({ where: { email } })
+  const user = await db.user.findUnique({ where: { email: emailNormalized } })
   if (!user || !user.hashedPassword) {
     return { success: false, error: 'Invalid email or password' }
   }
@@ -141,19 +143,19 @@ export async function signInAction(
     const expires = new Date(Date.now() + 15 * 60 * 1000)
 
     await db.verificationToken.deleteMany({
-      where: { identifier: email }
+      where: { identifier: emailNormalized }
     })
 
     await db.verificationToken.create({
       data: {
-        identifier: email,
+        identifier: emailNormalized,
         token: code,
         expires
       }
     })
 
     try {
-      await sendLoginOtpEmail(email, code)
+      await sendLoginOtpEmail(emailNormalized, code)
     } catch (err: any) {
       console.error('Failed to send login OTP:', err)
       return { success: false, error: 'Failed to send verification code. Please check SMTP settings.' }
@@ -164,7 +166,7 @@ export async function signInAction(
 
   try {
     await signIn('credentials', {
-      email,
+      email: emailNormalized,
       password,
       otp,
       redirectTo: '/dashboard',
@@ -186,7 +188,9 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
     return { success: false, error: 'Invalid email address' }
   }
 
-  const existingUser = await db.user.findUnique({ where: { email } })
+  const emailNormalized = email.toLowerCase().trim()
+
+  const existingUser = await db.user.findUnique({ where: { email: emailNormalized } })
   if (existingUser) {
     return { success: false, error: 'An account with this email already exists' }
   }
@@ -196,19 +200,19 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
 
   try {
     await db.verificationToken.deleteMany({
-      where: { identifier: email }
+      where: { identifier: emailNormalized }
     })
 
     await db.verificationToken.create({
       data: {
-        identifier: email,
+        identifier: emailNormalized,
         token: code,
         expires
       }
     })
 
     console.log('\n=============================================')
-    console.log(`[PADDLEYARD SIGNUP OTP] Code: ${code} for ${email}`)
+    console.log(`[PADDLEYARD SIGNUP OTP] Code: ${code} for ${emailNormalized}`)
     console.log('=============================================\n')
 
     const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER
@@ -225,7 +229,7 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
 
       const mailOptions = {
         from: `"PaddleYard" <${smtpUser}>`,
-        to: email,
+        to: emailNormalized,
         subject: `Your PaddleYard Verification Code: ${code}`,
         text: `Your PaddleYard verification code is: ${code}. This code is valid for 15 minutes.`,
         html: `
