@@ -17,7 +17,8 @@ import {
   LogOut,
   ShieldCheck,
   Star,
-  Gift
+  Gift,
+  BarChart3
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 
@@ -35,6 +36,7 @@ const navItems = [
 
 const adminNavItems = [
   { href: '/dashboard/admin', label: 'Kiosk Control', icon: ShieldCheck },
+  { href: '/dashboard/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/dashboard/paddlestack', label: 'Paddle Stack Board', icon: Layers },
   { href: '/dashboard/bookings', label: 'Booking Monitor', icon: Calendar },
   { href: '/dashboard/events', label: 'Club Events', icon: Award },
@@ -64,8 +66,12 @@ export function Sidebar({ user, isOpen }: SidebarProps) {
   const activeNavItems = (user?.role === 'ADMIN' || user?.role === 'STAFF')
     ? adminNavItems.filter(item => {
         if (user?.role === 'STAFF') {
-          // Staff cannot access Time & Cost Control or User Management
-          if (item.href === '/dashboard/admin/settings' || item.href === '/dashboard/admin/users') return false
+          // Staff cannot access Time & Cost Control, User Management, or Analytics
+          if (
+            item.href === '/dashboard/admin/settings' ||
+            item.href === '/dashboard/admin/users' ||
+            item.href === '/dashboard/admin/analytics'
+          ) return false
         }
         return true
       })
