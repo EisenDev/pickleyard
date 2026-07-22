@@ -92,6 +92,8 @@ jobs:
                   AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET}
                   SMTP_USER: ${SMTP_USER}
                   SMTP_PASS: ${SMTP_PASS}
+                  RESEND_API_KEY: ${RESEND_API_KEY}
+                  RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
                   NODE_OPTIONS: "--max-old-space-size=512"
                 deploy:
                   resources:
