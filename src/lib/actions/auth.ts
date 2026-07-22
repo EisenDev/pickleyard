@@ -76,13 +76,20 @@ async function sendLoginOtpEmail(email: string, code: string) {
   const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_PASS
 
+  console.log('\n=============================================')
+  console.log(`[PADDLEYARD LOGIN OTP] Code: ${code} for ${email}`)
+  console.log('=============================================\n')
+
   if (smtpUser && smtpPass) {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: smtpUser,
         pass: smtpPass
-      }
+      },
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 6000
     })
 
     const mailOptions = {
@@ -102,11 +109,11 @@ async function sendLoginOtpEmail(email: string, code: string) {
       `
     }
 
-    await transporter.sendMail(mailOptions)
-  } else {
-    console.log('\n=============================================')
-    console.log(`[PADDLEYARD LOGIN OTP] Code: ${code} for ${email}`)
-    console.log('=============================================\n')
+    try {
+      await transporter.sendMail(mailOptions)
+    } catch (err) {
+      console.warn('Failed to send login OTP via SMTP (SMTP port probably blocked):', err)
+    }
   }
 }
 
@@ -224,7 +231,10 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
         auth: {
           user: smtpUser,
           pass: smtpPass
-        }
+        },
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 6000
       })
 
       const mailOptions = {
@@ -244,7 +254,11 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
         `
       }
 
-      await transporter.sendMail(mailOptions)
+      try {
+        await transporter.sendMail(mailOptions)
+      } catch (err) {
+        console.warn('Failed to send signup OTP via SMTP (SMTP port probably blocked):', err)
+      }
     } else {
       console.warn('SMTP credentials missing. Skipped sending email, printed code in logs.')
     }
