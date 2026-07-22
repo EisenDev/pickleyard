@@ -397,7 +397,42 @@ export async function recordMatchResultAction(
         throw new Error('No active players found on this court. The match may have already been processed.')
       }
 
-      // 2. Get points settings
+      // 2. Compute DUPR rating adjustments using Individual-vs-Team Average ELO math
+      const winners = activePlayers.filter(p => winnerUserIds.includes(p.userId))
+      const losers = activePlayers.filter(p => !winnerUserIds.includes(p.userId))
+      
+      const duprUpdates: Record<string, { oldRating: number; newRating: number }> = {}
+
+      if (winners.length === 2 && losers.length === 2) {
+        const w1 = winners[0]
+        const w2 = winners[1]
+        const l1 = losers[0]
+        const l2 = losers[1]
+
+        const ratingW1 = Number(w1.user?.duprRating ?? 3.0)
+        const ratingW2 = Number(w2.user?.duprRating ?? 3.0)
+        const ratingL1 = Number(l1.user?.duprRating ?? 3.0)
+        const ratingL2 = Number(l2.user?.duprRating ?? 3.0)
+
+        const avgWinners = (ratingW1 + ratingW2) / 2
+        const avgLosers = (ratingL1 + ratingL2) / 2
+
+        const K = 0.10 // Caps rating volatility so skill tiers change realistically
+
+        const getNewRating = (oldRating: number, opponentAvg: number, actualScore: number) => {
+          const exponent = (opponentAvg - oldRating) / 2.0
+          const expected = 1.0 / (1.0 + Math.pow(10, exponent))
+          const updated = oldRating + K * (actualScore - expected)
+          return Math.max(2.00, Math.min(8.00, parseFloat(updated.toFixed(4))))
+        }
+
+        duprUpdates[w1.userId] = { oldRating: ratingW1, newRating: getNewRating(ratingW1, avgLosers, 1) }
+        duprUpdates[w2.userId] = { oldRating: ratingW2, newRating: getNewRating(ratingW2, avgLosers, 1) }
+        duprUpdates[l1.userId] = { oldRating: ratingL1, newRating: getNewRating(ratingL1, avgWinners, 0) }
+        duprUpdates[l2.userId] = { oldRating: ratingL2, newRating: getNewRating(ratingL2, avgWinners, 0) }
+      }
+
+      // 3. Get points settings
       const settings = await tx.systemSetting.findMany()
       const getSetting = (key: string, def: number) => {
         const s = settings.find((x: any) => x.key === key)
@@ -409,7 +444,7 @@ export async function recordMatchResultAction(
       const advancedWinner = getSetting('yp_advanced_winner', 65)
       const loserPercentage = getSetting('yp_loser_percentage', 15)
 
-      // 3. Award points to all players (winners get full points, losers get % of winners' points)
+      // 4. Award points & update DUPR ratings to all players
       for (const entry of activePlayers) {
         const skillLevel = entry.skillLevel
         const isWinner = winnerUserIds.includes(entry.userId)
@@ -426,22 +461,27 @@ export async function recordMatchResultAction(
         // Winners get full winnerPoints, losers get percentage
         const totalPoints = isWinner ? winnerPoints : Math.round(winnerPoints * (loserPercentage / 100))
 
-        // Update user yard points
+        const duprData = duprUpdates[entry.userId]
+        const oldDupr = duprData?.oldRating ?? Number(entry.user?.duprRating ?? 3.0)
+        const newDupr = duprData?.newRating ?? oldDupr
+
+        // Update user yard points & DUPR rating
         await tx.user.update({
           where: { id: entry.userId },
           data: {
             yardPoints: { increment: totalPoints },
-            lifetimeYardPoints: { increment: totalPoints }
+            lifetimeYardPoints: { increment: totalPoints },
+            duprRating: newDupr
           }
         })
 
-        // Log the points
+        // Log the points & DUPR updates
         await tx.yardPointLog.create({
           data: {
             userId: entry.userId,
             amount: totalPoints,
             reason: isWinner ? 'OPEN_PLAY_WIN' : 'OPEN_PLAY_PARTICIPATION',
-            details: `${skillLevel} match – ${isWinner ? `Winner (earned ${totalPoints} YP)` : `Participation / Loser (earned ${loserPercentage}% of winners' points: ${totalPoints} YP)`} (Court ${courtId.slice(-4)})`
+            details: `${skillLevel} match – ${isWinner ? `Winner (earned ${totalPoints} YP)` : `Participation / Loser (earned ${loserPercentage}% of winners' points: ${totalPoints} YP)`} | DUPR: ${oldDupr.toFixed(2)} → ${newDupr.toFixed(2)} (Court ${courtId.slice(-4)})`
           }
         })
       }
@@ -1104,6 +1144,31 @@ export async function adminConfirmBookingCheckinAction(bookingId: string): Promi
     return { success: true, checkedIn: result.checkedIn, message: result.message }
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to confirm booking.' }
+  }
+}
+
+// 12. Staff/Admin action to override player DUPR ratings manually
+export async function updateUserDuprRatingAction(
+  userId: string,
+  newRating: number
+): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized.' }
+
+  if (newRating < 2.0 || newRating > 8.0) {
+    return { success: false, error: 'DUPR rating must be between 2.0 and 8.0.' }
+  }
+
+  try {
+    await db.user.update({
+      where: { id: userId },
+      data: { duprRating: newRating }
+    })
+    revalidatePath('/dashboard/admin/users')
+    revalidatePath('/dashboard/profile')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to update rating.' }
   }
 }
 

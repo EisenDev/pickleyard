@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { registerUserByAdminAction } from '@/lib/actions/admin'
-import { Users, Search, Plus, UserCheck, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { registerUserByAdminAction, updateUserDuprRatingAction } from '@/lib/actions/admin'
+import { Users, Search, Plus, UserCheck, ShieldAlert, ShieldCheck, Edit2, Check, X } from 'lucide-react'
 
 interface UserItem {
   id: string
@@ -23,6 +23,10 @@ export function UsersClient({ users }: Props) {
   const [isPending, startTransition] = useTransition()
   const [searchQuery, setSearchQuery] = useState('')
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
+  
+  const [editingUserId, setEditingUserId] = useState<string | null>(null)
+  const [editRatingValue, setEditRatingValue] = useState<string>('')
+  const [editPending, setEditPending] = useState(false)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -62,6 +66,23 @@ export function UsersClient({ users }: Props) {
         setMessage({ success: false, text: result.error || 'Failed to create user account.' })
       }
     })
+  }
+
+  const handleSaveRating = async (userId: string) => {
+    const parsed = parseFloat(editRatingValue)
+    if (isNaN(parsed) || parsed < 2.0 || parsed > 8.0) {
+      alert('Please enter a valid rating between 2.0 and 8.0')
+      return
+    }
+    setEditPending(true)
+    const res = await updateUserDuprRatingAction(userId, parsed)
+    setEditPending(false)
+    if (res.success) {
+      setEditingUserId(null)
+      setMessage({ success: true, text: 'DUPR Rating updated successfully!' })
+    } else {
+      alert(res.error || 'Failed to update rating.')
+    }
   }
 
   const inputStyle: React.CSSProperties = {
@@ -220,10 +241,56 @@ export function UsersClient({ users }: Props) {
                     </div>
                     <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{user.email}</span>
                     {isPlayer && (
-                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '2px' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Tier: <strong>{user.membership}</strong></span>
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>DUPR: <strong>{user.duprRating.toFixed(2)}</strong></span>
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Bal: <strong>₱{user.credits.toFixed(2)}</strong></span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', borderTop: '1px solid var(--color-border)', paddingTop: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                          <span style={{ color: 'var(--color-text-secondary)' }}>Membership:</span>
+                          <strong style={{ color: 'var(--color-text-primary)' }}>{user.membership}</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                          <span style={{ color: 'var(--color-text-secondary)' }}>Credit Balance:</span>
+                          <strong style={{ color: 'var(--color-text-primary)' }}>₱{user.credits.toFixed(2)}</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                          <span style={{ color: 'var(--color-text-secondary)' }}>DUPR Rating:</span>
+                          {editingUserId === user.id ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="2.0"
+                                max="8.0"
+                                value={editRatingValue}
+                                onChange={e => setEditRatingValue(e.target.value)}
+                                style={{ width: '60px', height: '24px', padding: '0 4px', fontSize: '11px', border: '1px solid var(--color-primary)', borderRadius: '4px', outline: 'none', background: 'var(--color-surface)', color: 'var(--color-text-primary)' }}
+                                disabled={editPending}
+                              />
+                              <button
+                                onClick={() => handleSaveRating(user.id)}
+                                disabled={editPending}
+                                style={{ width: '24px', height: '24px', borderRadius: '4px', background: 'var(--color-success-subtle)', color: 'var(--color-success)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <Check size={12} />
+                              </button>
+                              <button
+                                onClick={() => setEditingUserId(null)}
+                                disabled={editPending}
+                                style={{ width: '24px', height: '24px', borderRadius: '4px', background: 'var(--color-danger-subtle)', color: 'var(--color-danger)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <strong style={{ color: 'var(--color-primary)' }}>{user.duprRating.toFixed(2)}</strong>
+                              <button
+                                onClick={() => { setEditingUserId(user.id); setEditRatingValue(user.duprRating.toString()) }}
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '2px' }}
+                              >
+                                <Edit2 size={11} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     <span style={{ fontSize: '11px', color: 'var(--color-text-disabled)' }}>
@@ -265,10 +332,50 @@ export function UsersClient({ users }: Props) {
                         </td>
                         <td style={{ padding: '12px 14px', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
                           {isPlayer ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               <span>Tier: <strong>{user.membership}</strong></span>
-                              <span>DUPR: <strong>{user.duprRating.toFixed(2)}</strong></span>
                               <span>Bal: <strong>₱{user.credits.toFixed(2)}</strong></span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                <span>DUPR: </span>
+                                {editingUserId === user.id ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="2.0"
+                                      max="8.0"
+                                      value={editRatingValue}
+                                      onChange={e => setEditRatingValue(e.target.value)}
+                                      style={{ width: '60px', height: '24px', padding: '0 4px', fontSize: '11px', border: '1px solid var(--color-primary)', borderRadius: '4px', outline: 'none', background: 'var(--color-surface)', color: 'var(--color-text-primary)' }}
+                                      disabled={editPending}
+                                    />
+                                    <button
+                                      onClick={() => handleSaveRating(user.id)}
+                                      disabled={editPending}
+                                      style={{ width: '22px', height: '22px', borderRadius: '4px', background: 'var(--color-success-subtle)', color: 'var(--color-success)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                      <Check size={11} />
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingUserId(null)}
+                                      disabled={editPending}
+                                      style={{ width: '22px', height: '22px', borderRadius: '4px', background: 'var(--color-danger-subtle)', color: 'var(--color-danger)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                      <X size={11} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <strong style={{ color: 'var(--color-primary)' }}>{user.duprRating.toFixed(2)}</strong>
+                                    <button
+                                      onClick={() => { setEditingUserId(user.id); setEditRatingValue(user.duprRating.toString()) }}
+                                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '2px' }}
+                                    >
+                                      <Edit2 size={11} />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           ) : <span style={{ color: 'var(--color-text-disabled)' }}>—</span>}
                         </td>

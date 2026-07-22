@@ -500,7 +500,7 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     if (active) {
       setModalSkillLevel(active.skillLevel)
     } else {
-      setModalSkillLevel(user.duprRating >= 4.0 ? 'ADVANCED' : user.duprRating >= 3.0 ? 'INTERMEDIATE' : 'NOVICE')
+      setModalSkillLevel(user.duprRating >= 4.5 ? 'ADVANCED' : user.duprRating >= 3.5 ? 'INTERMEDIATE' : 'NOVICE')
     }
     setAdminMessage(null)
     setIsCheckinModalOpen(true)
@@ -1808,7 +1808,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
             {/* Skill Selector for Checkin (Always show so admin can select queue level during check-in) */}
             <div>
               <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase' }}>Select Queue Skill Level</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                 {(['NOVICE', 'INTERMEDIATE', 'ADVANCED'] as const).map(lvl => (
                   <button
                     key={lvl}
@@ -1825,6 +1825,21 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                     {lvl}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  disabled
+                  style={{
+                    height: '34px', borderRadius: 'var(--radius-md)',
+                    border: '1px dashed var(--color-border)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text-disabled)',
+                    fontSize: '10px', fontWeight: 700, cursor: 'not-allowed',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px'
+                  }}
+                >
+                  <span style={{ fontSize: '10px' }}>ELITE</span>
+                  <span style={{ fontSize: '7px', color: 'var(--color-primary)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>SOON</span>
+                </button>
               </div>
             </div>
 

@@ -46,7 +46,7 @@ export function ProfileClient({ user }: Props) {
 
   const badge = MEMBERSHIP_COLORS[user.membership] || MEMBERSHIP_COLORS.STANDARD
   const initials = (user.name || user.email).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  const skillLabel = user.duprRating >= 4.0 ? 'Advanced' : user.duprRating >= 3.0 ? 'Intermediate' : 'Novice'
+  const skillLabel = user.duprRating >= 6.0 ? 'Elite' : user.duprRating >= 4.5 ? 'Advanced' : user.duprRating >= 3.5 ? 'Intermediate' : 'Novice'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%' }} className="animate-fade-up">
