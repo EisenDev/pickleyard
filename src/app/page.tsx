@@ -211,9 +211,6 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="hero-section">
-        {/* Background photo of courts with gradient fade on the left */}
-        <div className="hero-background-image" />
-
         <div className="hero-container">
           {/* Left Hero Content */}
           <div className="hero-left-content animate-fade-up">
@@ -222,9 +219,9 @@ export default function LandingPage() {
               <span>• INDOOR COURTS. ALL DAY.</span>
             </div>
 
-            <h1 className="hero-title" style={{ fontSize: '56px', fontWeight: 900, lineHeight: 1.08, letterSpacing: '-0.025em' }}>
+            <h1 className="hero-title" style={{ fontSize: '56px', fontWeight: 900, lineHeight: 1.08, letterSpacing: '-0.025em', color: 'white' }}>
               Less Waiting.<br />
-              <span style={{ color: 'var(--color-primary)' }}>More Playing.</span>
+              <span style={{ color: '#ff9800', borderBottom: '3.5px solid #ff9800', paddingBottom: '2px' }}>More Playing.</span>
             </h1>
 
             <p className="hero-subtitle">
@@ -269,13 +266,13 @@ export default function LandingPage() {
                 <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '90px', textAlign: 'center' }}>
                   <div style={{
                     width: '42px', height: '42px', borderRadius: '50%',
-                    background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                    background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.15)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: 'var(--color-primary)'
+                    color: '#00e676'
                   }}>
                     <item.icon size={16} />
                   </div>
-                  <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-text-primary)' }}>{item.label}</span>
+                  <span style={{ fontSize: '10px', fontWeight: 800, color: 'rgba(255, 255, 255, 0.95)' }}>{item.label}</span>
                 </div>
               ))}
             </div>
@@ -598,6 +595,7 @@ export default function LandingPage() {
                     display: isMobile ? 'flex' : 'grid',
                     flexDirection: isMobile ? 'column' : undefined,
                     gridTemplateColumns: isMobile ? undefined : '1fr 1fr',
+                    alignItems: isMobile ? undefined : 'start',
                     gap: '16px',
                     boxSizing: 'border-box',
                     padding: isMobile ? '0' : '0 8px'
@@ -720,8 +718,8 @@ export default function LandingPage() {
               </svg>
             </div>
             <div style={{ textAlign: 'left' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>Ready to Play?</h2>
-              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>Book your court now and enjoy the game!</p>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'white', margin: 0 }}>Ready to Play?</h2>
+              <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.75)', margin: '4px 0 0 0' }}>Book your court now and enjoy the game!</p>
             </div>
           </div>
           <Link href={session ? "/dashboard/bookings" : "/signup"} className="banner-cta-button">
@@ -932,7 +930,9 @@ export default function LandingPage() {
 
         /* Hero Layout */
         .hero-section {
-          background-color: var(--color-bg-primary);
+          background: linear-gradient(135deg, rgba(3, 49, 51, 0.96) 0%, rgba(1, 32, 34, 0.88) 100%), url('/court_illustration.jpg');
+          background-size: cover;
+          background-position: center;
           min-height: 80vh;
           display: flex;
           align-items: center;
@@ -943,27 +943,23 @@ export default function LandingPage() {
           border-bottom: 1px solid var(--color-border);
         }
 
-        .hero-background-image {
-          position: absolute;
-          top: 0;
-          right: 0;
-          bottom: 0;
-          width: 58%;
-          background-image: url(/court_illustration.jpg);
-          background-size: cover;
-          background-position: center;
-          z-index: 1;
+        .hero-section .badge-courts {
+          background: rgba(255, 255, 255, 0.12) !important;
+          border: 1px solid rgba(255, 255, 255, 0.2) !important;
+          color: white !important;
         }
 
-        .hero-background-image::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(to right, var(--color-bg-primary) 0%, var(--color-bg-primary) 12%, transparent 100%);
-          z-index: 2;
+        .hero-section .hero-subtitle {
+          color: rgba(255, 255, 255, 0.75) !important;
+        }
+
+        .hero-section .sec-btn {
+          background: rgba(255, 255, 255, 0.08) !important;
+          color: white !important;
+          border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        }
+        .hero-section .sec-btn:hover {
+          background: rgba(255, 255, 255, 0.16) !important;
         }
 
         .hero-container {
@@ -1266,7 +1262,7 @@ export default function LandingPage() {
           margin: 0 auto;
         }
         .cta-banner-container {
-          background: linear-gradient(135deg, var(--color-primary) 0%, #005F63 100%);
+          background: linear-gradient(135deg, #02383a 0%, #011d1f 100%);
           border-radius: var(--radius-2xl);
           padding: 48px 64px;
           display: flex;
