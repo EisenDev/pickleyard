@@ -1651,13 +1651,22 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                   )
                 }
 
-                const activeQueueEntry = stacks.find(s => 
-                  s.qrId?.toLowerCase() === scanText.trim().toLowerCase() && 
-                  ['PENDING', 'WAITING', 'PLAYING', 'MATCHED'].includes(s.status)
-                )
-                const matchedScanUser = activeQueueEntry 
-                  ? (activeQueueEntry.user || users.find(u => u.id === activeQueueEntry.userId))
-                  : null
+                let matchedScanUser = null
+                const textVal = scanText.trim()
+                if (textVal.startsWith('MEMBER-PASS:')) {
+                  const mId = textVal.split('userId=')[1] || ''
+                  matchedScanUser = users.find(u => u.id === mId)
+                } else {
+                  const activeQueueEntry = stacks.find(s => 
+                    s.qrId?.toLowerCase() === textVal.toLowerCase() && 
+                    ['PENDING', 'WAITING', 'PLAYING', 'MATCHED'].includes(s.status)
+                  )
+                  if (activeQueueEntry) {
+                    matchedScanUser = activeQueueEntry.user || users.find(u => u.id === activeQueueEntry.userId)
+                  } else {
+                    matchedScanUser = users.find(u => u.id === textVal || u.email.toLowerCase() === textVal.toLowerCase())
+                  }
+                }
 
                 return (
                   <div style={{ marginTop: '4px' }}>
