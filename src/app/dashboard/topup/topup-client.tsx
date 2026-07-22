@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { createPaymongoSessionAction } from '@/lib/actions/paymongo'
+import { redeemVoucherAction } from '@/lib/actions/admin'
 import { useSearchParams } from 'next/navigation'
 import { ShieldCheck, ShieldAlert, CreditCard, Smartphone, Building2, QrCode, Wallet, Tag, ChevronRight } from 'lucide-react'
 
@@ -96,7 +97,6 @@ export function TopUpClient({ userBalance, userId }: Props) {
   const handleTopUp = () => {
     if (!selectedMethod) return
     if (selectedMethod === 'voucher') {
-      setMessage({ success: false, text: 'Voucher redemption coming soon. Please contact staff.' })
       return
     }
     if (selectedMethod === 'cash') {
@@ -109,6 +109,23 @@ export function TopUpClient({ userBalance, userId }: Props) {
         window.location.href = result.checkoutUrl
       } else {
         setMessage({ success: false, text: result.error })
+      }
+    })
+  }
+
+  const handleRedeemVoucher = () => {
+    if (!voucherCode.trim()) return
+    setMessage(null)
+    startTransition(async () => {
+      const result = await redeemVoucherAction(voucherCode)
+      if (result.success) {
+        setMessage({ success: true, text: result.message || 'Voucher redeemed successfully!' })
+        setVoucherCode('')
+        setTimeout(() => {
+          window.location.reload()
+        }, 1200)
+      } else {
+        setMessage({ success: false, text: result.error || 'Failed to redeem voucher.' })
       }
     })
   }
@@ -298,14 +315,15 @@ export function TopUpClient({ userBalance, userId }: Props) {
               }}
             />
             <button
-              onClick={handleTopUp}
-              disabled={!voucherCode.trim()}
+              onClick={handleRedeemVoucher}
+              disabled={isPending || !voucherCode.trim()}
               style={{
                 width: '100%', height: '42px', background: 'var(--color-primary)', color: 'white',
-                border: 'none', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700, cursor: 'pointer'
+                border: 'none', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                opacity: isPending ? 0.7 : 1
               }}
             >
-              Redeem Code
+              {isPending ? 'Redeeming...' : 'Redeem Code'}
             </button>
           </div>
         )}

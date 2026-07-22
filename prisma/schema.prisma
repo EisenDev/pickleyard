@@ -33,6 +33,7 @@ model User {
   transactions Transaction[]
   yardPointLogs YardPointLog[]
   redemptions   RedemptionRequest[]
+  vouchers      Voucher[]           @relation("UserVouchers")
 
   @@map("users")
 }
@@ -220,4 +221,20 @@ model RedemptionRequest {
   product         ShopProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("redemption_requests")
+}
+
+model Voucher {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  amount    Decimal   @db.Decimal(10, 2)
+  isUsed    Boolean   @default(false)
+  usedById  String?
+  usedAt    DateTime?
+  expiresAt DateTime?
+  batchId   String?
+  createdAt DateTime  @default(now())
+
+  user      User?     @relation("UserVouchers", fields: [usedById], references: [id], onDelete: SetNull)
+
+  @@map("vouchers")
 }

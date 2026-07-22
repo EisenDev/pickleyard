@@ -1172,3 +1172,216 @@ export async function updateUserDuprRatingAction(
   }
 }
 
+// 13. Get Voucher settings (ADMIN ONLY)
+export async function getVoucherSettingsAction(): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized.' }
+
+  try {
+    const settings = await db.systemSetting.findMany({
+      where: {
+        key: {
+          in: [
+            'promo_signup_active',
+            'promo_signup_start',
+            'promo_signup_end',
+            'promo_signup_limit',
+            'promo_signup_amount',
+            'promo_signup_count'
+          ]
+        }
+      }
+    })
+
+    const getVal = (key: string, def: string) => {
+      const match = settings.find(s => s.key === key)
+      return match ? match.value : def
+    }
+
+    return {
+      success: true,
+      settings: {
+        active: getVal('promo_signup_active', 'false') === 'true',
+        start: getVal('promo_signup_start', ''),
+        end: getVal('promo_signup_end', ''),
+        limit: parseInt(getVal('promo_signup_limit', '20')),
+        amount: parseFloat(getVal('promo_signup_amount', '100.00')),
+        count: parseInt(getVal('promo_signup_count', '0'))
+      }
+    }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to fetch settings.' }
+  }
+}
+
+// 14. Update Voucher settings (ADMIN ONLY)
+export async function updateVoucherSettingsAction(data: {
+  active: boolean
+  start: string
+  end: string
+  limit: number
+  amount: number
+}): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized.' }
+
+  try {
+    const updates = [
+      { key: 'promo_signup_active', value: data.active ? 'true' : 'false' },
+      { key: 'promo_signup_start', value: data.start },
+      { key: 'promo_signup_end', value: data.end },
+      { key: 'promo_signup_limit', value: data.limit.toString() },
+      { key: 'promo_signup_amount', value: data.amount.toFixed(2) }
+    ]
+
+    for (const update of updates) {
+      await db.systemSetting.upsert({
+        where: { key: update.key },
+        update: { value: update.value },
+        create: { key: update.key, value: update.value }
+      })
+    }
+
+    revalidatePath('/dashboard/admin/vouchers')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to update settings.' }
+  }
+}
+
+// 15. Generate vouchers (ADMIN ONLY)
+export async function generateVouchersAction(count: number, amount: number): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized.' }
+
+  if (count <= 0 || count > 100) return { success: false, error: 'Please enter a count between 1 and 100.' }
+  if (amount <= 0) return { success: false, error: 'Voucher amount must be positive.' }
+
+  try {
+    const batchId = 'batch_' + Math.random().toString(36).substring(2, 11)
+    const generatedVouchers = []
+
+    for (let i = 0; i < count; i++) {
+      let code = ''
+      let isUnique = false
+      while (!isUnique) {
+        const part1 = Math.random().toString(36).substring(2, 6).toUpperCase()
+        const part2 = Math.random().toString(36).substring(2, 6).toUpperCase()
+        code = `PY-${part1}-${part2}`
+        const existing = await db.voucher.findUnique({ where: { code } })
+        if (!existing) isUnique = true
+      }
+
+      const voucher = await db.voucher.create({
+        data: {
+          code,
+          amount,
+          batchId
+        }
+      })
+      generatedVouchers.push(voucher)
+    }
+
+    revalidatePath('/dashboard/admin/vouchers')
+    return { success: true, count: generatedVouchers.length }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to generate vouchers.' }
+  }
+}
+
+// 16. Get list of generated vouchers (ADMIN ONLY)
+export async function getRedeemableVouchersAction(): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized.' }
+
+  try {
+    const vouchers = await db.voucher.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
+      }
+    })
+    const formatted = vouchers.map(v => ({
+      id: v.id,
+      code: v.code,
+      amount: Number(v.amount),
+      isUsed: v.isUsed,
+      usedAt: v.usedAt ? v.usedAt.toISOString() : null,
+      claimedBy: v.user ? `${v.user.name || 'Anonymous'} (${v.user.email})` : null,
+      createdAt: v.createdAt.toISOString()
+    }))
+
+    return { success: true, vouchers: formatted }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to fetch vouchers.' }
+  }
+}
+
+// 17. Redeem a voucher (PLAYER ACCESS)
+export async function redeemVoucherAction(code: string): Promise<ActionState> {
+  const session = await auth()
+  if (!session?.user?.email) return { success: false, error: 'Unauthorized.' }
+
+  const cleanCode = code.trim().toUpperCase()
+  if (!cleanCode) return { success: false, error: 'Voucher code is required.' }
+
+  try {
+    const result = await db.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { email: session.user.email! } })
+      if (!user) throw new Error('User not found.')
+
+      const voucher = await tx.voucher.findUnique({ where: { code: cleanCode } })
+      if (!voucher) throw new Error('Invalid voucher code.')
+
+      if (voucher.isUsed) throw new Error('This voucher code has already been redeemed.')
+
+      if (voucher.expiresAt && new Date() > voucher.expiresAt) {
+        throw new Error('This voucher has expired.')
+      }
+
+      const amount = Number(voucher.amount)
+
+      await tx.voucher.update({
+        where: { id: voucher.id },
+        data: {
+          isUsed: true,
+          usedById: user.id,
+          usedAt: new Date()
+        }
+      })
+
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          credits: { increment: amount }
+        }
+      })
+
+      await tx.transaction.create({
+        data: {
+          userId: user.id,
+          amount,
+          type: 'TOPUP',
+          reference: `Voucher Redeem: ${voucher.code}`
+        }
+      })
+
+      await awardTopUpPoints(tx, user.id, amount)
+
+      return { amount }
+    })
+
+    revalidatePath('/dashboard/topup')
+    revalidatePath('/dashboard/ledger')
+    revalidatePath('/dashboard/admin/vouchers')
+    return { success: true, amount: result.amount, message: `Successfully redeemed voucher for ₱${result.amount.toFixed(2)}!` }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Voucher redemption failed.' }
+  }
+}
+

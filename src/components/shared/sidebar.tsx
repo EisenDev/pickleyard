@@ -43,6 +43,7 @@ const adminNavItems = [
   { href: '/dashboard/ledger', label: 'Ledger', icon: CreditCard },
   { href: '/dashboard/admin/users', label: 'User Management', icon: Users },
   { href: '/dashboard/admin/yard-points', label: 'Yard Points Mgr', icon: Star },
+  { href: '/dashboard/admin/vouchers', label: 'Voucher Manager', icon: Gift },
   { href: '/dashboard/admin/settings', label: 'Time & Cost Control', icon: Settings },
 ]
 
@@ -66,11 +67,12 @@ export function Sidebar({ user, isOpen }: SidebarProps) {
   const activeNavItems = (user?.role === 'ADMIN' || user?.role === 'STAFF')
     ? adminNavItems.filter(item => {
         if (user?.role === 'STAFF') {
-          // Staff cannot access Time & Cost Control, User Management, or Analytics
+          // Staff cannot access Time & Cost Control, User Management, Analytics, or Vouchers
           if (
             item.href === '/dashboard/admin/settings' ||
             item.href === '/dashboard/admin/users' ||
-            item.href === '/dashboard/admin/analytics'
+            item.href === '/dashboard/admin/analytics' ||
+            item.href === '/dashboard/admin/vouchers'
           ) return false
         }
         return true
@@ -123,11 +125,9 @@ export function Sidebar({ user, isOpen }: SidebarProps) {
         aria-label="Main navigation"
       >
         {activeNavItems.map((item) => {
-          const isActive = pathname === item.href || (
-            item.href !== '/dashboard' &&
-            item.href !== '/dashboard/admin' &&
-            pathname.startsWith(item.href + '/')
-          )
+          const isActive = (item.href === '/dashboard' || item.href === '/dashboard/admin')
+            ? (pathname === item.href || pathname === item.href + '/')
+            : (pathname === item.href || pathname.startsWith(item.href + '/'))
           const Icon = item.icon
           return (
             <Link

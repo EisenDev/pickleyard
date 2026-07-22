@@ -51,8 +51,11 @@ export async function signUpAction(
 
   const hashedPassword = await bcrypt.hash(password, 12)
 
-  await db.user.create({
-    data: { name, email, hashedPassword },
+  await db.$transaction(async (tx) => {
+    const newUser = await tx.user.create({
+      data: { name, email, hashedPassword },
+    })
+    await checkAndApplySignupPromo(tx, newUser.id)
   })
 
   // Auto sign-in after registration
@@ -206,19 +209,23 @@ export async function signUpWithOtpAction(
       return { success: false, error: 'Verification code has expired. Please request a new one.' }
     }
 
-    await db.verificationToken.deleteMany({
-      where: { identifier: email, token: code }
-    })
+    await db.$transaction(async (tx) => {
+      await tx.verificationToken.deleteMany({
+        where: { identifier: email, token: code }
+      })
 
-    const existingUser = await db.user.findUnique({ where: { email } })
-    if (existingUser) {
-      return { success: false, error: 'An account with this email already exists.' }
-    }
+      const existingUser = await tx.user.findUnique({ where: { email } })
+      if (existingUser) {
+        throw new Error('An account with this email already exists.')
+      }
 
-    const hashedPassword = await bcrypt.hash(password, 12)
+      const hashedPassword = await bcrypt.hash(password, 12)
 
-    await db.user.create({
-      data: { name, email, hashedPassword }
+      const newUser = await tx.user.create({
+        data: { name, email, hashedPassword }
+      })
+
+      await checkAndApplySignupPromo(tx, newUser.id)
     })
 
     try {
@@ -237,5 +244,97 @@ export async function signUpWithOtpAction(
     }
     console.error('Error in signUpWithOtpAction:', err)
     return { success: false, error: err.message || 'Error occurred during registration.' }
+  }
+}
+
+async function checkAndApplySignupPromo(tx: any, userId: string) {
+  try {
+    const settings = await tx.systemSetting.findMany({
+      where: {
+        key: {
+          in: [
+            'promo_signup_active',
+            'promo_signup_start',
+            'promo_signup_end',
+            'promo_signup_limit',
+            'promo_signup_amount',
+            'promo_signup_count'
+          ]
+        }
+      }
+    })
+
+    const getVal = (key: string, def: string) => {
+      const match = settings.find((s: any) => s.key === key)
+      return match ? match.value : def
+    }
+
+    const active = getVal('promo_signup_active', 'false') === 'true'
+    if (!active) return
+
+    const startStr = getVal('promo_signup_start', '')
+    const endStr = getVal('promo_signup_end', '')
+    const now = new Date()
+
+    if (startStr) {
+      const startDate = new Date(startStr)
+      if (now < startDate) return
+    }
+    if (endStr) {
+      const endDate = new Date(endStr)
+      if (now > endDate) return
+    }
+
+    const limit = parseInt(getVal('promo_signup_limit', '20'))
+    const count = parseInt(getVal('promo_signup_count', '0'))
+    if (count >= limit) return
+
+    const amount = parseFloat(getVal('promo_signup_amount', '100.00'))
+
+    // Apply promo settings
+    await tx.systemSetting.upsert({
+      where: { key: 'promo_signup_count' },
+      update: { value: (count + 1).toString() },
+      create: { key: 'promo_signup_count', value: (count + 1).toString() }
+    })
+
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        credits: { increment: amount }
+      }
+    })
+
+    await tx.transaction.create({
+      data: {
+        userId,
+        amount,
+        type: 'TOPUP',
+        reference: `Auto Sign-up Promo Credit (${count + 1}/${limit})`
+      }
+    })
+
+    const topUpPointsRatio = 10
+    const pointsAwarded = Math.floor(amount / topUpPointsRatio)
+    if (pointsAwarded > 0) {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          yardPoints: { increment: pointsAwarded },
+          lifetimeYardPoints: { increment: pointsAwarded }
+        }
+      })
+
+      await tx.yardPointLog.create({
+        data: {
+          userId,
+          amount: pointsAwarded,
+          reason: 'TOPUP',
+          details: `Earned from Auto Sign-up Promo Credit of ₱${amount.toFixed(2)}`
+        }
+      })
+    }
+  } catch (error) {
+    console.error('Error applying signup promo:', error)
   }
 }

@@ -24,9 +24,16 @@ export function UsersClient({ users }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
   
-  const [editingUserId, setEditingUserId] = useState<string | null>(null)
-  const [editRatingValue, setEditRatingValue] = useState<string>('')
+  const [editingUserForModal, setEditingUserForModal] = useState<UserItem | null>(null)
+  const [selectedSkillLevel, setSelectedSkillLevel] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED' | 'ELITE'>('NOVICE')
   const [editPending, setEditPending] = useState(false)
+
+  const getSkillLabel = (rating: number) => {
+    if (rating >= 6.0) return 'ELITE'
+    if (rating >= 4.5) return 'ADVANCED'
+    if (rating >= 3.5) return 'INTERMEDIATE'
+    return 'NOVICE'
+  }
 
   const [formData, setFormData] = useState({
     name: '',
@@ -34,7 +41,7 @@ export function UsersClient({ users }: Props) {
     password: '',
     role: 'PLAYER',
     membership: 'STANDARD',
-    duprRating: '3.0',
+    duprRating: '0.0',
     credits: '0'
   })
 
@@ -61,29 +68,13 @@ export function UsersClient({ users }: Props) {
 
       if (result.success) {
         setMessage({ success: true, text: `Successfully registered new ${formData.role.toLowerCase()} user!` })
-        setFormData({ name: '', email: '', password: '', role: 'PLAYER', membership: 'STANDARD', duprRating: '3.0', credits: '0' })
+        setFormData({ name: '', email: '', password: '', role: 'PLAYER', membership: 'STANDARD', duprRating: '0.0', credits: '0' })
       } else {
         setMessage({ success: false, text: result.error || 'Failed to create user account.' })
       }
     })
   }
 
-  const handleSaveRating = async (userId: string) => {
-    const parsed = parseFloat(editRatingValue)
-    if (isNaN(parsed) || parsed < 2.0 || parsed > 8.0) {
-      alert('Please enter a valid rating between 2.0 and 8.0')
-      return
-    }
-    setEditPending(true)
-    const res = await updateUserDuprRatingAction(userId, parsed)
-    setEditPending(false)
-    if (res.success) {
-      setEditingUserId(null)
-      setMessage({ success: true, text: 'DUPR Rating updated successfully!' })
-    } else {
-      alert(res.error || 'Failed to update rating.')
-    }
-  }
 
   const inputStyle: React.CSSProperties = {
     height: '40px', padding: '0 12px', borderRadius: 'var(--radius-md)',
@@ -247,49 +238,28 @@ export function UsersClient({ users }: Props) {
                           <strong style={{ color: 'var(--color-text-primary)' }}>{user.membership}</strong>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                          <span style={{ color: 'var(--color-text-secondary)' }}>Skill Level:</span>
+                          <strong style={{ color: 'var(--color-text-primary)' }}>{getSkillLabel(user.duprRating)}</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
                           <span style={{ color: 'var(--color-text-secondary)' }}>Credit Balance:</span>
                           <strong style={{ color: 'var(--color-text-primary)' }}>₱{user.credits.toFixed(2)}</strong>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
                           <span style={{ color: 'var(--color-text-secondary)' }}>DUPR Rating:</span>
-                          {editingUserId === user.id ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="2.0"
-                                max="8.0"
-                                value={editRatingValue}
-                                onChange={e => setEditRatingValue(e.target.value)}
-                                style={{ width: '60px', height: '24px', padding: '0 4px', fontSize: '11px', border: '1px solid var(--color-primary)', borderRadius: '4px', outline: 'none', background: 'var(--color-surface)', color: 'var(--color-text-primary)' }}
-                                disabled={editPending}
-                              />
-                              <button
-                                onClick={() => handleSaveRating(user.id)}
-                                disabled={editPending}
-                                style={{ width: '24px', height: '24px', borderRadius: '4px', background: 'var(--color-success-subtle)', color: 'var(--color-success)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                              >
-                                <Check size={12} />
-                              </button>
-                              <button
-                                onClick={() => setEditingUserId(null)}
-                                disabled={editPending}
-                                style={{ width: '24px', height: '24px', borderRadius: '4px', background: 'var(--color-danger-subtle)', color: 'var(--color-danger)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <strong style={{ color: 'var(--color-primary)' }}>{user.duprRating.toFixed(2)}</strong>
-                              <button
-                                onClick={() => { setEditingUserId(user.id); setEditRatingValue(user.duprRating.toString()) }}
-                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '2px' }}
-                              >
-                                <Edit2 size={11} />
-                              </button>
-                            </div>
-                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <strong style={{ color: 'var(--color-primary)' }}>{user.duprRating.toFixed(2)}</strong>
+                            <button
+                              onClick={() => {
+                                setEditingUserForModal(user)
+                                const currentLevel = user.duprRating >= 6.0 ? 'ELITE' : user.duprRating >= 4.5 ? 'ADVANCED' : user.duprRating >= 3.5 ? 'INTERMEDIATE' : 'NOVICE'
+                                setSelectedSkillLevel(currentLevel)
+                              }}
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '2px' }}
+                            >
+                              <Edit2 size={11} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -333,48 +303,22 @@ export function UsersClient({ users }: Props) {
                         <td style={{ padding: '12px 14px', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
                           {isPlayer ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <span>Tier: <strong>{user.membership}</strong></span>
+                              <span>Membership: <strong>{user.membership}</strong></span>
+                              <span>Skill Level: <strong>{getSkillLabel(user.duprRating)}</strong></span>
                               <span>Bal: <strong>₱{user.credits.toFixed(2)}</strong></span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                                 <span>DUPR: </span>
-                                {editingUserId === user.id ? (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      min="2.0"
-                                      max="8.0"
-                                      value={editRatingValue}
-                                      onChange={e => setEditRatingValue(e.target.value)}
-                                      style={{ width: '60px', height: '24px', padding: '0 4px', fontSize: '11px', border: '1px solid var(--color-primary)', borderRadius: '4px', outline: 'none', background: 'var(--color-surface)', color: 'var(--color-text-primary)' }}
-                                      disabled={editPending}
-                                    />
-                                    <button
-                                      onClick={() => handleSaveRating(user.id)}
-                                      disabled={editPending}
-                                      style={{ width: '22px', height: '22px', borderRadius: '4px', background: 'var(--color-success-subtle)', color: 'var(--color-success)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                    >
-                                      <Check size={11} />
-                                    </button>
-                                    <button
-                                      onClick={() => setEditingUserId(null)}
-                                      disabled={editPending}
-                                      style={{ width: '22px', height: '22px', borderRadius: '4px', background: 'var(--color-danger-subtle)', color: 'var(--color-danger)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                    >
-                                      <X size={11} />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <strong style={{ color: 'var(--color-primary)' }}>{user.duprRating.toFixed(2)}</strong>
-                                    <button
-                                      onClick={() => { setEditingUserId(user.id); setEditRatingValue(user.duprRating.toString()) }}
-                                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '2px' }}
-                                    >
-                                      <Edit2 size={11} />
-                                    </button>
-                                  </>
-                                )}
+                                <strong style={{ color: 'var(--color-primary)' }}>{user.duprRating.toFixed(2)}</strong>
+                                <button
+                                  onClick={() => {
+                                    setEditingUserForModal(user)
+                                    const currentLevel = user.duprRating >= 6.0 ? 'ELITE' : user.duprRating >= 4.5 ? 'ADVANCED' : user.duprRating >= 3.5 ? 'INTERMEDIATE' : 'NOVICE'
+                                    setSelectedSkillLevel(currentLevel)
+                                  }}
+                                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '2px' }}
+                                >
+                                  <Edit2 size={11} />
+                                </button>
                               </div>
                             </div>
                           ) : <span style={{ color: 'var(--color-text-disabled)' }}>—</span>}
@@ -391,6 +335,93 @@ export function UsersClient({ users }: Props) {
           </div>
         </div>
       </div>
+
+      {editingUserForModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: '16px'
+        }}>
+          <div style={{
+            background: 'var(--color-card)', border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '400px',
+            padding: '24px', boxShadow: 'var(--shadow-lg)', display: 'flex', flexDirection: 'column', gap: '20px'
+          }}>
+            <div>
+              <h3 style={{ fontSize: '18px', fontWeight: 850, color: 'var(--color-text-primary)', margin: 0 }}>
+                Edit Skill Level (DUPR)
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '4px 0 0' }}>
+                Select the skill tier for <strong>{editingUserForModal.name}</strong>.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Skill Level Tier</label>
+              <select
+                value={selectedSkillLevel}
+                onChange={e => setSelectedSkillLevel(e.target.value as any)}
+                style={selectStyle}
+              >
+                <option value="NOVICE">Novice (sets DUPR to 2.50)</option>
+                <option value="INTERMEDIATE">Intermediate (sets DUPR to 3.50)</option>
+                <option value="ADVANCED">Advanced (sets DUPR to 4.50)</option>
+                <option value="ELITE">Elite (sets DUPR to 6.00)</option>
+              </select>
+              <p style={{ fontSize: '11px', color: 'var(--color-text-disabled)', margin: '6px 0 0' }}>
+                Staff can assign the general category. The system will set their DUPR rating to the minimum rating for that tier.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '4px' }}>
+              <button
+                type="button"
+                onClick={() => setEditingUserForModal(null)}
+                disabled={editPending}
+                style={{
+                  height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)', background: 'transparent',
+                  color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: 650,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const minRatings = {
+                    NOVICE: 2.50,
+                    INTERMEDIATE: 3.50,
+                    ADVANCED: 4.50,
+                    ELITE: 6.00
+                  }
+                  const newRating = minRatings[selectedSkillLevel]
+                  setEditPending(true)
+                  const res = await updateUserDuprRatingAction(editingUserForModal.id, newRating)
+                  setEditPending(false)
+                  if (res.success) {
+                    setEditingUserForModal(null)
+                    setMessage({ success: true, text: `Successfully updated ${editingUserForModal.name}'s rating to ${newRating.toFixed(2)} (${selectedSkillLevel})` })
+                  } else {
+                    alert(res.error || 'Failed to update rating.')
+                  }
+                }}
+                disabled={editPending}
+                style={{
+                  height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
+                  border: 'none', background: 'var(--color-primary)',
+                  color: 'white', fontSize: '13px', fontWeight: 700,
+                  cursor: 'pointer', opacity: editPending ? 0.75 : 1
+                }}
+              >
+                {editPending ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .users-layout {
