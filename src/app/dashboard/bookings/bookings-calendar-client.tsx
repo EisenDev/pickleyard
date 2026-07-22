@@ -818,7 +818,50 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                 )
               }
 
-              const sortedPasses = [...allPasses].sort((a, b) => {
+              // Group consecutive passes on the same court, day, and status
+              const groupedPasses = (() => {
+                const sorted = [...allPasses].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                const grouped: any[] = []
+                for (const pass of sorted) {
+                  const passStart = new Date(pass.startTime).getTime()
+                  const passDay = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(pass.startTime))
+
+                  const matchingGroup = grouped.find(g => 
+                    g.courtId === pass.courtId &&
+                    g.status === pass.status &&
+                    g.day === passDay &&
+                    new Date(g.endTime).getTime() === passStart
+                  )
+
+                  if (matchingGroup) {
+                    matchingGroup.ids.push(pass.id)
+                    matchingGroup.endTime = pass.endTime
+                    matchingGroup.price = Number(matchingGroup.price) + Number(pass.price)
+                  } else {
+                    grouped.push({
+                      ids: [pass.id],
+                      courtId: pass.courtId,
+                      courtName: pass.courtName,
+                      status: pass.status,
+                      day: passDay,
+                      startTime: pass.startTime,
+                      endTime: pass.endTime,
+                      price: Number(pass.price)
+                    })
+                  }
+                }
+                return grouped.map(g => ({
+                  id: g.ids.join(','),
+                  courtId: g.courtId,
+                  courtName: g.courtName,
+                  status: g.status,
+                  startTime: g.startTime,
+                  endTime: g.endTime,
+                  price: g.price
+                }))
+              })()
+
+              const sortedPasses = [...groupedPasses].sort((a, b) => {
                 const now = Date.now()
                 const aEnd = new Date(a.endTime).getTime()
                 const bEnd = new Date(b.endTime).getTime()
@@ -846,7 +889,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                     const isPending = pass.status === 'PENDING'
                     const isPaid = pass.status === 'PAID'
                     const isPast = new Date(pass.endTime).getTime() < Date.now()
-                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=BOOKING-PASS:bookingId=${pass.id}`
+                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=BOOKING-PASS:bookingIds=${pass.id}`
                     
                     return (
                       <div key={pass.id} style={{
@@ -891,7 +934,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                         </div>
 
                         <div style={{ fontSize: '11px', fontFamily: 'monospace', background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '4px 8px', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)' }}>
-                          Pass ID: <strong>BK-{pass.id.slice(-6).toUpperCase()}</strong>
+                          Pass ID: <strong>BK-{pass.id.split(',')[0].slice(-6).toUpperCase()}</strong>
                         </div>
 
                         <div style={{ textAlign: 'center' }}>

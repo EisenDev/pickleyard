@@ -976,21 +976,29 @@ export async function getBookingDetailsForScanAction(bookingId: string) {
     let targetId = bookingId.trim()
     
     // Parse QR payload formats
-    if (targetId.startsWith('BOOKING-PASS:bookingId=')) {
-      targetId = targetId.replace('BOOKING-PASS:bookingId=', '')
+    let targetIds: string[] = []
+    if (targetId.startsWith('BOOKING-PASS:bookingIds=')) {
+      targetIds = targetId.replace('BOOKING-PASS:bookingIds=', '').split(',')
+    } else if (targetId.startsWith('BOOKING-PASS:bookingId=')) {
+      targetIds = [targetId.replace('BOOKING-PASS:bookingId=', '')]
+    } else {
+      targetIds = [targetId]
     }
 
     // Handle manual short-codes (e.g. BK-XXXXXX or BK-PASS:XXXXXX or XXXXXX)
     let suffix = ''
-    if (targetId.toUpperCase().startsWith('BK-PASS:')) {
-      suffix = targetId.slice(8).toUpperCase()
-    } else if (targetId.toUpperCase().startsWith('BK-')) {
-      suffix = targetId.slice(3).toUpperCase()
-    } else if (targetId.length === 6 && /^[a-zA-Z0-9]+$/.test(targetId)) {
-      suffix = targetId.toUpperCase()
+    if (targetIds.length === 1) {
+      const singleId = targetIds[0]
+      if (singleId.toUpperCase().startsWith('BK-PASS:')) {
+        suffix = singleId.slice(8).toUpperCase()
+      } else if (singleId.toUpperCase().startsWith('BK-')) {
+        suffix = singleId.slice(3).toUpperCase()
+      } else if (singleId.length === 6 && /^[a-zA-Z0-9]+$/.test(singleId)) {
+        suffix = singleId.toUpperCase()
+      }
     }
 
-    let booking = null
+    let bookings = []
     if (suffix) {
       const matches = await db.booking.findMany({
         where: {
@@ -1003,15 +1011,15 @@ export async function getBookingDetailsForScanAction(bookingId: string) {
         }
       })
       if (matches.length === 1) {
-        booking = matches[0]
+        bookings = [matches[0]]
       } else if (matches.length > 1) {
         return { success: false, error: 'Multiple bookings match this code. Please enter full ID.' }
       } else {
         return { success: false, error: 'No booking found matching this code suffix.' }
       }
     } else {
-      booking = await db.booking.findUnique({
-        where: { id: targetId },
+      bookings = await db.booking.findMany({
+        where: { id: { in: targetIds } },
         include: {
           user: { select: { id: true, name: true, email: true } },
           court: { select: { id: true, name: true, number: true } }
@@ -1019,24 +1027,40 @@ export async function getBookingDetailsForScanAction(bookingId: string) {
       })
     }
 
-    if (!booking) {
-      return { success: false, error: 'Booking not found.' }
+    if (bookings.length === 0) {
+      return { success: false, error: 'Booking(s) not found.' }
+    }
+
+    // Sort bookings by startTime so we can construct a coherent display
+    bookings.sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+
+    const firstBooking = bookings[0]
+    const lastBooking = bookings[bookings.length - 1]
+    const totalPrice = bookings.reduce((sum, b) => sum + Number(b.price), 0)
+
+    // Determine status: if any is PENDING, overall status is PENDING (cash collect).
+    // If all are RESERVED, overall is RESERVED. Otherwise PAID.
+    let overallStatus = 'PAID'
+    if (bookings.some(b => b.status === 'PENDING')) {
+      overallStatus = 'PENDING'
+    } else if (bookings.every(b => b.status === 'RESERVED')) {
+      overallStatus = 'RESERVED'
     }
 
     return {
       success: true,
       booking: {
-        id: booking.id,
-        courtId: booking.courtId,
-        courtName: booking.court.name,
-        courtNumber: booking.court.number,
-        startTime: booking.startTime.toISOString(),
-        endTime: booking.endTime.toISOString(),
-        status: booking.status,
-        price: Number(booking.price),
-        userId: booking.user.id,
-        userName: booking.user.name || 'Member',
-        userEmail: booking.user.email
+        id: bookings.map(b => b.id).join(','), // comma separated ids
+        courtId: firstBooking.courtId,
+        courtName: firstBooking.court.name,
+        courtNumber: firstBooking.court.number,
+        startTime: firstBooking.startTime.toISOString(),
+        endTime: lastBooking.endTime.toISOString(),
+        status: overallStatus,
+        price: totalPrice,
+        userId: firstBooking.user.id,
+        userName: firstBooking.user.name || 'Member',
+        userEmail: firstBooking.user.email
       }
     }
   } catch (error: any) {
@@ -1048,92 +1072,122 @@ export async function adminConfirmBookingCheckinAction(bookingId: string): Promi
   const admin = await checkAdmin()
   if (!admin) return { success: false, error: 'Unauthorized. Staff permissions required.' }
 
+  const bookingIds = bookingId.split(',')
+
   try {
     const result = await db.$transaction(async (tx) => {
-      // 1. Fetch booking
-      const booking = await tx.booking.findUnique({
-        where: { id: bookingId },
-        include: { court: true, user: true }
-      })
+      let totalAmountToCollect = 0
+      const bookingsToUpdate = []
+      let userId = ''
+      let firstBooking = null
+      let lastBooking = null
+      let isAnyCheckinActive = false
+      let isAnyUnpaid = false
+      
+      const now = new Date()
 
-      if (!booking) throw new Error('Booking not found.')
-      if (booking.status === 'RESERVED') throw new Error('Booking is already checked-in.')
-      if (booking.status === 'CANCELLED' || booking.status === 'EXPIRED') {
-        throw new Error('Booking has been cancelled or has expired.')
+      for (const id of bookingIds) {
+        const booking = await tx.booking.findUnique({
+          where: { id },
+          include: { court: true, user: true }
+        })
+
+        if (!booking) throw new Error(`Booking ${id} not found.`)
+        if (booking.status === 'RESERVED') continue // skip if already checked-in
+        if (booking.status === 'CANCELLED' || booking.status === 'EXPIRED') {
+          throw new Error('Booking has been cancelled or has expired.')
+        }
+
+        userId = booking.userId
+        bookingsToUpdate.push(booking)
+        
+        if (booking.status === 'PENDING') {
+          isAnyUnpaid = true
+          totalAmountToCollect += Number(booking.price)
+        }
+
+        const startTime = new Date(booking.startTime)
+        const endTime = new Date(booking.endTime)
+        const isToday = startTime.getFullYear() === now.getFullYear() &&
+                        startTime.getMonth() === now.getMonth() &&
+                        startTime.getDate() === now.getDate()
+        const isTimeMatch = now.getTime() >= (startTime.getTime() - 30 * 60 * 1000) &&
+                            now.getTime() <= endTime.getTime()
+        
+        if (isToday && isTimeMatch) {
+          isAnyCheckinActive = true
+        }
+
+        if (!firstBooking || startTime.getTime() < new Date(firstBooking.startTime).getTime()) {
+          firstBooking = booking
+        }
+        if (!lastBooking || endTime.getTime() > new Date(lastBooking.endTime).getTime()) {
+          lastBooking = booking
+        }
       }
 
-      // Check if booking date is today, and if current time matches the scheduled range
-      const now = new Date()
-      const startTime = new Date(booking.startTime)
-      const endTime = new Date(booking.endTime)
+      if (bookingsToUpdate.length === 0) {
+        throw new Error('All bookings are already checked-in.')
+      }
 
-      // Compare dates in local time
-      const isToday = startTime.getFullYear() === now.getFullYear() &&
-                      startTime.getMonth() === now.getMonth() &&
-                      startTime.getDate() === now.getDate()
+      const activeBooking = firstBooking || bookingsToUpdate[0]
+      const finalEndTime = lastBooking ? new Date(lastBooking.endTime) : new Date(activeBooking.endTime)
+      const finalStartTime = new Date(activeBooking.startTime)
 
-      // Allow checking in 30 minutes before the booking starts, until it finishes
-      const isTimeMatch = now.getTime() >= (startTime.getTime() - 30 * 60 * 1000) &&
-                          now.getTime() <= endTime.getTime()
-
-      const isUnpaid = booking.status === 'PENDING'
-      const isCheckinActive = isToday && isTimeMatch
-
-      if (isCheckinActive) {
-        // SCENARIO 1: Booking is for today and it is time to play!
-        // Perform check-in (mark as RESERVED, collect payment if unpaid)
-        await tx.booking.update({
-          where: { id: bookingId },
+      if (isAnyCheckinActive) {
+        // Perform check-in for all eligible bookings (set status to RESERVED)
+        await tx.booking.updateMany({
+          where: { id: { in: bookingsToUpdate.map(b => b.id) } },
           data: { status: 'RESERVED' }
         })
 
-        if (isUnpaid) {
+        if (totalAmountToCollect > 0) {
           await tx.transaction.create({
             data: {
-              userId: booking.userId,
-              amount: Number(booking.price),
+              userId,
+              amount: totalAmountToCollect,
               type: 'CASH_TOPUP',
-              reference: `CASH-BOOKING-${booking.id.slice(-4).toUpperCase()}`
+              reference: `CASH-GROUP-RESRV`
             }
           })
         }
 
-        const hasStarted = now.getTime() >= startTime.getTime()
+        const hasStarted = now.getTime() >= finalStartTime.getTime()
         if (hasStarted) {
           // Occupy court immediately if the booked start time has already arrived
           await tx.court.update({
-            where: { id: booking.courtId },
+            where: { id: activeBooking.courtId },
             data: {
               status: 'OCCUPIED',
               gameStartedAt: now,
-              gameDurationSecond: Math.max(900, Math.floor((endTime.getTime() - now.getTime()) / 1000))
+              gameDurationSecond: Math.max(900, Math.floor((finalEndTime.getTime() - now.getTime()) / 1000))
             }
           })
         }
 
-        return { booking, checkedIn: true, message: isUnpaid ? 'Cash payment confirmed & checked in successfully!' : 'Arrival confirmed & checked in!' }
+        return { checkedIn: true, message: totalAmountToCollect > 0 ? 'Cash payment confirmed & checked in successfully!' : 'Arrival confirmed & checked in!' }
       } else {
-        // SCENARIO 2: Booking is for a future date, or not time yet today!
-        if (isUnpaid) {
-          // If unpaid, confirm cash payment only (mark as PAID, record cash, but do NOT occupy court or set to RESERVED!)
-          await tx.booking.update({
-            where: { id: bookingId },
+        // Booking group is for a future date, or not time yet today!
+        if (isAnyUnpaid) {
+          // Confirm cash payment only (mark as PAID, record cash, but do NOT occupy court or set to RESERVED!)
+          await tx.booking.updateMany({
+            where: { id: { in: bookingsToUpdate.filter(b => b.status === 'PENDING').map(b => b.id) } },
             data: { status: 'PAID' }
           })
 
           await tx.transaction.create({
             data: {
-              userId: booking.userId,
-              amount: Number(booking.price),
+              userId,
+              amount: totalAmountToCollect,
               type: 'CASH_TOPUP',
-              reference: `CASH-BOOKING-${booking.id.slice(-4).toUpperCase()}`
+              reference: `CASH-GROUP-PAID`
             }
           })
 
-          return { booking, checkedIn: false, message: 'Cash payment confirmed! Booking marked as Paid.' }
+          return { checkedIn: false, message: 'Cash payment confirmed! Bookings marked as Paid.' }
         } else {
           // If already paid, staff shouldn't be checking them in early
-          throw new Error('This booking is already Paid. Check-in is only available on the day and time of play.')
+          throw new Error('This booking block is already Paid. Check-in is only available on the day and time of play.')
         }
       }
     })

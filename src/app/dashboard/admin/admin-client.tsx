@@ -313,8 +313,9 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
       let lookupId = text
       if (isBookingPass) {
         const decoded = decodeURIComponent(text)
+        const bookingIdsMatch = decoded.match(/bookingIds=([^&]+)/)
         const bookingIdMatch = decoded.match(/bookingId=([^&]+)/)
-        lookupId = bookingIdMatch ? bookingIdMatch[1] : ''
+        lookupId = bookingIdsMatch ? bookingIdsMatch[1] : (bookingIdMatch ? bookingIdMatch[1] : '')
       }
 
       if (lookupId) {
