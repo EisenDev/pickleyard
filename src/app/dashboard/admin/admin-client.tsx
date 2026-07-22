@@ -1539,8 +1539,8 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                                   scanStartDate.getMonth() === nowDate.getMonth() &&
                                   scanStartDate.getDate() === nowDate.getDate()
 
-                  // Check-in opens 15 mins before play time and stays active until slot ends
-                  const isTimeMatch = nowVal >= (scanStartVal - 15 * 60 * 1000) && nowVal <= scanEndVal
+                  // Check-in opens 30 mins before play time and stays active until slot ends
+                  const isTimeMatch = nowVal >= (scanStartVal - 30 * 60 * 1000) && nowVal <= scanEndVal
                   const isCheckinActive = isToday && isTimeMatch
 
                   return (
@@ -2080,9 +2080,9 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
               {courts.map(court => {
                 const playersHere = stacks.filter(s => s.courtId === court.id && (s.status === 'PLAYING' || s.status === 'MATCHED'))
                 
-                // Check reservation lookahead (15 minutes)
+                // Check reservation lookahead (30 minutes)
                 const nowTime = Date.now()
-                const limitTime = nowTime + 15 * 60 * 1000
+                const limitTime = nowTime + 30 * 60 * 1000
                 const courtBookings = bookings.filter(b => b.courtId === court.id)
                 
                 const activeBooking = courtBookings.find(b => {
