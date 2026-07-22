@@ -123,7 +123,11 @@ export function Sidebar({ user, isOpen }: SidebarProps) {
         aria-label="Main navigation"
       >
         {activeNavItems.map((item) => {
-          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
+          const isActive = pathname === item.href || (
+            item.href !== '/dashboard' &&
+            item.href !== '/dashboard/admin' &&
+            pathname.startsWith(item.href + '/')
+          )
           const Icon = item.icon
           return (
             <Link
