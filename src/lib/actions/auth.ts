@@ -109,13 +109,16 @@ async function sendLoginOtpEmail(email: string, code: string) {
   console.log('=============================================\n')
 
   const html = `
-    <div style="font-family: sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 8px;">
-      <h2 style="color: #007C80; margin-bottom: 20px;">Admin/Staff Login Verification</h2>
-      <p>Please use the following 6-digit verification code to complete your login:</p>
-      <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; padding: 14px; background: #f0fdfa; color: #007C80; text-align: center; border-radius: 6px; margin: 24px 0; border: 1px solid #ccfbf1;">
+    <div style="font-family: sans-serif; padding: 24px; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <img src="https://paddleyrd.com/paddleyard-logo.png" alt="PaddleYard Logo" style="width: 72px; height: 72px; border-radius: 50%; object-fit: contain; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 4px;" />
+      </div>
+      <h2 style="color: #007C80; margin-top: 0; margin-bottom: 16px; font-size: 20px; font-weight: 700; text-align: center;">Admin/Staff Verification</h2>
+      <p style="color: #475569; font-size: 14px; line-height: 1.5; margin-bottom: 20px; text-align: center;">Please use the following 6-digit verification code to complete your login:</p>
+      <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; padding: 16px; background: #f0fdfa; color: #007C80; text-align: center; border-radius: 8px; margin: 24px 0; border: 1px solid #ccfbf1; font-family: monospace;">
         ${code}
       </div>
-      <p style="color: #666; font-size: 13px;">This code is valid for 15 minutes. If you did not request this login, you can safely ignore this email.</p>
+      <p style="color: #94a3b8; font-size: 12px; line-height: 1.4; margin-top: 24px; margin-bottom: 0; text-align: center;">This code is valid for 15 minutes. If you did not request this code, you can safely ignore this email.</p>
     </div>
   `
 
@@ -264,13 +267,16 @@ export async function sendOtpAction(email: string): Promise<ActionResult> {
     console.log('=============================================\n')
 
     const htmlContent = `
-      <div style="font-family: sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 8px;">
-        <h2 style="color: #007C80; margin-bottom: 20px;">Verify your email address</h2>
-        <p>Welcome to PaddleYard! Please verify your email by entering the 6-digit code below on the signup page:</p>
-        <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; padding: 14px; background: #f0fdfa; color: #007C80; text-align: center; border-radius: 6px; margin: 24px 0; border: 1px solid #ccfbf1;">
+      <div style="font-family: sans-serif; padding: 24px; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="https://paddleyrd.com/paddleyard-logo.png" alt="PaddleYard Logo" style="width: 72px; height: 72px; border-radius: 50%; object-fit: contain; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 4px;" />
+        </div>
+        <h2 style="color: #007C80; margin-top: 0; margin-bottom: 16px; font-size: 20px; font-weight: 700; text-align: center;">Verify your email address</h2>
+        <p style="color: #475569; font-size: 14px; line-height: 1.5; margin-bottom: 20px; text-align: center;">Welcome to PaddleYard! Please verify your email by entering the 6-digit code below on the signup page:</p>
+        <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; padding: 16px; background: #f0fdfa; color: #007C80; text-align: center; border-radius: 8px; margin: 24px 0; border: 1px solid #ccfbf1; font-family: monospace;">
           ${code}
         </div>
-        <p style="color: #666; font-size: 13px;">This code is valid for 15 minutes. If you did not request this code, you can safely ignore this email.</p>
+        <p style="color: #94a3b8; font-size: 12px; line-height: 1.4; margin-top: 24px; margin-bottom: 0; text-align: center;">This code is valid for 15 minutes. If you did not request this code, you can safely ignore this email.</p>
       </div>
     `
 
