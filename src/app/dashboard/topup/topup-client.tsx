@@ -284,7 +284,7 @@ export function TopUpClient({ userBalance, userId }: Props) {
                   />
                 </div>
                 <div style={{ fontSize: '11px', fontFamily: 'monospace', background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '5px 10px', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)' }}>
-                  Pass ID: <strong>{`CASH-TOPUP:userId=${userId.slice(-6).toUpperCase()}&amount=${finalAmount}`}</strong>
+                  Pass ID: <strong>{`TU-${userId.slice(-6).toUpperCase()}-${finalAmount}`}</strong>
                 </div>
                 <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Cash Payment QR Pass

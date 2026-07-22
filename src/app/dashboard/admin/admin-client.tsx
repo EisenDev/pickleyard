@@ -300,13 +300,21 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     const isBookingPass = text.startsWith('BOOKING-PASS:')
     const isManualBK = text.toUpperCase().startsWith('BK-')
     const isShortCode = text.length === 6 && /^[a-zA-Z0-9]+$/.test(text)
+    const isCashQr = text.startsWith('CASH-TOPUP:') || text.toUpperCase().startsWith('TU-')
 
-    if (text.startsWith('CASH-TOPUP:')) {
-      const decoded = decodeURIComponent(text)
-      const amountMatch = decoded.match(/amount=([^&]+)/)
-      if (amountMatch) {
-        setOverrideCashAmount(amountMatch[1])
+    if (isCashQr) {
+      let amount = ''
+      if (text.startsWith('CASH-TOPUP:')) {
+        const decoded = decodeURIComponent(text)
+        const amountMatch = decoded.match(/amount=([^&]+)/)
+        if (amountMatch) {
+          amount = amountMatch[1]
+        }
+      } else if (text.toUpperCase().startsWith('TU-')) {
+        const parts = text.split('-')
+        amount = parts[2] || ''
       }
+      setOverrideCashAmount(amount)
       setScannedBooking(null)
     } else if (isBookingPass || isManualBK || isShortCode) {
       setOverrideCashAmount('')
@@ -430,6 +438,14 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
       const userIdMatch = decoded.match(/userId=([^&]+)/)
       const parsedUserId = userIdMatch ? userIdMatch[1] : null
       return users.find(u => u.id === parsedUserId) || null
+    }
+
+    if (text.toUpperCase().startsWith('TU-')) {
+      const parts = text.split('-')
+      const suffix = parts[1]?.toUpperCase()
+      if (suffix) {
+        return users.find(u => u.id.toUpperCase().endsWith(suffix)) || null
+      }
     }
 
     const activeQueueEntry = stacks.find(s => 
@@ -1367,8 +1383,8 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
               </div>
 
               {scanText.trim() && (() => {
-                const isCashQr = scanText.trim().startsWith('CASH-TOPUP:')
                 const text = scanText.trim()
+                const isCashQr = text.startsWith('CASH-TOPUP:') || text.toUpperCase().startsWith('TU-')
                 const isBookingQr = text.startsWith('BOOKING-PASS:') || text.toUpperCase().startsWith('BK-') || (text.length === 6 && /^[a-zA-Z0-9]+$/.test(text))
                 
                 if (isBookingQr) {
@@ -1546,9 +1562,18 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                 }
 
                 if (isCashQr) {
-                  const decoded = decodeURIComponent(scanText.trim())
-                  const userIdMatch = decoded.match(/userId=([^&]+)/)
-                  const parsedUserId = userIdMatch ? userIdMatch[1] : null
+                  const rawText = scanText.trim()
+                  let parsedUserId = null
+
+                  if (rawText.startsWith('CASH-TOPUP:')) {
+                    const decoded = decodeURIComponent(rawText)
+                    const userIdMatch = decoded.match(/userId=([^&]+)/)
+                    parsedUserId = userIdMatch ? userIdMatch[1] : null
+                  } else if (rawText.toUpperCase().startsWith('TU-')) {
+                    const parts = rawText.split('-')
+                    parsedUserId = parts[1] || null
+                  }
+
                   let matchedScanUser = users.find(u => u.id === parsedUserId)
                   if (!matchedScanUser && parsedUserId && parsedUserId.length === 6) {
                     matchedScanUser = users.find(u => u.id.toLowerCase().endsWith(parsedUserId.toLowerCase()))

@@ -330,4 +330,13 @@ body {
   }
 }
 
+/* ── Responsive layout override for Ledger & Analytics dashboards ── */
+@media (max-width: 768px) {
+  .transactions-main-grid,
+  .analytics-main-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+}
+
 
