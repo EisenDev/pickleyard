@@ -14,6 +14,15 @@ function formatLocalTime(date: Date): string {
   }).format(date)
 }
 
+function getManilaDateString(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date)
+}
+
 export type BookingResult = 
   | { success: true; bookingId: string }
   | { success: false; error: string }
@@ -81,20 +90,34 @@ export async function createBookingsAction(
           throw new Error(`Insufficient credits. Booking cost: ₱${totalCost.toFixed(2)}, Balance: ₱${Number(user.credits).toFixed(2)}`)
         }
       } else {
-        // Abuse proof: check how many distinct courts the user currently has pending cash bookings on
+        // Abuse proof: check how many distinct courts the user currently has pending cash bookings on the same day
         const pendingBookings = await tx.booking.findMany({
           where: {
             userId: user.id,
             status: BookingStatus.PENDING
           },
           select: {
-            courtId: true
+            courtId: true,
+            startTime: true
           }
         })
-        const pendingCourts = new Set(pendingBookings.map(b => b.courtId))
-        pendingCourts.add(courtId)
-        if (pendingCourts.size > 2) {
-          throw new Error('You cannot have pending cash bookings on more than 2 different courts at a time. Please settle your unpaid bookings at the desk first.')
+
+        const pendingByDate = new Map<string, Set<string>>()
+        for (const pb of pendingBookings) {
+          const dateStr = getManilaDateString(pb.startTime)
+          if (!pendingByDate.has(dateStr)) {
+            pendingByDate.set(dateStr, new Set())
+          }
+          pendingByDate.get(dateStr)!.add(pb.courtId)
+        }
+
+        for (const startTime of startTimes) {
+          const dateStr = getManilaDateString(startTime)
+          const courtsForDate = new Set(pendingByDate.get(dateStr) || [])
+          courtsForDate.add(courtId)
+          if (courtsForDate.size > 2) {
+            throw new Error('You cannot have pending cash bookings on more than 2 different courts on the same day. Please settle your unpaid bookings at the desk first.')
+          }
         }
       }
 
