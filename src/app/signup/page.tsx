@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { AlertCircle, Check, Eye, EyeOff, Sparkles, ArrowRight, Info } from 'lucide-react'
+import { AlertCircle, Check, Eye, EyeOff, Sparkles, ArrowRight, Info, User, Mail, Lock, Calendar, Users, Layers, Trophy, Heart, Zap, RefreshCw } from 'lucide-react'
 import { signUpAction } from '@/lib/actions/auth'
 import { SignInModal } from '@/components/auth/signin-modal'
 import { signIn } from 'next-auth/react'
@@ -98,56 +98,112 @@ function SignUpPageInner() {
       {/* Left branding panel */}
       <div className="signup-left animate-fade-in">
         <div className="signup-left-inner">
-          {/* Logo */}
-          <Link href="/" className="signup-logo-link">
-            <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 80, height: 80, objectFit: 'contain' }} />
-            <span className="signup-logo-text">PaddleYard</span>
-          </Link>
+          {/* Logo & Premium pill */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <Link href="/" className="signup-logo-link" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'white', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              </div>
+              <span className="signup-logo-text" style={{ fontSize: '20px', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>PaddleYard</span>
+            </Link>
+            
+            <div className="signup-badge">
+              ★ PREMIUM PICKLEBALL CLUB
+            </div>
+          </div>
 
           {/* Main copy */}
-          <div className="signup-left-copy">
-            <div className="signup-badge">
-              <Sparkles size={11} />
-              <span>Premium Pickleball Club</span>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', margin: '48px 0 32px' }}>
             <h1 className="signup-left-title">
               Play more,<br />
               <span className="signup-left-title-accent">wait less.</span>
             </h1>
             <p className="signup-left-desc">
-              Join thousands booking courts, tracking play hours, and rising the queues in real-time.
+              Your all-in-one platform for court bookings, open play, and the ultimate pickleball experience.
             </p>
           </div>
 
-          {/* Feature bullets */}
-          <ul className="signup-feature-list">
+          {/* Feature Grid */}
+          <div className="signup-feature-grid">
             {[
-              'Real-time court scheduler (Courts 1–14)',
-              'Live check-in QR scan at the lobby',
-              'Collaborative Paddle Stack queue boards',
-              'Easy top-ups and reservation ledger',
-            ].map((feat) => (
-              <li key={feat} className="signup-feature-item">
-                <span className="signup-feature-dot" />
-                <span>{feat}</span>
-              </li>
+              {
+                title: 'Real-time Court Scheduler',
+                desc: 'Courts 1–14 at your fingertips',
+                icon: <Calendar size={18} color="#00e676" />
+              },
+              {
+                title: 'Live Check-in',
+                desc: 'QR scan at the lobby',
+                icon: <Users size={18} color="#00e676" />
+              },
+              {
+                title: 'Paddle Stack',
+                desc: 'Collaborative queue boards',
+                icon: <Layers size={18} color="#00e676" />
+              },
+              {
+                title: 'Rewards System',
+                desc: 'Play more. Earn more.',
+                icon: <Trophy size={18} color="#00e676" />
+              }
+            ].map((item, idx) => (
+              <div key={idx} className="signup-feature-card">
+                <div className="signup-feature-icon-wrapper">
+                  {item.icon}
+                </div>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: 'white' }}>{item.title}</div>
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginTop: '4px', lineHeight: '1.4' }}>{item.desc}</div>
+                </div>
+              </div>
             ))}
-          </ul>
-        </div>
+          </div>
 
-        {/* Decorative elements */}
-        <div className="signup-deco-circle signup-deco-circle-1" />
-        <div className="signup-deco-circle signup-deco-circle-2" />
+          {/* Bottom stats bar */}
+          <div className="signup-left-bottom-bar">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Zap size={16} color="#ffeb3b" />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: 'white' }}>Faster</span>
+                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)' }}>Game Time</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={16} color="#ffeb3b" />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: 'white' }}>Bigger</span>
+                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)' }}>Community</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Heart size={16} color="#ffeb3b" />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: 'white' }}>Healthier</span>
+                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)' }}>Lifestyle</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Right form panel */}
       <div className="signup-right">
         <div className="signup-form-wrap">
           {/* Mobile-only logo */}
-          <Link href="/" className="signup-logo-link signup-logo-mobile">
-            <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 80, height: 80, objectFit: 'contain' }} />
-            <span className="signup-logo-text">PaddleYard</span>
+          <Link href="/" className="signup-logo-link signup-logo-mobile" style={{ alignSelf: 'center', marginBottom: '8px' }}>
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'white', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-border)' }}>
+              <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+            <span className="signup-logo-text" style={{ color: 'var(--color-text-primary)', fontSize: '20px', fontWeight: 800 }}>PaddleYard</span>
           </Link>
+
+          {/* Centered logo for desktop */}
+          <div className="signup-logo-desktop-center">
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'white', border: '1px solid var(--color-border)', padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-sm)', marginBottom: '8px' }}>
+              <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+            <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)' }}>PaddleYard</span>
+          </div>
 
           {/* Heading */}
           <div className="signup-form-header">
@@ -162,15 +218,13 @@ function SignUpPageInner() {
               disabled={isGoogleLoading || isPending}
               onClick={() => {
                 setIsGoogleLoading(true)
-                // google_signup=1 tells the auth signIn callback this is a signup intent
-                // so it creates the account instead of redirecting to "not registered"
                 signIn('google', { callbackUrl: '/dashboard?google_signup=1' })
               }}
               className="signup-social-btn"
               style={{ opacity: isGoogleLoading ? 0.7 : 1, cursor: isGoogleLoading ? 'not-allowed' : 'pointer' }}
             >
               {isGoogleLoading ? (
-                <div className="spinner" />
+                <RefreshCw size={14} className="animate-spin" />
               ) : (
                 <svg width="16" height="16" viewBox="0 0 24 24">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -252,7 +306,25 @@ function SignUpPageInner() {
                 type="submit"
                 disabled={isPending || otpCode.length !== 6}
                 className={`signup-submit-btn ${otpCode.length === 6 && !isPending ? 'signup-submit-btn-active' : ''}`}
-                style={{ marginTop: '12px' }}
+                style={{
+                  width: '100%',
+                  height: '42px',
+                  background: 'var(--color-primary)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: (isPending || otpCode.length !== 6) ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: 'var(--shadow-primary-btn)',
+                  transition: 'background var(--duration-fast), opacity var(--duration-fast)',
+                  marginTop: '12px',
+                  opacity: (otpCode.length === 6 && !isPending) ? 1 : 0.6
+                }}
               >
                 {isPending ? <span>Verifying...</span> : <span>Verify & Complete Sign Up</span>}
               </button>
@@ -295,38 +367,45 @@ function SignUpPageInner() {
             <form onSubmit={handleRequestOtp} className="signup-form">
               <div className="signup-field">
                 <label className="signup-label">Full name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Arjay Escabas"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="signup-input"
-                />
+                <div style={{ position: 'relative' }}>
+                  <User size={16} className="signup-field-icon" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Arjay Escabas"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="signup-input signup-input-with-icon"
+                  />
+                </div>
               </div>
 
               <div className="signup-field">
                 <label className="signup-label">Email address</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="signup-input"
-                />
+                <div style={{ position: 'relative' }}>
+                  <Mail size={16} className="signup-field-icon" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="signup-input signup-input-with-icon"
+                  />
+                </div>
               </div>
 
               <div className="signup-field">
                 <label className="signup-label">Password</label>
                 <div style={{ position: 'relative' }}>
+                  <Lock size={16} className="signup-field-icon" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="Create a strong password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="signup-input"
+                    className="signup-input signup-input-with-icon"
                     style={{ paddingRight: 44 }}
                   />
                   <button
@@ -360,14 +439,33 @@ function SignUpPageInner() {
               <button
                 type="submit"
                 disabled={isPending}
-                className={`signup-submit-btn ${allRulesMet && !isPending ? 'signup-submit-btn-active' : ''}`}
+                className="signup-submit-btn"
+                style={{
+                  width: '100%',
+                  height: '42px',
+                  background: 'var(--color-primary)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: isPending ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: 'var(--shadow-primary-btn)',
+                  transition: 'background var(--duration-fast), opacity var(--duration-fast)',
+                  marginTop: '8px',
+                  opacity: (allRulesMet && !isPending) ? 1 : 0.85
+                }}
               >
                 {isPending ? (
                   <span>Creating account…</span>
                 ) : (
                   <>
                     <span>Create account</span>
-                    <ArrowRight size={15} />
+                    <ArrowRight size={14} />
                   </>
                 )}
               </button>
@@ -375,22 +473,23 @@ function SignUpPageInner() {
           )}
 
           {/* Footer */}
-          <p className="signup-footer-text">
+          <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
             Already have an account?{' '}
             <button
+              type="button"
               onClick={() => setIsSignInOpen(true)}
-              className="signup-link-btn"
+              style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontWeight: 800, cursor: 'pointer', padding: 0, fontSize: '13px', fontFamily: 'inherit' }}
             >
-              Sign in
+              Sign In
             </button>
-          </p>
+          </div>
 
-          <p className="signup-legal-text">
+          <div style={{ fontSize: '11px', color: 'var(--color-text-disabled)', textAlign: 'center', lineHeight: '1.5', marginTop: '16px' }}>
             By creating an account, you agree to our{' '}
-            <a href="#" className="signup-legal-link">Terms of Service</a>
+            <a href="#" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 650 }}>Terms of Service</a>
             {' '}and{' '}
-            <a href="#" className="signup-legal-link">Privacy Policy</a>.
-          </p>
+            <a href="#" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 650 }}>Privacy Policy</a>.
+          </div>
         </div>
       </div>
 
@@ -409,8 +508,10 @@ function SignUpPageInner() {
         /* ── Left panel ── */
         .signup-left {
           position: relative;
-          width: 42%;
-          background: var(--color-primary);
+          width: 50%;
+          background: linear-gradient(135deg, rgba(3, 49, 51, 0.96) 0%, rgba(1, 32, 34, 0.88) 100%), url('/court_illustration.jpg');
+          background-size: cover;
+          background-position: center;
           display: flex;
           align-items: stretch;
           overflow: hidden;
@@ -427,52 +528,6 @@ function SignUpPageInner() {
           width: 100%;
         }
 
-        /* Decorative soft circles on left panel */
-        .signup-deco-circle {
-          position: absolute;
-          border-radius: var(--radius-full);
-          pointer-events: none;
-          background: rgba(255, 255, 255, 0.04);
-        }
-        .signup-deco-circle-1 {
-          width: 450px;
-          height: 450px;
-          bottom: -150px;
-          right: -120px;
-          z-index: 1;
-        }
-        .signup-deco-circle-2 {
-          width: 280px;
-          height: 280px;
-          top: -90px;
-          left: -70px;
-          z-index: 1;
-        }
-
-        /* Logo badge */
-        .logo-badge {
-          position: relative;
-          width: 32px;
-          height: 32px;
-          border-radius: var(--radius-md);
-          background: rgba(255, 255, 255, 0.15);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 800;
-          color: white;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        .logo-badge-dot {
-          position: absolute;
-          top: 4px;
-          right: 4px;
-          width: 6px;
-          height: 6px;
-          border-radius: var(--radius-full);
-          background: var(--color-accent);
-        }
-
         .signup-logo-link {
           display: flex;
           align-items: center;
@@ -487,71 +542,80 @@ function SignUpPageInner() {
         }
 
         /* Left copy */
-        .signup-left-copy {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-          margin-top: 64px;
-        }
-
         .signup-badge {
-          display: inline-flex;
+          display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           background: rgba(255, 255, 255, 0.12);
-          color: rgba(255, 255, 255, 0.9);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          padding: 5px 12px;
+          border-radius: var(--radius-full);
+          color: white;
           font-size: 10px;
-          font-weight: 600;
+          font-weight: 800;
           text-transform: uppercase;
           letter-spacing: 0.08em;
-          padding: 4px 10px;
-          border-radius: var(--radius-full);
-          width: fit-content;
-          border: 1px solid rgba(255, 255, 255, 0.15);
         }
 
         .signup-left-title {
-          font-size: 40px;
-          font-weight: 800;
+          font-size: 52px;
+          font-weight: 900;
           color: white;
-          line-height: 1.1;
-          letter-spacing: -0.025em;
+          line-height: 1.05;
+          letter-spacing: -0.03em;
           margin: 0;
         }
         .signup-left-title-accent {
-          color: var(--color-accent);
+          color: #ff9800;
+          border-bottom: 3.5px solid #ff9800;
+          padding-bottom: 2px;
         }
 
         .signup-left-desc {
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.7);
+          font-size: 15px;
+          color: rgba(255, 255, 255, 0.75);
           line-height: 1.6;
           margin: 0;
-          max-width: 320px;
+          max-width: 420px;
         }
 
-        /* Feature bullets */
-        .signup-feature-list {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
+        /* Feature Cards Grid */
+        .signup-feature-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+          margin: 24px 0 48px;
+          width: 100%;
         }
-        .signup-feature-item {
+        .signup-feature-card {
+          display: flex;
+          gap: 12px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 16px;
+          borderRadius: 12px;
+          backdrop-filter: blur(8px);
+          transition: transform var(--duration-fast);
+        }
+        .signup-feature-icon-wrapper {
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.1);
           display: flex;
           align-items: center;
-          gap: 12px;
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.8);
-        }
-        .signup-feature-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: var(--radius-full);
-          background: var(--color-accent);
+          justify-content: center;
           flex-shrink: 0;
+        }
+
+        .signup-left-bottom-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-top: 1px solid rgba(255, 255, 255, 0.15);
+          padding-top: 24px;
+          width: 100%;
+          gap: 12px;
         }
 
         /* ── Right panel ── */
@@ -562,6 +626,15 @@ function SignUpPageInner() {
           justify-content: center;
           padding: 48px 40px;
           overflow-y: auto;
+          background: #ffffff;
+        }
+
+        .signup-logo-desktop-center {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 8px;
         }
 
         .signup-form-wrap {
@@ -569,20 +642,12 @@ function SignUpPageInner() {
           max-width: 380px;
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 20px;
         }
 
         /* Mobile-only logo */
         .signup-logo-mobile {
           display: none;
-        }
-        .dark-badge {
-          background: var(--color-primary-subtle);
-          color: var(--color-primary);
-          border-color: var(--color-primary-muted);
-        }
-        .signup-logo-mobile .signup-logo-text {
-          color: var(--color-text-primary);
         }
 
         /* Form header */
@@ -590,16 +655,17 @@ function SignUpPageInner() {
           display: flex;
           flex-direction: column;
           gap: 6px;
+          text-align: center;
         }
         .signup-form-title {
-          font-size: 26px;
-          font-weight: 800;
+          font-size: 24px;
+          font-weight: 900;
           color: var(--color-text-primary);
           letter-spacing: -0.02em;
           margin: 0;
         }
         .signup-form-subtitle {
-          font-size: 14px;
+          font-size: 13px;
           color: var(--color-text-secondary);
           margin: 0;
         }
@@ -614,18 +680,19 @@ function SignUpPageInner() {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 10px;
+          gap: 12px;
           width: 100%;
           height: 42px;
-          background: var(--color-card);
-          border: 1px solid var(--color-border);
+          background: white;
+          border: 1.5px solid var(--color-border);
           border-radius: var(--radius-md);
           font-size: 13px;
-          font-weight: 500;
+          fontWeight: 700;
           color: var(--color-text-primary);
           cursor: pointer;
-          transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast);
+          transition: background var(--duration-fast), border-color var(--duration-fast);
           font-family: inherit;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .signup-social-btn:hover {
           background: var(--color-surface);
@@ -637,6 +704,7 @@ function SignUpPageInner() {
           display: flex;
           align-items: center;
           gap: 12px;
+          margin: 4px 0;
         }
         .signup-divider-line {
           flex: 1;
@@ -644,7 +712,7 @@ function SignUpPageInner() {
           background: var(--color-border);
         }
         .signup-divider-text {
-          font-size: 11px;
+          font-size: 10px;
           color: var(--color-text-secondary);
           text-transform: uppercase;
           letter-spacing: 0.08em;
@@ -669,7 +737,7 @@ function SignUpPageInner() {
         .signup-form {
           display: flex;
           flex-direction: column;
-          gap: 18px;
+          gap: 16px;
         }
         .signup-field {
           display: flex;
@@ -678,21 +746,31 @@ function SignUpPageInner() {
         }
         .signup-label {
           font-size: 13px;
-          font-weight: 500;
+          font-weight: 600;
           color: var(--color-text-primary);
+        }
+        .signup-field-icon {
+          position: absolute;
+          left: 14px;
+          top: 13px;
+          color: var(--color-text-disabled);
+          pointer-events: none;
         }
         .signup-input {
           width: 100%;
           height: 42px;
           padding: 0 14px;
           background: var(--color-card);
-          border: 1px solid var(--color-border);
+          border: 1.5px solid var(--color-border);
           border-radius: var(--radius-md);
           font-size: 14px;
           font-family: inherit;
           color: var(--color-text-primary);
           transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
           outline: none;
+        }
+        .signup-input-with-icon {
+          padding-left: 42px;
         }
         .signup-input::placeholder {
           color: var(--color-text-disabled);
@@ -705,7 +783,7 @@ function SignUpPageInner() {
         /* Password eye toggle */
         .signup-eye-btn {
           position: absolute;
-          right: 12px;
+          right: 14px;
           top: 50%;
           transform: translateY(-50%);
           background: transparent;
@@ -741,79 +819,23 @@ function SignUpPageInner() {
         }
 
         /* Submit button */
-        .signup-submit-btn {
-          width: 100%;
-          height: 44px;
-          background: var(--color-primary);
-          color: white;
-          border: none;
-          border-radius: var(--radius-md);
-          font-size: 14px;
-          font-weight: 600;
-          font-family: inherit;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          box-shadow: var(--shadow-primary-btn);
-          transition: background var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast), opacity var(--duration-fast);
-          margin-top: 4px;
-          opacity: 0.85;
-        }
-        .signup-submit-btn-active {
-          opacity: 1;
-        }
         .signup-submit-btn:hover:not(:disabled) {
-          background: var(--color-primary-hover);
+          filter: brightness(1.05);
         }
         .signup-submit-btn:disabled {
           cursor: not-allowed;
           opacity: 0.6;
         }
 
-        /* Footer text */
-        .signup-footer-text {
-          font-size: 13px;
-          color: var(--color-text-secondary);
-          text-align: center;
-          margin: 0;
-        }
-        .signup-link-btn {
-          background: transparent;
-          border: none;
-          color: var(--color-primary);
-          font-weight: 600;
-          cursor: pointer;
-          font-size: 13px;
-          padding: 0;
-          font-family: inherit;
-        }
-        .signup-link-btn:hover {
-          text-decoration: underline;
-        }
-
-        .signup-legal-text {
-          font-size: 11px;
-          color: var(--color-text-secondary);
-          text-align: center;
-          line-height: 1.5;
-          margin: 0;
-        }
-        .signup-legal-link {
-          color: var(--color-primary);
-          text-decoration: none;
-        }
-        .signup-legal-link:hover {
-          text-decoration: underline;
-        }
-
         /* ── Responsive ── */
-        @media (max-width: 900px) {
+        @media (max-width: 960px) {
           .signup-root {
             flex-direction: column;
           }
           .signup-left {
+            display: none;
+          }
+          .signup-logo-desktop-center {
             display: none;
           }
           .signup-logo-mobile {
