@@ -5,6 +5,15 @@ import { db } from '@/lib/db'
 import { BookingStatus } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 
+function formatLocalTime(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }).format(date)
+}
+
 export type BookingResult = 
   | { success: true; bookingId: string }
   | { success: false; error: string }
@@ -72,15 +81,20 @@ export async function createBookingsAction(
           throw new Error(`Insufficient credits. Booking cost: ₱${totalCost.toFixed(2)}, Balance: ₱${Number(user.credits).toFixed(2)}`)
         }
       } else {
-        // Abuse proof: check how many pending cash bookings the user currently has
-        const pendingCount = await tx.booking.count({
+        // Abuse proof: check how many distinct courts the user currently has pending cash bookings on
+        const pendingBookings = await tx.booking.findMany({
           where: {
             userId: user.id,
             status: BookingStatus.PENDING
+          },
+          select: {
+            courtId: true
           }
         })
-        if (pendingCount >= 2) {
-          throw new Error('You cannot have more than 2 pending cash bookings at a time. Please settle your unpaid bookings at the desk first.')
+        const pendingCourts = new Set(pendingBookings.map(b => b.courtId))
+        pendingCourts.add(courtId)
+        if (pendingCourts.size > 2) {
+          throw new Error('You cannot have pending cash bookings on more than 2 different courts at a time. Please settle your unpaid bookings at the desk first.')
         }
       }
 
@@ -119,7 +133,7 @@ export async function createBookingsAction(
         })
 
         if (conflict) {
-          throw new Error(`This court is already reserved at ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`)
+          throw new Error(`This court is already reserved at ${formatLocalTime(startTime)}.`)
         }
 
         // User overlapping booking check (cannot book multiple courts at the same time)
@@ -141,7 +155,7 @@ export async function createBookingsAction(
         })
 
         if (userConflict) {
-          throw new Error(`You already have an active booking at ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} on another court. Double booking is not allowed.`)
+          throw new Error(`You already have an active booking at ${formatLocalTime(startTime)} on another court. Double booking is not allowed.`)
         }
       }
 
