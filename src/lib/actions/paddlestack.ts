@@ -10,7 +10,8 @@ export type ActionResult =
   | { success: false; error: string }
 
 export async function joinPaddleStackAction(
-  skillLevel: SkillLevel
+  skillLevel: SkillLevel,
+  paymentMethod: 'credits' | 'cash' = 'credits'
 ): Promise<ActionResult> {
   const session = await auth()
   if (!session?.user?.email) {
@@ -27,9 +28,11 @@ export async function joinPaddleStackAction(
       return { success: false, error: 'User not found.' }
     }
 
-    // Credits Limit Check
-    if (Number(user.credits) < 150) {
-      return { success: false, error: 'Insufficient credits. You need at least ₱150.00 credits to join the stack queue.' }
+    // Credits Limit Check (only if paying with credits)
+    if (paymentMethod === 'credits') {
+      if (Number(user.credits) < 150) {
+        return { success: false, error: 'Insufficient credits. You need at least ₱150.00 credits to join the stack queue.' }
+      }
     }
 
     // Check if user is already active in stack queue
@@ -55,7 +58,8 @@ export async function joinPaddleStackAction(
         skillLevel,
         status: 'PENDING',
         joinedAt: new Date(),
-        qrId
+        qrId,
+        paymentMethod: paymentMethod.toUpperCase()
       }
     })
 

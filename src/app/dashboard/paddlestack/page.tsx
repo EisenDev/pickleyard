@@ -62,7 +62,9 @@ export default async function PaddleStackPage() {
         courtId: s.courtId,
         joinedAt: s.joinedAt.toISOString(),
         checkedInAt: s.checkedInAt ? s.checkedInAt.toISOString() : null,
-        sessionExpiresAt: s.sessionExpiresAt ? s.sessionExpiresAt.toISOString() : null
+        sessionExpiresAt: s.sessionExpiresAt ? s.sessionExpiresAt.toISOString() : null,
+        qrId: s.qrId,
+        paymentMethod: s.paymentMethod
       }))}
       bookings={todayBookings.map(b => ({
         id: b.id,

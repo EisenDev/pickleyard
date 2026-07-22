@@ -136,6 +136,8 @@ model PaddleStack {
   status     String     // WAITING, PLAYING, COMPLETED
   qrId       String?    @unique
 
+  paymentMethod String     @default("CREDITS") // CREDITS or CASH
+
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("paddlestacks")

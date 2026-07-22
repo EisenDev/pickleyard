@@ -105,6 +105,7 @@ export default async function AdminDashboardPage() {
         checkedInAt: s.checkedInAt ? s.checkedInAt.toISOString() : null,
         sessionExpiresAt: s.sessionExpiresAt ? s.sessionExpiresAt.toISOString() : null,
         qrId: s.qrId,
+        paymentMethod: s.paymentMethod,
         user: s.user ? {
           id: s.user.id,
           name: s.user.name || 'Player',

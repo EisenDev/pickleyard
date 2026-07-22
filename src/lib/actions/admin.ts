@@ -20,7 +20,8 @@ export type ActionState = { success: boolean; error?: string; [key: string]: any
 // 1. Scan / Deduct Open Play fee and place user in Stack Queue
 export async function scanCheckinAction(
   userId: string,
-  skillLevel: 'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'
+  skillLevel: 'NOVICE' | 'INTERMEDIATE' | 'ADVANCED',
+  overridePaymentMethod?: 'CREDITS' | 'CASH'
 ): Promise<ActionState> {
   const admin = await checkAdmin()
   if (!admin) return { success: false, error: 'Unauthorized. Staff permissions required.' }
@@ -33,27 +34,6 @@ export async function scanCheckinAction(
       const user = await tx.user.findUnique({ where: { id: userId } })
       if (!user) throw new Error('User not found.')
 
-      // Check balance
-      if (Number(user.credits) < fee) {
-        throw new Error(`Insufficient balance. Cost: ₱${fee.toFixed(2)}, Balance: ₱${Number(user.credits).toFixed(2)}`)
-      }
-
-      // Deduct fee
-      await tx.user.update({
-        where: { id: user.id },
-        data: { credits: Number(user.credits) - fee }
-      })
-
-      // Create ledger entry
-      await tx.transaction.create({
-        data: {
-          userId: user.id,
-          amount: -fee,
-          type: 'EVENT_DEBIT',
-          reference: `OPEN-PLAY-${new Date().toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
-        }
-      })
-
       // Check if already in active stack queue (including PENDING)
       const existingQueue = await tx.paddleStack.findFirst({
         where: {
@@ -61,6 +41,42 @@ export async function scanCheckinAction(
           status: { in: ['PENDING', 'WAITING', 'MATCHED', 'PLAYING'] }
         }
       })
+
+      const method = overridePaymentMethod || existingQueue?.paymentMethod || 'CREDITS'
+      const isCashPayment = method === 'CASH'
+
+      if (isCashPayment) {
+        // Counter cash payment: record as CASH_TOPUP (like booking cash checks)
+        await tx.transaction.create({
+          data: {
+            userId: user.id,
+            amount: fee,
+            type: 'CASH_TOPUP',
+            reference: `CASH-OPEN-PLAY`
+          }
+        })
+      } else {
+        // Credits payment check and deduction
+        if (Number(user.credits) < fee) {
+          throw new Error(`Insufficient balance. Cost: ₱${fee.toFixed(2)}, Balance: ₱${Number(user.credits).toFixed(2)}`)
+        }
+
+        // Deduct fee
+        await tx.user.update({
+          where: { id: user.id },
+          data: { credits: Number(user.credits) - fee }
+        })
+
+        // Create ledger entry
+        await tx.transaction.create({
+          data: {
+            userId: user.id,
+            amount: -fee,
+            type: 'EVENT_DEBIT',
+            reference: `OPEN-PLAY-${new Date().toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
+          }
+        })
+      }
 
       const expirySetting = await tx.systemSetting.findUnique({
         where: { key: 'openplay_expiry_hours' }
@@ -78,7 +94,8 @@ export async function scanCheckinAction(
               skillLevel,
               joinedAt: new Date(),
               checkedInAt: new Date(),
-              sessionExpiresAt
+              sessionExpiresAt,
+              paymentMethod: method
             }
           })
         } else {
@@ -96,7 +113,8 @@ export async function scanCheckinAction(
             joinedAt: new Date(),
             checkedInAt: new Date(),
             sessionExpiresAt,
-            qrId
+            qrId,
+            paymentMethod: method
           }
         })
       }

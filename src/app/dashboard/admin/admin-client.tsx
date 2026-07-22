@@ -38,6 +38,7 @@ interface StackEntry {
   checkedInAt: string | null
   sessionExpiresAt: string | null
   qrId: string | null
+  paymentMethod?: string
   user?: UserListItem
 }
 
@@ -538,7 +539,8 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     setIsPending(false)
     setActiveLoadingId(null)
     if (res.success) {
-      setAdminMessage({ success: true, text: 'Member checked in successfully. ₱150 fee debited!' })
+      const isCash = getUserStackEntry(selectedUser.id)?.paymentMethod === 'CASH'
+      setAdminMessage({ success: true, text: isCash ? 'Member checked in successfully. Cash payment confirmed!' : 'Member checked in successfully. ₱150 fee debited!' })
       fetchRealtimeData()
       setTimeout(() => { setIsCheckinModalOpen(false); setIsScannerOpen(false); setScanText('') }, 1200)
     } else {
@@ -1831,6 +1833,26 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
               </div>
             </div>
 
+            {/* Payment Method Details */}
+            {getUserStackEntry(selectedUser.id) && (
+              <div style={{
+                background: getUserStackEntry(selectedUser.id)?.paymentMethod === 'CASH' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(0, 124, 128, 0.05)',
+                borderRadius: 'var(--radius-md)',
+                padding: '10px 14px',
+                border: getUserStackEntry(selectedUser.id)?.paymentMethod === 'CASH' ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(0, 124, 128, 0.3)',
+                fontSize: '13px',
+                fontWeight: 700,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span style={{ color: 'var(--color-text-secondary)', fontSize: '11px', textTransform: 'uppercase' }}>Open Play Payment:</span>
+                <span style={{ color: getUserStackEntry(selectedUser.id)?.paymentMethod === 'CASH' ? '#d97706' : 'var(--color-success)', fontWeight: 800 }}>
+                  {getUserStackEntry(selectedUser.id)?.paymentMethod === 'CASH' ? 'OPEN PLAY [UNPAID]' : 'CREDITS BALANCE'}
+                </span>
+              </div>
+            )}
+
             {/* Skill Selector for Checkin (Always show so admin can select queue level during check-in) */}
             <div>
               <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase' }}>Select Queue Skill Level</label>
@@ -1904,17 +1926,17 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                 
                 <button
                   type="button"
-                  disabled={isPending || (liveCredits ?? selectedUser.credits) < 150}
+                  disabled={isPending || (getUserStackEntry(selectedUser.id)?.paymentMethod !== 'CASH' && (liveCredits ?? selectedUser.credits) < 150)}
                   onClick={handleChargeCheckin}
                   style={{
                     flex: 1.5, height: '40px', borderRadius: 'var(--radius-md)', border: 'none',
                     background: 'var(--color-success)', color: 'white',
-                    fontSize: '13px', fontWeight: 700, cursor: (isPending || (liveCredits ?? selectedUser.credits) < 150) ? 'not-allowed' : 'pointer',
-                    opacity: (isPending || (liveCredits ?? selectedUser.credits) < 150) ? 0.6 : 1,
+                    fontSize: '13px', fontWeight: 700, cursor: (isPending || (getUserStackEntry(selectedUser.id)?.paymentMethod !== 'CASH' && (liveCredits ?? selectedUser.credits) < 150)) ? 'not-allowed' : 'pointer',
+                    opacity: (isPending || (getUserStackEntry(selectedUser.id)?.paymentMethod !== 'CASH' && (liveCredits ?? selectedUser.credits) < 150)) ? 0.6 : 1,
                     boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                   }}
                 >
-                  {isPending ? 'Processing...' : 'Confirm'}
+                  {isPending ? 'Processing...' : (getUserStackEntry(selectedUser.id)?.paymentMethod === 'CASH' ? 'Confirm Payment and Check-in' : 'Confirm')}
                 </button>
               </div>
 

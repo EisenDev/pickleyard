@@ -26,6 +26,8 @@ interface StackEntry {
   joinedAt: string
   checkedInAt: string | null
   sessionExpiresAt: string | null
+  qrId: string | null
+  paymentMethod?: string
 }
 
 interface BookingPass {
@@ -121,6 +123,7 @@ export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialS
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
   const [skillLevel, setSkillLevel] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('INTERMEDIATE')
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
+  const [isLowBalanceModalOpen, setIsLowBalanceModalOpen] = useState(false)
   const [activeQueueTab, setActiveQueueTab] = useState<'NOVICE' | 'INTERMEDIATE' | 'ADVANCED'>('NOVICE')
 
   // Keep state in sync with server component props
@@ -171,23 +174,25 @@ export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialS
     
     // Check credits before attempting to join
     if (userCredits !== undefined && userCredits < 150) {
-      router.push('/dashboard/topup')
+      setIsLowBalanceModalOpen(true)
       return
     }
 
+    await handleJoinSubmit('credits')
+  }
+
+  const handleJoinSubmit = async (paymentMethod: 'credits' | 'cash') => {
+    setIsLowBalanceModalOpen(false)
     setMessage(null)
     setActiveLoadingId('join')
     setIsPending(true)
-    const result = await joinPaddleStackAction(skillLevel)
+    const result = await joinPaddleStackAction(skillLevel, paymentMethod)
     setIsPending(false)
     setActiveLoadingId(null)
     if (result.success) {
       router.push('/dashboard/openplay')
     } else {
       setMessage({ success: false, text: result.error })
-      if (result.error.toLowerCase().includes('credits') || result.error.toLowerCase().includes('balance')) {
-        router.push('/dashboard/topup')
-      }
     }
   }
 
@@ -848,6 +853,62 @@ export function PaddleStackBoardClient({ courts: initialCourts, stacks: initialS
                 }}
               >
                 Proceed (Leave)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLowBalanceModalOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.40)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10000
+        }}>
+          <div style={{
+            background: 'var(--color-card)',
+            border: '1.5px solid var(--color-border)',
+            borderRadius: 'var(--radius-xl)',
+            padding: '24px',
+            maxWidth: '420px',
+            width: '90%',
+            boxShadow: 'var(--shadow-lg)',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
+              Insufficient Wallet Balance
+            </h3>
+            <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.5 }}>
+              You have <strong style={{ color: 'var(--color-danger)' }}>₱{(userCredits || 0).toFixed(2)}</strong> on your wallet. Top up now on <Link href="/dashboard/topup" style={{ color: 'var(--color-primary)', textDecoration: 'underline', fontWeight: 700 }}>Top Up page</Link> or Proceed and check at the counter.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setIsLowBalanceModalOpen(false)}
+                style={{
+                  flex: 1, height: '38px', borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)', background: 'var(--color-card)',
+                  color: 'var(--color-text-secondary)', fontSize: '13px', fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleJoinSubmit('cash')}
+                style={{
+                  flex: 1.5, height: '38px', borderRadius: 'var(--radius-md)', border: 'none',
+                  background: 'var(--color-primary)', color: 'white',
+                  fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                  boxShadow: 'var(--shadow-primary-btn)'
+                }}
+              >
+                Proceed to Counter
               </button>
             </div>
           </div>
