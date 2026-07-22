@@ -863,6 +863,7 @@ export default function LandingPage() {
           z-index: 500;
           background: transparent;
           border-bottom: 1px solid transparent;
+          color: white;
           transition: all 0.3s ease;
         }
 
@@ -873,32 +874,32 @@ export default function LandingPage() {
           border-bottom: 1px solid var(--color-border);
           box-shadow: var(--shadow-sm);
           height: 64px;
-        }
-
-        .header-container .nav-link,
-        .header-container .login-btn-link,
-        .header-container .logo-text {
-          color: white;
-          transition: color 0.3s ease;
-        }
-
-        .header-container.scrolled .nav-link,
-        .header-container.scrolled .login-btn-link,
-        .header-container.scrolled .logo-text {
           color: var(--color-text-primary) !important;
         }
 
-        .header-container.scrolled .nav-link:hover,
-        .header-container.scrolled .login-btn-link:hover {
+        .header-container .logo-text,
+        .header-container .login-btn-link {
+          color: inherit !important;
+        }
+
+        .header-container .nav-link {
+          color: rgba(255, 255, 255, 0.8) !important;
+          transition: color 0.3s ease;
+        }
+        .header-container .nav-link:hover {
+          color: white !important;
+        }
+
+        .header-container.scrolled .nav-link {
+          color: var(--color-text-secondary) !important;
+        }
+        .header-container.scrolled .nav-link:hover {
           color: var(--color-primary) !important;
         }
 
         .header-container .mobile-menu-trigger {
-          color: white;
+          color: inherit !important;
           transition: color 0.3s ease;
-        }
-        .header-container.scrolled .mobile-menu-trigger {
-          color: var(--color-text-primary) !important;
         }
 
         .desktop-nav {
