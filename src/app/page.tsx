@@ -211,6 +211,9 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="hero-section">
+        {/* Background photo of courts with gradient fade on the left */}
+        <div className="hero-background-image" />
+
         <div className="hero-container">
           {/* Left Hero Content */}
           <div className="hero-left-content animate-fade-up">
@@ -254,20 +257,6 @@ export default function LandingPage() {
               )}
             </div>
 
-            {/* Rating Stars proof */}
-            <div className="user-proof" style={{ marginTop: '4px' }}>
-              <div className="avatars-row">
-                <span className="avatar-circle" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&fit=crop&q=60)' }}></span>
-                <span className="avatar-circle" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&fit=crop&q=60)' }}></span>
-                <span className="avatar-circle" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&fit=crop&q=60)' }}></span>
-                <span className="avatar-circle" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&fit=crop&q=60)' }}></span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', letterSpacing: '0.05em' }}>★★★★★</span>
-                <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 650 }}>Trusted by players who love the game.</span>
-              </div>
-            </div>
-
             {/* Bottom row feature tags */}
             <div className="hero-features-flex" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '16px' }}>
               {[
@@ -292,89 +281,64 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right Hero / Immersive visual image spanning 60-70% */}
+          {/* Right Hero / Immersive floating cards overlaid */}
           <div className="hero-right-visual animate-fade-up">
-            <div 
-              className="court-visual-canvas" 
-              style={{ 
-                backgroundImage: 'url(/hero_illustration.jpg)', 
-                backgroundSize: 'cover', 
-                backgroundPosition: 'center',
-                position: 'relative',
-                width: '100%',
-                borderRadius: 'var(--radius-2xl)',
-                overflow: 'hidden',
-                boxShadow: 'var(--shadow-xl)',
-                border: '1px solid var(--color-border)'
-              }}
-            >
-              {/* Fade layer merging photograph into left side page background */}
-              <div style={{
-                position: 'absolute', top: 0, left: 0, bottom: 0, width: '40%',
-                background: 'linear-gradient(to right, var(--color-bg-primary) 0%, rgba(247, 249, 249, 0.8) 40%, rgba(247, 249, 249, 0) 100%)',
-                zIndex: 15, pointerEvents: 'none'
-              }} className="hero-gradient-overlay" />
+            {/* Floating Card 1: NEXT UP (Top Right) */}
+            <div className="float-card-next" style={{
+              background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255, 255, 255, 0.5)', borderRadius: '16px',
+              padding: '20px', width: '220px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              marginBottom: '20px'
+            }}>
+              <span style={{ fontSize: '9px', fontWeight: 850, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>NEXT UP</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                <strong style={{ fontSize: '14px', color: 'var(--color-text-primary)' }}>Court 3</strong>
+                <span style={{ fontSize: '9px', fontWeight: 800, background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px' }}>OPEN PLAY</span>
+              </div>
+              <div style={{ marginTop: '12px' }}>
+                <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>Start in</span>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--color-text-primary)', marginTop: '2px' }}>05:30</div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid rgba(0,0,0,0.05)', fontSize: '10px', color: 'var(--color-text-secondary)' }}>
+                <span>Your position</span>
+                <strong style={{ color: 'var(--color-text-primary)' }}>#2</strong>
+              </div>
+            </div>
 
-              {/* Floating Card 1: NEXT UP (Top Right) */}
-              <div style={{
-                position: 'absolute', top: '24px', right: '24px',
-                background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255, 255, 255, 0.4)', borderRadius: '12px',
-                padding: '16px', width: '190px', boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-                zIndex: 30
-              }} className="float-card-next">
-                <span style={{ fontSize: '9px', fontWeight: 850, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>NEXT UP</span>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-                  <strong style={{ fontSize: '13px', color: 'var(--color-text-primary)' }}>Court 3</strong>
-                  <span style={{ fontSize: '9px', fontWeight: 800, background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px' }}>OPEN PLAY</span>
-                </div>
-                <div style={{ marginTop: '12px' }}>
-                  <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>Start in</span>
-                  <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--color-text-primary)', marginTop: '2px' }}>05:30</div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid rgba(0,0,0,0.05)', fontSize: '10px', color: 'var(--color-text-secondary)' }}>
-                  <span>Your position</span>
-                  <strong style={{ color: 'var(--color-text-primary)' }}>#2</strong>
-                </div>
+            {/* Floating Card 2: TODAY SLOT BOOKINGS (Bottom Right) */}
+            <div className="float-card-slots" style={{
+              background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255, 255, 255, 0.5)', borderRadius: '16px',
+              padding: '20px', width: '260px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '6px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '9px', fontWeight: 850, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>TODAY</span>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-primary)' }}>May 25, 2026</span>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+                {[
+                  { time: '06:00 PM – 07:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' },
+                  { time: '07:00 PM – 08:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' },
+                  { time: '08:00 PM – 09:00 PM', status: 'Filling Fast', color: '#f59e0b', bg: '#fffbeb' },
+                  { time: '09:00 PM – 10:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' }
+                ].map((s, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10.5px' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>{s.time}</span>
+                    <span style={{ fontSize: '8.5px', fontWeight: 800, background: s.bg, color: s.color, padding: '2px 5px', borderRadius: '4px' }}>{s.status}</span>
+                  </div>
+                ))}
               </div>
 
-              {/* Floating Card 2: TODAY SLOT BOOKINGS (Bottom Right) */}
-              <div style={{
-                position: 'absolute', bottom: '24px', right: '24px',
-                background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255, 255, 255, 0.4)', borderRadius: '12px',
-                padding: '16px', width: '230px', boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-                zIndex: 30
-              }} className="float-card-slots">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '6px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '9px', fontWeight: 850, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>TODAY</span>
-                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-primary)' }}>May 25, 2026</span>
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
-                  {[
-                    { time: '06:00 PM – 07:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' },
-                    { time: '07:00 PM – 08:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' },
-                    { time: '08:00 PM – 09:00 PM', status: 'Filling Fast', color: '#f59e0b', bg: '#fffbeb' },
-                    { time: '09:00 PM – 10:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' }
-                  ].map((s, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10.5px' }}>
-                      <span style={{ color: 'var(--color-text-secondary)' }}>{s.time}</span>
-                      <span style={{ fontSize: '8.5px', fontWeight: 800, background: s.bg, color: s.color, padding: '2px 5px', borderRadius: '4px' }}>{s.status}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <Link href={session ? "/dashboard/bookings" : "/signup"} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                  height: '32px', background: 'var(--color-primary)', color: 'white',
-                  borderRadius: '6px', fontSize: '11px', fontWeight: 800, textDecoration: 'none',
-                  boxShadow: 'var(--shadow-sm)'
-                }}>
-                  <span>Book Now</span>
-                  <span>→</span>
-                </Link>
-              </div>
+              <Link href={session ? "/dashboard/bookings" : "/signup"} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                height: '34px', background: 'var(--color-primary)', color: 'white',
+                borderRadius: '8px', fontSize: '11px', fontWeight: 800, textDecoration: 'none',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                <span>Book Now</span>
+                <span>→</span>
+              </Link>
             </div>
           </div>
         </div>
@@ -969,7 +933,7 @@ export default function LandingPage() {
         /* Hero Layout */
         .hero-section {
           background-color: var(--color-bg-primary);
-          min-height: 85vh;
+          min-height: 80vh;
           display: flex;
           align-items: center;
           padding-top: 40px;
@@ -977,6 +941,29 @@ export default function LandingPage() {
           position: relative;
           overflow: hidden;
           border-bottom: 1px solid var(--color-border);
+        }
+
+        .hero-background-image {
+          position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          width: 58%;
+          background-image: url(/court_illustration.jpg);
+          background-size: cover;
+          background-position: center;
+          z-index: 1;
+        }
+
+        .hero-background-image::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(to right, var(--color-bg-primary) 0%, var(--color-bg-primary) 12%, transparent 100%);
+          z-index: 2;
         }
 
         .hero-container {
@@ -1051,50 +1038,17 @@ export default function LandingPage() {
           gap: 16px;
         }
 
-        .user-proof {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          margin-top: 8px;
-          border-top: 1px solid var(--color-border);
-          padding-top: 20px;
-          max-width: 440px;
-        }
-        .avatars-row {
-          display: flex;
-          align-items: center;
-        }
-        .avatar-circle {
-          width: 36px;
-          height: 36px;
-          border-radius: var(--radius-full);
-          border: 2px solid var(--color-card);
-          margin-left: -10px;
-          background-size: cover;
-          background-position: center;
-        }
-        .avatar-circle:first-child {
-          margin-left: 0;
-        }
-
         /* Right Visual Canvas */
         .hero-right-visual {
           display: flex;
-          justify-content: flex-end;
-          position: relative;
-          width: 100%;
-        }
-        .court-visual-canvas {
-          position: relative;
-          width: 100%;
-          aspect-ratio: 16/10;
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-2xl);
-          box-shadow: var(--shadow-xl);
-          overflow: hidden;
-          display: flex;
-          align-items: center;
+          flex-direction: column;
+          align-items: flex-end;
           justify-content: center;
+          gap: 24px;
+          position: relative;
+          width: 100%;
+          min-height: 480px;
+          z-index: 10;
         }
 
         /* Features Section */
@@ -1406,28 +1360,25 @@ export default function LandingPage() {
           }
           .hero-right-visual {
             justify-content: center;
+            align-items: center;
             max-width: 600px;
             margin: 0 auto;
-          }
-          .court-visual-canvas {
-            aspect-ratio: 4/3;
-          }
-          .hero-gradient-overlay {
-            display: none !important;
+            min-height: auto;
+            gap: 16px;
           }
           .float-card-next, .float-card-slots {
             position: static !important;
             width: 100% !important;
-            margin-top: 16px;
+            max-width: 320px;
+            margin: 0 !important;
             animation: none !important;
           }
-          .court-visual-canvas {
-            display: flex;
-            flex-direction: column;
-            height: auto;
-            padding: 24px;
-            box-sizing: border-box;
-            background-image: none !important; /* hide on smaller views, show cards */
+          .hero-background-image {
+            width: 100%;
+            opacity: 0.18;
+          }
+          .hero-background-image::before {
+            background: linear-gradient(to bottom, var(--color-bg-primary) 0%, transparent 100%);
           }
           .stepper-line-track {
             display: none !important;
