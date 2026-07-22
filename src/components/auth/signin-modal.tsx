@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { X, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react'
@@ -21,7 +21,17 @@ export function SignInModal({ isOpen, onClose, onSwitchToSignUp, initialError }:
   const [error, setError] = useState<string | null>(initialError ?? null)
   const [isPending, startTransition] = useTransition()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [otpStep, setOtpStep] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
   const router = useRouter()
+
+  useEffect(() => {
+    if (!isOpen) {
+      setOtpStep(false)
+      setOtpCode('')
+      setError(null)
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -34,17 +44,29 @@ export function SignInModal({ isOpen, onClose, onSwitchToSignUp, initialError }:
       return
     }
 
+    if (otpStep && !otpCode) {
+      setError('Please enter the verification code')
+      return
+    }
+
     startTransition(async () => {
       const formData = new FormData()
       formData.append('email', email)
       formData.append('password', password)
+      if (otpStep) {
+        formData.append('otp', otpCode)
+      }
 
       const result = await signInAction(formData)
       if (result && !result.success) {
-        setError(result.error || 'Login failed')
+        if (result.error === 'OTP_REQUIRED') {
+          setOtpStep(true)
+          setError(null)
+        } else {
+          setError(result.error || 'Login failed')
+        }
       } else {
         onClose()
-        // In full app, redirects to dashboard. For now, let's redirect to dashboard mock
         router.push('/dashboard')
         router.refresh()
       }
@@ -118,53 +140,87 @@ export function SignInModal({ isOpen, onClose, onSwitchToSignUp, initialError }:
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="signin-form">
-          <div className="signin-field">
-            <label className="signin-label">Email address</label>
-            <input
-              type="email"
-              required
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="signin-input"
-              autoComplete="email"
-            />
-          </div>
+          {!otpStep ? (
+            <>
+              <div className="signin-field">
+                <label className="signin-label">Email address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="signin-input"
+                  autoComplete="email"
+                  disabled={isPending}
+                />
+              </div>
 
-          <div className="signin-field">
-            <div className="signin-label-row">
-              <label className="signin-label">Password</label>
-              <a href="#" className="signin-forgot">Forgot password?</a>
-            </div>
-            <div style={{ position: 'relative' }}>
+              <div className="signin-field">
+                <div className="signin-label-row">
+                  <label className="signin-label">Password</label>
+                  <a href="#" className="signin-forgot">Forgot password?</a>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="signin-input"
+                    autoComplete="current-password"
+                    style={{ paddingRight: 44 }}
+                    disabled={isPending}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="signin-eye-btn"
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="signin-field">
+              <div className="signin-label-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="signin-label">Verification Code</label>
+                <button
+                  type="button"
+                  onClick={() => { setOtpStep(false); setOtpCode(''); }}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '11px', fontWeight: 650, cursor: 'pointer', padding: 0 }}
+                >
+                  Back to Password
+                </button>
+              </div>
               <input
-                type={showPassword ? 'text' : 'password'}
+                type="text"
                 required
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                maxLength={6}
+                placeholder="Enter 6-digit code"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                 className="signin-input"
-                autoComplete="current-password"
-                style={{ paddingRight: 44 }}
+                style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '4px', fontWeight: 'bold' }}
+                disabled={isPending}
+                autoComplete="one-time-code"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="signin-eye-btn"
-                tabIndex={-1}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
+              <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '8px', lineHeight: 1.4 }}>
+                We sent a 6-digit verification code to your email. Please enter it above to verify your Admin/Staff login.
+              </p>
             </div>
-          </div>
+          )}
 
           <button type="submit" disabled={isPending} className="signin-submit-btn">
             {isPending ? (
-              <span>Signing in…</span>
+              <span>{otpStep ? 'Verifying...' : 'Signing in…'}</span>
             ) : (
               <>
-                <span>Sign in</span>
+                <span>{otpStep ? 'Verify & Sign in' : 'Sign in'}</span>
                 <ArrowRight size={15} />
               </>
             )}

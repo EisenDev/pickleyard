@@ -42,6 +42,16 @@ export default function LandingPage() {
   const [authError, setAuthError] = useState<string | null>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 30)
+    }
+    handleScroll()
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -113,10 +123,10 @@ export default function LandingPage() {
   return (
     <div style={{ background: 'var(--color-bg-primary)', minHeight: '100vh', overflowX: 'hidden' }}>
       {/* Navigation Header */}
-      <header className="header-container">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: '50%' }} />
-          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', paddingLeft: '4px' }}>
+      <header className={`header-container ${scrolled ? 'scrolled' : ''}`}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <img src="/paddleyard-logo.png" alt="PaddleYard Logo" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: '50%' }} />
+          <span className="logo-text" style={{ fontSize: 20, fontWeight: 800, color: 'inherit', letterSpacing: '-0.02em', paddingLeft: '2px' }}>
             PaddleYard
           </span>
         </div>
@@ -142,7 +152,7 @@ export default function LandingPage() {
                   background: 'transparent',
                   border: 'none',
                   fontSize: 14,
-                  color: 'var(--color-text-secondary)',
+                  color: 'inherit',
                   cursor: 'pointer',
                   fontWeight: 650,
                   transition: 'color var(--duration-fast)'
@@ -255,7 +265,7 @@ export default function LandingPage() {
             </div>
 
             {/* Bottom row feature tags */}
-            <div className="hero-features-flex" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '16px' }}>
+            <div className="hero-features-flex" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '28px' }}>
               {[
                 { label: 'Live Queue', icon: Users },
                 { label: 'QR Check-In', icon: QrCode },
@@ -263,16 +273,20 @@ export default function LandingPage() {
                 { label: 'Rewards', icon: Trophy },
                 { label: 'Real-Time Booking', icon: Clock }
               ].map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '90px', textAlign: 'center' }}>
-                  <div style={{
-                    width: '42px', height: '42px', borderRadius: '50%',
-                    background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.15)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#00e676'
-                  }}>
-                    <item.icon size={16} />
-                  </div>
-                  <span style={{ fontSize: '10px', fontWeight: 800, color: 'rgba(255, 255, 255, 0.95)' }}>{item.label}</span>
+                <div key={idx} style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  padding: '6px 12px', 
+                  borderRadius: '99px',
+                  background: 'rgba(255, 255, 255, 0.06)', 
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  color: 'white'
+                }}>
+                  <item.icon size={12} style={{ color: '#ff9800' }} />
+                  <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.9)' }}>{item.label}</span>
                 </div>
               ))}
             </div>
@@ -280,40 +294,51 @@ export default function LandingPage() {
 
           {/* Right Hero / Immersive floating cards overlaid */}
           <div className="hero-right-visual animate-fade-up">
-            {/* Floating Card 1: NEXT UP (Top Right) */}
+            {/* Floating Card 1: NEXT UP (Top Right) - Dark Glassmorphism */}
             <div className="float-card-next" style={{
-              background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255, 255, 255, 0.5)', borderRadius: '16px',
-              padding: '20px', width: '220px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-              marginBottom: '20px'
+              background: 'linear-gradient(135deg, rgba(2, 40, 42, 0.8) 0%, rgba(1, 20, 21, 0.9) 100%)', 
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255, 255, 255, 0.12)', 
+              borderRadius: '20px',
+              padding: '20px', 
+              width: '230px', 
+              boxShadow: '0 20px 48px rgba(0,0,0,0.3)',
+              marginBottom: '20px',
+              color: 'white'
             }}>
-              <span style={{ fontSize: '9px', fontWeight: 850, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>NEXT UP</span>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-                <strong style={{ fontSize: '14px', color: 'var(--color-text-primary)' }}>Court 3</strong>
-                <span style={{ fontSize: '9px', fontWeight: 800, background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px' }}>OPEN PLAY</span>
+              <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>NEXT UP</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                <strong style={{ fontSize: '15px', color: 'white', fontWeight: 800 }}>Court 3</strong>
+                <span style={{ fontSize: '9px', fontWeight: 800, background: 'rgba(0, 230, 118, 0.12)', color: '#00e676', border: '1px solid rgba(0, 230, 118, 0.25)', padding: '3px 8px', borderRadius: '6px' }}>OPEN PLAY</span>
               </div>
-              <div style={{ marginTop: '12px' }}>
-                <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>Start in</span>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--color-text-primary)', marginTop: '2px' }}>05:30</div>
+              <div style={{ marginTop: '16px' }}>
+                <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.5)' }}>Start in</span>
+                <div style={{ fontSize: '28px', fontWeight: 900, color: 'white', marginTop: '2px', letterSpacing: '-0.02em' }}>05:30</div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid rgba(0,0,0,0.05)', fontSize: '10px', color: 'var(--color-text-secondary)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.5)' }}>
                 <span>Your position</span>
-                <strong style={{ color: 'var(--color-text-primary)' }}>#2</strong>
+                <strong style={{ color: '#00e676', fontWeight: 800 }}>#2</strong>
               </div>
             </div>
 
-            {/* Floating Card 2: TODAY SLOT BOOKINGS (Bottom Right) */}
+            {/* Floating Card 2: TODAY SLOT BOOKINGS (Bottom Right) - Light Glassmorphism */}
             <div className="float-card-slots" style={{
-              background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255, 255, 255, 0.5)', borderRadius: '16px',
-              padding: '20px', width: '260px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
+              background: 'rgba(255, 255, 255, 0.92)', 
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255, 255, 255, 0.6)', 
+              borderRadius: '20px',
+              padding: '22px 20px', 
+              width: '270px', 
+              boxShadow: '0 20px 48px rgba(0,0,0,0.18)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '6px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 850, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>TODAY</span>
-                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-primary)' }}>May 25, 2026</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '8px', marginBottom: '10px' }}>
+                <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>TODAY</span>
+                <span style={{ fontSize: '10.5px', fontWeight: 800, color: 'var(--color-text-primary)' }}>May 25, 2026</span>
               </div>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
                 {[
                   { time: '06:00 PM – 07:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' },
                   { time: '07:00 PM – 08:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' },
@@ -321,17 +346,18 @@ export default function LandingPage() {
                   { time: '09:00 PM – 10:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' }
                 ].map((s, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10.5px' }}>
-                    <span style={{ color: 'var(--color-text-secondary)' }}>{s.time}</span>
-                    <span style={{ fontSize: '8.5px', fontWeight: 800, background: s.bg, color: s.color, padding: '2px 5px', borderRadius: '4px' }}>{s.status}</span>
+                    <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{s.time}</span>
+                    <span style={{ fontSize: '8.5px', fontWeight: 800, background: s.bg, color: s.color, padding: '2px 6px', borderRadius: '4px' }}>{s.status}</span>
                   </div>
                 ))}
               </div>
 
               <Link href={session ? "/dashboard/bookings" : "/signup"} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                height: '34px', background: 'var(--color-primary)', color: 'white',
+                height: '36px', background: 'var(--color-primary)', color: 'white',
                 borderRadius: '8px', fontSize: '11px', fontWeight: 800, textDecoration: 'none',
-                boxShadow: 'var(--shadow-sm)'
+                boxShadow: '0 4px 12px rgba(0, 124, 128, 0.2)',
+                transition: 'background 0.2s'
               }}>
                 <span>Book Now</span>
                 <span>→</span>
@@ -825,15 +851,54 @@ export default function LandingPage() {
 
       <style>{`
         .header-container {
-          height: 100px;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 80px;
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 0 64px;
-          max-width: 1440px;
-          margin: 0 auto;
-          position: relative;
-          z-index: 50;
+          z-index: 500;
+          background: transparent;
+          border-bottom: 1px solid transparent;
+          transition: all 0.3s ease;
+        }
+
+        .header-container.scrolled {
+          background: rgba(255, 255, 255, 0.85) !important;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border-bottom: 1px solid var(--color-border);
+          box-shadow: var(--shadow-sm);
+          height: 64px;
+        }
+
+        .header-container .nav-link,
+        .header-container .login-btn-link,
+        .header-container .logo-text {
+          color: white;
+          transition: color 0.3s ease;
+        }
+
+        .header-container.scrolled .nav-link,
+        .header-container.scrolled .login-btn-link,
+        .header-container.scrolled .logo-text {
+          color: var(--color-text-primary) !important;
+        }
+
+        .header-container.scrolled .nav-link:hover,
+        .header-container.scrolled .login-btn-link:hover {
+          color: var(--color-primary) !important;
+        }
+
+        .header-container .mobile-menu-trigger {
+          color: white;
+          transition: color 0.3s ease;
+        }
+        .header-container.scrolled .mobile-menu-trigger {
+          color: var(--color-text-primary) !important;
         }
 
         .desktop-nav {
@@ -859,7 +924,7 @@ export default function LandingPage() {
 
         .mobile-drawer {
           position: fixed;
-          top: 100px;
+          top: 80px;
           left: 0;
           width: 100%;
           background: var(--color-card);
@@ -867,6 +932,10 @@ export default function LandingPage() {
           padding: 16px 24px;
           box-shadow: var(--shadow-md);
           z-index: 45;
+          transition: top 0.3s ease;
+        }
+        .header-container.scrolled ~ .mobile-drawer {
+          top: 64px;
         }
 
         .nav-link {
@@ -933,11 +1002,12 @@ export default function LandingPage() {
           background: linear-gradient(135deg, rgba(3, 49, 51, 0.96) 0%, rgba(1, 32, 34, 0.88) 100%), url('/court_illustration.jpg');
           background-size: cover;
           background-position: center;
-          min-height: 80vh;
+          background-attachment: fixed;
+          min-height: 100vh;
           display: flex;
           align-items: center;
-          padding-top: 40px;
-          padding-bottom: 60px;
+          padding-top: 120px;
+          padding-bottom: 80px;
           position: relative;
           overflow: hidden;
           border-bottom: 1px solid var(--color-border);
@@ -1398,7 +1468,20 @@ export default function LandingPage() {
         @media (max-width: 768px) {
           .header-container {
             padding: 0 24px;
-            height: 80px;
+            height: 72px;
+          }
+          .header-container.scrolled {
+            height: 56px;
+          }
+          .mobile-drawer {
+            top: 72px;
+          }
+          .header-container.scrolled ~ .mobile-drawer {
+            top: 56px;
+          }
+          .hero-section {
+            background-attachment: scroll !important;
+            padding-top: 100px;
           }
           .hero-container {
             padding: 0 24px;

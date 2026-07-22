@@ -10,7 +10,8 @@ import 'nodemailer'
 
 const CredentialsSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(1),
+  otp: z.string().optional(),
 })
 
 export const authConfig: NextAuthConfig = {
@@ -86,13 +87,34 @@ export const authConfig: NextAuthConfig = {
         const parsed = CredentialsSchema.safeParse(credentials)
         if (!parsed.success) return null
 
-        const { email, password } = parsed.data
+        const { email, password, otp } = parsed.data
 
         const user = await db.user.findUnique({ where: { email } })
         if (!user?.hashedPassword) return null
 
         const passwordMatch = await bcrypt.compare(password, user.hashedPassword)
         if (!passwordMatch) return null
+
+        if (user.role === 'ADMIN' || user.role === 'STAFF') {
+          if (!otp) return null
+
+          const tokenRecord = await db.verificationToken.findFirst({
+            where: { identifier: email, token: otp }
+          })
+
+          if (!tokenRecord || tokenRecord.expires < new Date()) {
+            return null
+          }
+
+          await db.verificationToken.delete({
+            where: {
+              identifier_token: {
+                identifier: email,
+                token: otp
+              }
+            }
+          })
+        }
 
         return {
           id: user.id,

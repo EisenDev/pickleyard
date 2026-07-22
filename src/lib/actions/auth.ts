@@ -71,6 +71,44 @@ export async function signUpAction(
   return { success: true }
 }
 
+async function sendLoginOtpEmail(email: string, code: string) {
+  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER
+  const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_PASS
+
+  if (smtpUser && smtpPass) {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: smtpUser,
+        pass: smtpPass
+      }
+    })
+
+    const mailOptions = {
+      from: `"PaddleYard" <${smtpUser}>`,
+      to: email,
+      subject: `Your PaddleYard Login Verification Code: ${code}`,
+      text: `Your PaddleYard verification code is: ${code}. This code is valid for 15 minutes.`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 8px;">
+          <h2 style="color: #007C80; margin-bottom: 20px;">Admin/Staff Login Verification</h2>
+          <p>Please use the following 6-digit verification code to complete your login:</p>
+          <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; padding: 14px; background: #f0fdfa; color: #007C80; text-align: center; border-radius: 6px; margin: 24px 0; border: 1px solid #ccfbf1;">
+            ${code}
+          </div>
+          <p style="color: #666; font-size: 13px;">This code is valid for 15 minutes. If you did not request this login, you can safely ignore this email.</p>
+        </div>
+      `
+    }
+
+    await transporter.sendMail(mailOptions)
+  } else {
+    console.log('\n=============================================')
+    console.log(`[PADDLEYARD LOGIN OTP] Code: ${code} for ${email}`)
+    console.log('=============================================\n')
+  }
+}
+
 export async function signInAction(
   formData: FormData,
 ): Promise<ActionResult> {
@@ -84,15 +122,56 @@ export async function signInAction(
     return { success: false, error: 'Invalid email or password' }
   }
 
+  const { email, password } = parsed.data
+
+  const user = await db.user.findUnique({ where: { email } })
+  if (!user || !user.hashedPassword) {
+    return { success: false, error: 'Invalid email or password' }
+  }
+
+  const passwordMatch = await bcrypt.compare(password, user.hashedPassword)
+  if (!passwordMatch) {
+    return { success: false, error: 'Invalid email or password' }
+  }
+
+  const otp = formData.get('otp') as string || undefined
+
+  if ((user.role === 'ADMIN' || user.role === 'STAFF') && !otp) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString()
+    const expires = new Date(Date.now() + 15 * 60 * 1000)
+
+    await db.verificationToken.deleteMany({
+      where: { identifier: email }
+    })
+
+    await db.verificationToken.create({
+      data: {
+        identifier: email,
+        token: code,
+        expires
+      }
+    })
+
+    try {
+      await sendLoginOtpEmail(email, code)
+    } catch (err: any) {
+      console.error('Failed to send login OTP:', err)
+      return { success: false, error: 'Failed to send verification code. Please check SMTP settings.' }
+    }
+
+    return { success: false, error: 'OTP_REQUIRED' }
+  }
+
   try {
     await signIn('credentials', {
-      email: parsed.data.email,
-      password: parsed.data.password,
+      email,
+      password,
+      otp,
       redirectTo: '/dashboard',
     })
   } catch (error) {
     if (error instanceof AuthError) {
-      return { success: false, error: 'Invalid email or password' }
+      return { success: false, error: 'Invalid email, password, or verification code' }
     }
     throw error
   }
