@@ -1,5 +1,4 @@
 const { PrismaClient } = require('@prisma/client')
-const bcrypt = require('bcryptjs')
 
 const prisma = new PrismaClient()
 
@@ -26,8 +25,8 @@ async function main() {
     ]
   })
 
-  // Create the official Admin account
-  const hashedPassword = await bcrypt.hash('Pickleball1234', 12)
+  // Create the official Admin account with pre-hashed password "Pickleball1234"
+  const hashedPassword = '$2b$12$2g9iwDDcpiXuP8L09CHRzugEz4R8rFMx6saAK7bYXoJpTohVbMCGm'
   await prisma.user.create({
     data: {
       name: 'PaddleYard Admin',
