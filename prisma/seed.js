@@ -18,7 +18,7 @@ async function main() {
   await prisma.systemSetting.createMany({
     data: [
       { key: 'booking_duration_minutes', value: '60' },
-      { key: 'booking_price_per_hour', value: '500' },
+      { key: 'booking_price_per_hour', value: '250' },
       { key: 'openplay_match_duration_seconds', value: '900' },
       { key: 'openplay_expiry_hours', value: '3' },
       { key: 'openplay_entry_fee', value: '150' }
