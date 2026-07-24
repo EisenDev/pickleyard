@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { createBookingAction, createBookingsAction } from '@/lib/actions/booking'
-import { adminReserveCourtForOpenPlayAction } from '@/lib/actions/admin'
+import { adminReserveCourtForOpenPlayAction, adminCancelBookingAction } from '@/lib/actions/admin'
 import { ShieldCheck, AlertTriangle, Calendar, List, Plus, Clock, MapPin, ChevronLeft, ChevronRight, ArrowLeft, X, Search, QrCode, Gift } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface Court {
   id: string
@@ -45,6 +46,7 @@ interface CourtVoucher {
 }
 
 interface Props {
+  bookingPricePerHour: number
   courts: Court[]
   allBookings: BookingItem[]
   myBookings: MyBooking[]
@@ -69,7 +71,7 @@ function formatDateToYYYYMMDD(d: Date) {
   return `${year}-${month}-${day}`
 }
 
-export function BookingsCalendarClient({ courts, allBookings, myBookings, userBalance, userId, userRole, startHour, endHour, courtVouchers = [] }: Props) {
+export function BookingsCalendarClient({ bookingPricePerHour, courts, allBookings, myBookings, userBalance, userId, userRole, startHour, endHour, courtVouchers = [] }: Props) {
   const HOURS = Array.from({ length: Math.max(1, endHour - startHour) }, (_, i) => i + startHour)
   const [activeTab, setActiveTab] = useState<'calendar' | 'list' | 'passes'>('calendar')
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'credits' | 'cash'>('credits')
@@ -78,6 +80,9 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ success: boolean; text: string } | null>(null)
   const [bookingSearch, setBookingSearch] = useState('')
+  const router = useRouter()
+  const [selectedDetailBooking, setSelectedDetailBooking] = useState<any | null>(null)
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
   
   // Real-time bookings state and polling
   const [bookings, setBookings] = useState<BookingItem[]>(allBookings)
@@ -577,25 +582,33 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                                     <span>Closed</span>
                                   </div>
                                 ) : isBooked ? (
-                                  <div style={{
-                                    background: (booking.userRole === 'ADMIN' || booking.userRole === 'STAFF')
-                                      ? '#10b981' // Success Green for Open Play block
-                                      : booking.isOwn 
-                                        ? '#007C80' // Brand Teal for My Booking
-                                        : '#475569', // Slate Gray for other Player Bookings
-                                    color: 'white',
-                                    padding: '6px 12px',
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    height: '100%',
-                                    width: '100%',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    textAlign: 'center',
-                                    boxSizing: 'border-box'
-                                  }}>
+                                  <div 
+                                    onClick={() => {
+                                      if (userRole === 'ADMIN' || userRole === 'STAFF') {
+                                        setSelectedDetailBooking(booking)
+                                      }
+                                    }}
+                                    style={{
+                                      background: (booking.userRole === 'ADMIN' || booking.userRole === 'STAFF')
+                                        ? '#10b981' // Success Green for Open Play block
+                                        : booking.isOwn 
+                                          ? '#007C80' // Brand Teal for My Booking
+                                          : '#475569', // Slate Gray for other Player Bookings
+                                      color: 'white',
+                                      padding: '6px 12px',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      height: '100%',
+                                      width: '100%',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      justifyContent: 'center',
+                                      alignItems: 'center',
+                                      textAlign: 'center',
+                                      boxSizing: 'border-box',
+                                      cursor: (userRole === 'ADMIN' || userRole === 'STAFF') ? 'pointer' : 'default'
+                                    }}
+                                  >
                                     <span>
                                       {booking.userRole === 'ADMIN' || booking.userRole === 'STAFF'
                                         ? 'Open Play'
@@ -829,6 +842,28 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                               }}>
                                 {b.status === 'PENDING' ? 'Unpaid' : b.status === 'RESERVED' ? 'Checked In' : b.status}
                               </span>
+                              {(userRole === 'ADMIN' || userRole === 'STAFF') && b.status !== 'CANCELLED' && b.status !== 'EXPIRED' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedDetailBooking(b)}
+                                  style={{
+                                    fontSize: '11px',
+                                    fontWeight: 750,
+                                    color: 'var(--color-danger)',
+                                    background: 'var(--color-danger-subtle)',
+                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                    padding: '5px 12px',
+                                    borderRadius: 'var(--radius-md)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                              )}
                             </div>
                           </div>
                         )
@@ -1540,6 +1575,188 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
           </div>
         )
       })()}
+
+      {selectedDetailBooking && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.40)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--color-card)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-xl)',
+            width: '100%',
+            maxWidth: '440px',
+            padding: '24px',
+            boxShadow: 'var(--shadow-xl)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            position: 'relative'
+          }} className="animate-fade-up">
+            
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
+                Reservation Details
+              </h3>
+              <button 
+                type="button"
+                onClick={() => {
+                  setSelectedDetailBooking(null)
+                  setIsCancelConfirmOpen(false)
+                }}
+                style={{
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Info Container */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ background: 'var(--color-surface)', padding: '12px 14px', borderRadius: 'var(--radius-lg)', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>Pass ID:</span>
+                  <strong style={{ color: 'var(--color-text-primary)' }}>
+                    BK-{selectedDetailBooking.id.split(',')[0].slice(-6).toUpperCase()}
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>Court:</span>
+                  <strong style={{ color: 'var(--color-text-primary)' }}>
+                    {selectedDetailBooking.courtName}
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>Player Name:</span>
+                  <strong style={{ color: 'var(--color-primary)' }}>
+                    {selectedDetailBooking.userName || 'Member'}
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>Email:</span>
+                  <strong style={{ color: 'var(--color-text-primary)', wordBreak: 'break-all' }}>
+                    {selectedDetailBooking.userEmail || 'N/A'}
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>Schedule:</span>
+                  <strong style={{ color: 'var(--color-text-primary)' }}>
+                    {new Date(selectedDetailBooking.startTime).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })} • {new Date(selectedDetailBooking.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>Status:</span>
+                  <span style={{
+                    fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px',
+                    background: selectedDetailBooking.status === 'PAID' ? 'var(--color-success-subtle)' : selectedDetailBooking.status === 'PENDING' ? 'var(--color-warning-subtle)' : selectedDetailBooking.status === 'RESERVED' ? 'var(--color-info-subtle)' : 'var(--color-danger-subtle)',
+                    color: selectedDetailBooking.status === 'PAID' ? 'var(--color-success)' : selectedDetailBooking.status === 'PENDING' ? 'var(--color-warning)' : selectedDetailBooking.status === 'RESERVED' ? 'var(--color-info)' : 'var(--color-danger)',
+                    textTransform: 'uppercase'
+                  }}>
+                    {selectedDetailBooking.status === 'PENDING' ? 'Unpaid' : selectedDetailBooking.status === 'RESERVED' ? 'Checked In' : selectedDetailBooking.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Confirmation Area vs Regular Action Area */}
+            {!isCancelConfirmOpen ? (
+              <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDetailBooking(null)
+                  }}
+                  style={{
+                    flex: 1, height: '38px', borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                    color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: 700, cursor: 'pointer'
+                  }}
+                >
+                  Close Details
+                </button>
+                {selectedDetailBooking.status !== 'CANCELLED' && selectedDetailBooking.status !== 'EXPIRED' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCancelConfirmOpen(true)}
+                    style={{
+                      flex: 1, height: '38px', borderRadius: 'var(--radius-md)',
+                      border: 'none', background: '#ef4444',
+                      color: 'white', fontSize: '13px', fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    Cancel Booking
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: '12px',
+                background: 'rgba(239, 68, 68, 0.03)', border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderRadius: 'var(--radius-lg)', padding: '14px', marginTop: '4px'
+              }}>
+                <div style={{ display: 'flex', gap: '8px', color: '#ef4444' }}>
+                  <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ fontSize: '12px', fontWeight: 650, lineHeight: 1.4, textAlign: 'left' }}>
+                    Are you sure you want to cancel this booking? This action is irreversible.
+                    {selectedDetailBooking.status === 'PAID' && (
+                      <span style={{ display: 'block', marginTop: '4px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+                        • Credits paid will be refunded to the player's account.
+                        <br />• If a voucher was used, it will be reactivated automatically.
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => setIsCancelConfirmOpen(false)}
+                    style={{
+                      flex: 1, height: '32px', borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--color-border)', background: 'var(--color-card)',
+                      color: 'var(--color-text-secondary)', fontSize: '12px', fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    No, Go Back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => {
+                      startTransition(async () => {
+                        const res = await adminCancelBookingAction(selectedDetailBooking.id)
+                        if (res.success) {
+                          setMessage({ success: true, text: res.message || 'Booking cancelled successfully.' })
+                          setSelectedDetailBooking(null)
+                          setIsCancelConfirmOpen(false)
+                          router.refresh()
+                        } else {
+                          setMessage({ success: false, text: res.error || 'Failed to cancel booking.' })
+                          setIsCancelConfirmOpen(false)
+                        }
+                      })
+                    }}
+                    style={{
+                      flex: 1, height: '32px', borderRadius: 'var(--radius-md)',
+                      border: 'none', background: '#ef4444',
+                      color: 'white', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                    }}
+                  >
+                    {isPending ? 'Cancelling...' : 'Yes, Cancel'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <style>{`
         .slot-open:hover {

@@ -84,7 +84,9 @@ export async function createBookingsAction(
       const startHour = startHourSetting ? parseInt(startHourSetting.value) : 8
       const endHour = endHourSetting ? parseInt(endHourSetting.value) : 22
 
-      const hourlyRate = court.type === 'ROOFTOP' ? 300.00 : 250.00
+      const priceSetting = await tx.systemSetting.findUnique({ where: { key: 'booking_price_per_hour' } })
+      const defaultHourlyRate = priceSetting ? parseFloat(priceSetting.value) : 250.00
+      const hourlyRate = court.type === 'ROOFTOP' ? 300.00 : defaultHourlyRate
 
       // Map time strings to check if paid by voucher
       const slotPayments = startTimeStrings.map(timeStr => {

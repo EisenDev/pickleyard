@@ -1494,3 +1494,70 @@ export async function redeemVoucherAction(code: string): Promise<ActionState> {
   }
 }
 
+export async function adminCancelBookingAction(bookingId: string): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized. Staff permissions required.' }
+
+  try {
+    const result = await db.$transaction(async (tx) => {
+      const booking = await tx.booking.findUnique({
+        where: { id: bookingId },
+        include: { court: true, user: true }
+      })
+
+      if (!booking) {
+        throw new Error('Booking not found.')
+      }
+
+      if (booking.status === 'CANCELLED') {
+        throw new Error('Booking is already cancelled.')
+      }
+
+      const voucherUse = await tx.redemptionRequest.findFirst({
+        where: { bookingId: booking.id }
+      })
+
+      if (voucherUse) {
+        await tx.redemptionRequest.update({
+          where: { id: voucherUse.id },
+          data: {
+            isUsed: false,
+            usedAt: null,
+            bookingId: null
+          }
+        })
+      } else if (booking.status === 'PAID' && Number(booking.price) > 0) {
+        await tx.user.update({
+          where: { id: booking.userId },
+          data: {
+            credits: { increment: Number(booking.price) }
+          }
+        })
+
+        await tx.transaction.create({
+          data: {
+            userId: booking.userId,
+            amount: Number(booking.price),
+            type: 'REFUND',
+            reference: `REFUND-C${booking.court.number}-${booking.startTime.toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
+          }
+        })
+      }
+
+      await tx.booking.update({
+        where: { id: bookingId },
+        data: { status: 'CANCELLED' }
+      })
+
+      return { userName: booking.user.name || 'Member' }
+    })
+
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/bookings')
+    revalidatePath('/dashboard/ledger')
+    return { success: true, message: `Successfully cancelled reservation for ${result.userName}.` }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to cancel booking.' }
+  }
+}
+

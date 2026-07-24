@@ -40,6 +40,9 @@ export default async function MyBookingsPage() {
   const startHour = startHourSetting ? parseInt(startHourSetting.value) : 8
   const endHour = endHourSetting ? parseInt(endHourSetting.value) : 22
 
+  const priceSetting = await db.systemSetting.findUnique({ where: { key: 'booking_price_per_hour' } })
+  const bookingPricePerHour = priceSetting ? parseFloat(priceSetting.value) : 250.00
+
   // Fetch active approved court vouchers for the player
   const courtVouchers = await db.redemptionRequest.findMany({
     where: {
@@ -55,6 +58,7 @@ export default async function MyBookingsPage() {
 
   return (
     <BookingsCalendarClient
+      bookingPricePerHour={bookingPricePerHour}
       courts={courts.map(c => ({ id: c.id, number: c.number, name: c.name, type: c.type, status: c.status }))}
       allBookings={allBookingsToday.map(b => ({
         id: b.id,
