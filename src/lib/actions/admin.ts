@@ -1007,9 +1007,12 @@ export async function getBookingDetailsForScanAction(bookingId: string) {
       targetIds = targetId.replace('BOOKING-PASS:bookingIds=', '').split(',')
     } else if (targetId.startsWith('BOOKING-PASS:bookingId=')) {
       targetIds = [targetId.replace('BOOKING-PASS:bookingId=', '')]
+    } else if (targetId.includes(',')) {
+      targetIds = targetId.split(',')
     } else {
       targetIds = [targetId]
     }
+    targetIds = targetIds.map(id => id.trim()).filter(Boolean)
 
     // Handle manual short-codes (e.g. BK-XXXXXX or BK-PASS:XXXXXX or XXXXXX)
     let suffix = ''
@@ -1086,7 +1089,17 @@ export async function getBookingDetailsForScanAction(bookingId: string) {
         price: totalPrice,
         userId: firstBooking.user.id,
         userName: firstBooking.user.name || 'Member',
-        userEmail: firstBooking.user.email
+        userEmail: firstBooking.user.email,
+        isBulk: bookings.length > 1,
+        bookingsList: bookings.map(b => ({
+          id: b.id,
+          courtName: b.court.name,
+          courtNumber: b.court.number,
+          startTime: b.startTime.toISOString(),
+          endTime: b.endTime.toISOString(),
+          price: Number(b.price),
+          status: b.status
+        }))
       }
     }
   } catch (error: any) {

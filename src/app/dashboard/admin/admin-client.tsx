@@ -293,6 +293,16 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     userId: string
     userName: string
     userEmail: string
+    isBulk?: boolean
+    bookingsList?: Array<{
+      id: string
+      courtName: string
+      courtNumber: number
+      startTime: string
+      endTime: string
+      price: number
+      status: string
+    }>
   } | null>(null)
   const [isBookingLoading, setIsBookingLoading] = useState(false)
 
@@ -1465,16 +1475,87 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                           </span>
                         </div>
 
-                        <div style={{ background: 'var(--color-surface)', padding: '10px 12px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                          <div>Court: <strong style={{ color: 'var(--color-text-primary)' }}>{scannedBooking.courtName}</strong></div>
-                          <div>Play Date: <strong style={{ color: 'var(--color-text-primary)' }}>
-                            {new Date(scannedBooking.startTime).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}
-                          </strong></div>
-                          <div>Play Time: <strong style={{ color: 'var(--color-text-primary)' }}>
-                            {new Date(scannedBooking.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(scannedBooking.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
-                          </strong></div>
-                          <div>Fee Total: <strong style={{ color: 'var(--color-primary)' }}>₱{scannedBooking.price.toFixed(2)}</strong></div>
-                        </div>
+                        {scannedBooking.isBulk && scannedBooking.bookingsList ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              Bulk Booking Sessions ({scannedBooking.bookingsList.length})
+                            </div>
+                            <div style={{
+                              maxHeight: '160px',
+                              overflowY: 'auto',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                              paddingRight: '4px',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: 'var(--radius-md)',
+                              background: 'var(--color-surface)',
+                              padding: '8px'
+                            }} className="custom-scrollbar">
+                              {scannedBooking.bookingsList.map((b, idx) => (
+                                <div key={b.id || idx} style={{
+                                  padding: '8px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  background: 'var(--color-card)',
+                                  border: '1px solid var(--color-border)',
+                                  fontSize: '11.5px',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center'
+                                }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+                                    <span style={{ fontWeight: 750, color: 'var(--color-text-primary)' }}>
+                                      {b.courtName}
+                                    </span>
+                                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '10px' }}>
+                                      {new Date(b.startTime).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })} • {new Date(b.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(b.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                                    <span style={{ fontWeight: 800, color: 'var(--color-primary)' }}>
+                                      ₱{b.price.toFixed(2)}
+                                    </span>
+                                    <span style={{
+                                      fontSize: '8px',
+                                      fontWeight: 800,
+                                      padding: '1.5px 5px',
+                                      borderRadius: '4px',
+                                      background: b.status === 'PENDING' ? 'var(--color-warning-subtle)' : 'var(--color-success-subtle)',
+                                      color: b.status === 'PENDING' ? 'var(--color-warning)' : 'var(--color-success)',
+                                      textTransform: 'uppercase'
+                                    }}>
+                                      {b.status === 'PENDING' ? 'Unpaid' : 'Paid'}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{
+                              background: 'var(--color-surface)',
+                              padding: '10px 12px',
+                              borderRadius: 'var(--radius-md)',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              fontSize: '12px',
+                              border: '1px solid var(--color-border)'
+                            }}>
+                              <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)' }}>Fee Total:</span>
+                              <strong style={{ color: 'var(--color-primary)', fontSize: '13px' }}>₱{scannedBooking.price.toFixed(2)}</strong>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ background: 'var(--color-surface)', padding: '10px 12px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                            <div>Court: <strong style={{ color: 'var(--color-text-primary)' }}>{scannedBooking.courtName}</strong></div>
+                            <div>Play Date: <strong style={{ color: 'var(--color-text-primary)' }}>
+                              {new Date(scannedBooking.startTime).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}
+                            </strong></div>
+                            <div>Play Time: <strong style={{ color: 'var(--color-text-primary)' }}>
+                              {new Date(scannedBooking.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(scannedBooking.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
+                            </strong></div>
+                            <div>Fee Total: <strong style={{ color: 'var(--color-primary)' }}>₱{scannedBooking.price.toFixed(2)}</strong></div>
+                          </div>
+                        )}
 
                         {!isCheckinActive && (
                           <div style={{

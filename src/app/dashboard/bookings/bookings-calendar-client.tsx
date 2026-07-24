@@ -866,7 +866,33 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
               const groupedPasses = (() => {
                 const sorted = [...allPasses].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
                 const grouped: any[] = []
-                for (const pass of sorted) {
+
+                // Separate pending from others
+                const pendingPasses = sorted.filter(p => p.status === 'PENDING')
+                const otherPasses = sorted.filter(p => p.status !== 'PENDING')
+
+                if (pendingPasses.length > 0) {
+                  grouped.push({
+                    ids: pendingPasses.map(p => p.id),
+                    courtId: 'BULK',
+                    courtName: 'Bulk Booking',
+                    status: 'PENDING',
+                    day: 'Multiple Days',
+                    startTime: pendingPasses[0].startTime,
+                    endTime: pendingPasses[pendingPasses.length - 1].endTime,
+                    price: pendingPasses.reduce((sum, p) => sum + Number(p.price), 0),
+                    isBulk: true,
+                    bookingsList: pendingPasses.map(p => ({
+                      id: p.id,
+                      courtName: p.courtName,
+                      startTime: p.startTime,
+                      endTime: p.endTime,
+                      price: Number(p.price)
+                    }))
+                  })
+                }
+
+                for (const pass of otherPasses) {
                   const passStart = new Date(pass.startTime).getTime()
                   const passDay = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(pass.startTime))
 
@@ -894,6 +920,7 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                     })
                   }
                 }
+
                 return grouped.map(g => ({
                   id: g.ids.join(','),
                   courtId: g.courtId,
@@ -901,7 +928,9 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                   status: g.status,
                   startTime: g.startTime,
                   endTime: g.endTime,
-                  price: g.price
+                  price: g.price,
+                  isBulk: g.isBulk || false,
+                  bookingsList: g.bookingsList || null
                 }))
               })()
 
@@ -981,17 +1010,65 @@ export function BookingsCalendarClient({ courts, allBookings, myBookings, userBa
                           Pass ID: <strong>BK-{pass.id.split(',')[0].slice(-6).toUpperCase()}</strong>
                         </div>
 
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                            {new Date(pass.startTime).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}
+                        {pass.isBulk && pass.bookingsList ? (
+                          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
+                              Included Sessions ({pass.bookingsList.length})
+                            </div>
+                            <div style={{
+                              maxHeight: '120px',
+                              overflowY: 'auto',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                              paddingRight: '2px',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: 'var(--radius-md)',
+                              background: 'var(--color-surface)',
+                              padding: '6px'
+                            }} className="custom-scrollbar">
+                              {pass.bookingsList.map((b: any, idx: number) => (
+                                <div key={b.id || idx} style={{
+                                  padding: '6px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  background: 'var(--color-card)',
+                                  border: '1px solid var(--color-border)',
+                                  fontSize: '11px',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center'
+                                }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', textAlign: 'left' }}>
+                                    <span style={{ fontWeight: 750, color: 'var(--color-text-primary)' }}>
+                                      {b.courtName}
+                                    </span>
+                                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '9.5px' }}>
+                                      {new Date(b.startTime).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })} • {new Date(b.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(b.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                  <span style={{ fontWeight: 800, color: 'var(--color-primary)' }}>
+                                    ₱{b.price.toFixed(2)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)', marginTop: '4px', textAlign: 'center' }}>
+                              Total Fee: ₱{pass.price.toFixed(2)}
+                            </div>
                           </div>
-                          <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                            {new Date(pass.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(pass.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
+                        ) : (
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                              {new Date(pass.startTime).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                              {new Date(pass.startTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })} – {new Date(pass.endTime).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <div style={{ fontSize: '13px', fontWeight: 800, color: isPast ? 'var(--color-text-secondary)' : 'var(--color-primary)', marginTop: '8px' }}>
+                              Fee: ₱{pass.price.toFixed(2)}
+                            </div>
                           </div>
-                          <div style={{ fontSize: '13px', fontWeight: 800, color: isPast ? 'var(--color-text-secondary)' : 'var(--color-primary)', marginTop: '8px' }}>
-                            Fee: ₱{pass.price.toFixed(2)}
-                          </div>
-                        </div>
+                        )}
 
                         <div style={{
                           width: '100%',
