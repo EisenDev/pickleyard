@@ -84,37 +84,6 @@ export default async function AdminDashboardPage() {
   const startHour = startHourSetting ? parseInt(startHourSetting.value) : 8
   const endHour = endHourSetting ? parseInt(endHourSetting.value) : 22
 
-  // Fetch online payment receipts (transactions of type TOPUP starting with ONLINE_PAYMENT_RECEIPT|)
-  const receipts = await db.transaction.findMany({
-    where: {
-      type: 'TOPUP',
-      reference: { startsWith: 'ONLINE_PAYMENT_RECEIPT|' }
-    },
-    include: {
-      user: {
-        select: {
-          name: true,
-          email: true
-        }
-      }
-    },
-    orderBy: { createdAt: 'desc' }
-  })
-
-  const onlineReceipts = receipts.map(r => {
-    const parts = (r.reference || '').split('|')
-    const receiptImage = parts[1] || ''
-    return {
-      id: r.id,
-      amount: Number(r.amount),
-      createdAt: r.createdAt.toISOString(),
-      userName: r.user?.name || 'Player',
-      userEmail: r.user?.email || '',
-      paymentFor: 'Credit Top-Up',
-      receiptImage
-    }
-  })
-
   return (
     <AdminClient
       courts={courts.map(c => ({
@@ -165,7 +134,6 @@ export default async function AdminDashboardPage() {
       expiryHours={expiryHours}
       opStartHour={startHour}
       opEndHour={endHour}
-      onlineReceipts={onlineReceipts}
     />
   )
 }

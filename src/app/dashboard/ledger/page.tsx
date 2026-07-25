@@ -127,10 +127,45 @@ export default async function LedgerPage({ searchParams }: PageProps) {
     userEmail: b.user.email
   }))
 
+  // Fetch online payment receipts (transactions of type TOPUP starting with ONLINE_PAYMENT_RECEIPT|)
+  let onlineReceipts: any[] = []
+  if (isAdminOrStaff) {
+    const receipts = await db.transaction.findMany({
+      where: {
+        type: 'TOPUP',
+        reference: { startsWith: 'ONLINE_PAYMENT_RECEIPT|' }
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    onlineReceipts = receipts.map(r => {
+      const parts = (r.reference || '').split('|')
+      const receiptImage = parts[1] || ''
+      return {
+        id: r.id,
+        amount: Number(r.amount),
+        createdAt: r.createdAt.toISOString(),
+        userName: r.user?.name || 'Player',
+        userEmail: r.user?.email || '',
+        paymentFor: 'Credit Top-Up',
+        receiptImage
+      }
+    })
+  }
+
   return (
     <LedgerClient
       transactions={formattedTransactions}
       bookings={formattedBookings}
+      onlineReceipts={onlineReceipts}
       userBalance={Number(user.credits)}
       userRole={user.role}
       stats={stats}

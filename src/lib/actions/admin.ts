@@ -1562,13 +1562,14 @@ export async function adminCancelBookingAction(bookingId: string): Promise<Actio
 }
 
 // Get member details and active bookings when scanning their membership card
-export async function getMemberDetailsForScanAction(userId: string) {
+export async function getMemberDetailsForScanAction(searchKey: string) {
   const admin = await checkAdmin()
   if (!admin) return { success: false, error: 'Unauthorized. Staff permissions required.' }
 
   try {
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    const cleanSearchKey = searchKey.trim()
+    let user = await db.user.findUnique({
+      where: { id: cleanSearchKey },
       select: {
         id: true,
         name: true,
@@ -1576,6 +1577,18 @@ export async function getMemberDetailsForScanAction(userId: string) {
         credits: true
       }
     })
+
+    if (!user) {
+      user = await db.user.findUnique({
+        where: { email: cleanSearchKey.toLowerCase() },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          credits: true
+        }
+      })
+    }
 
     if (!user) {
       return { success: false, error: 'Member not found.' }

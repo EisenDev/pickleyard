@@ -183,7 +183,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
     
     // Auto check balance
     const court = courts.find(c => c.id === courtId)
-    const hourlyRate = court?.type === 'ROOFTOP' ? 300 : 250
+    const hourlyRate = court?.type === 'ROOFTOP' ? 300 : bookingPricePerHour
     if (userBalance >= hourlyRate) {
       setSelectedPaymentMethod('credits')
     } else {
@@ -201,7 +201,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
     setModalDate(formatDateToYYYYMMDD(selectedDate))
     setModalHours([])
     setSelectedVouchers({})
-    setSelectedPaymentMethod(userBalance >= 250 ? 'credits' : 'cash')
+    setSelectedPaymentMethod(userBalance >= bookingPricePerHour ? 'credits' : 'cash')
     setIsModalOpen(true)
   }
 
@@ -238,7 +238,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
   useEffect(() => {
     if (!isModalOpen) return
     const court = courts.find(c => c.id === modalCourtId)
-    const hourlyRate = court?.type === 'ROOFTOP' ? 300 : 250
+    const hourlyRate = court?.type === 'ROOFTOP' ? 300 : bookingPricePerHour
     const voucherCount = modalHours.filter(h => !!selectedVouchers[h]).length
     const totalCost = hourlyRate * Math.max(0, modalHours.length - voucherCount)
     if (userBalance >= totalCost) {
@@ -801,7 +801,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
                     }}>
                       {sortedList.map((b, i) => {
                         const isOP = 'userRole' in b && (b.userRole === 'ADMIN' || b.userRole === 'STAFF')
-                        const priceVal = isOP ? 0.00 : ('price' in b ? b.price : 250.00)
+                        const priceVal = isOP ? 0.00 : ('price' in b ? b.price : bookingPricePerHour)
                         const userNameStr = isOP ? 'Open Play' : ('userName' in b ? b.userName : 'Member')
 
                         return (
@@ -1138,7 +1138,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
       {isModalOpen && (() => {
         const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
         const court = courts.find(c => c.id === modalCourtId)
-        const hourlyRate = court?.type === 'ROOFTOP' ? 300 : 250
+        const hourlyRate = court?.type === 'ROOFTOP' ? 300 : bookingPricePerHour
         const voucherCount = modalHours.filter(h => !!selectedVouchers[h]).length
         const totalCost = hourlyRate * Math.max(0, modalHours.length - voucherCount)
         const hasInsufficientBalance = !isAdminOrStaff && userBalance < totalCost

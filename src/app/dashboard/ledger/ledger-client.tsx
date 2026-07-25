@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CreditCard, ArrowDownLeft, ArrowUpRight, TrendingUp, Calendar, BookOpen } from 'lucide-react'
+import { CreditCard, ArrowDownLeft, ArrowUpRight, TrendingUp, Calendar, BookOpen, DollarSign, X } from 'lucide-react'
 
 interface TransactionItem {
   id: string
@@ -27,9 +27,20 @@ interface BookingLedgerItem {
   userEmail: string
 }
 
+interface OnlineReceipt {
+  id: string
+  amount: number
+  createdAt: string
+  userName: string
+  userEmail: string
+  paymentFor: string
+  receiptImage: string
+}
+
 interface LedgerClientProps {
   transactions: TransactionItem[]
   bookings: BookingLedgerItem[]
+  onlineReceipts?: OnlineReceipt[]
   userBalance: number
   userRole: string
   stats: {
@@ -45,6 +56,7 @@ interface LedgerClientProps {
 export function LedgerClient({
   transactions,
   bookings,
+  onlineReceipts = [],
   userBalance,
   userRole,
   stats,
@@ -55,8 +67,9 @@ export function LedgerClient({
   const pathname = usePathname()
   const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
 
-  const [tab, setTab] = useState<'bookings' | 'transactions'>(initialTab as any || 'bookings')
+  const [tab, setTab] = useState<'bookings' | 'transactions' | 'receipts'>(initialTab as any || 'bookings')
   const [range, setRange] = useState<string>(initialRange || '48h')
+  const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null)
 
   const handleRangeChange = (newRange: string) => {
     setRange(newRange)
@@ -66,7 +79,7 @@ export function LedgerClient({
     router.push(`${pathname}?${params.toString()}`)
   }
 
-  const handleTabChange = (newTab: 'bookings' | 'transactions') => {
+  const handleTabChange = (newTab: 'bookings' | 'transactions' | 'receipts') => {
     setTab(newTab)
     const params = new URLSearchParams()
     params.set('tab', newTab)
@@ -124,6 +137,24 @@ export function LedgerClient({
         >
           {isAdminOrStaff ? 'Transaction Ledger' : 'Financial Statements'}
         </button>
+        {isAdminOrStaff && (
+          <button
+            onClick={() => handleTabChange('receipts')}
+            style={{
+              padding: '12px 16px',
+              background: 'none',
+              border: 'none',
+              borderBottom: tab === 'receipts' ? '2.5px solid var(--color-primary)' : '2.5px solid transparent',
+              color: tab === 'receipts' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+              fontWeight: 800,
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontFamily: 'inherit'
+            }}
+          >
+            Online Payment Receipts
+          </button>
+        )}
       </div>
 
       {/* Tab Contents: Bookings Ledger */}
@@ -492,6 +523,132 @@ export function LedgerClient({
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Contents: Online Payment Receipts */}
+      {tab === 'receipts' && isAdminOrStaff && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {(!onlineReceipts || onlineReceipts.length === 0) ? (
+            <div style={{
+              padding: '40px 20px',
+              textAlign: 'center',
+              background: 'var(--color-card)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-xl)',
+              color: 'var(--color-text-disabled)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}>
+              <DollarSign size={28} style={{ opacity: 0.3 }} />
+              <span style={{ fontSize: '13px', fontWeight: 700 }}>No Online Payment Receipts Found</span>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Receipts uploaded during GCash/Bank Top-Ups will appear here.</span>
+            </div>
+          ) : (
+            <div style={{
+              background: 'var(--color-card)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-xl)',
+              overflow: 'hidden',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Date & Time</th>
+                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Member Name</th>
+                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Payment For</th>
+                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Amount Topped</th>
+                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase', textAlign: 'center' }}>Receipt Photo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {onlineReceipts.map(r => (
+                      <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+                          {new Date(r.createdAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: '12px' }}>
+                          <strong style={{ color: 'var(--color-text-primary)', display: 'block' }}>{r.userName}</strong>
+                          <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>{r.userEmail}</span>
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--color-text-primary)', fontWeight: 650 }}>
+                          {r.paymentFor}
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)' }}>
+                          ₱{r.amount.toFixed(2)}
+                        </td>
+                        <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                          {r.receiptImage ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedLightboxImage(r.receiptImage)}
+                              style={{
+                                border: '1px solid var(--color-border)',
+                                borderRadius: '6px',
+                                overflow: 'hidden',
+                                width: '48px',
+                                height: '48px',
+                                padding: 0,
+                                cursor: 'pointer',
+                                background: 'var(--color-surface)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              <img src={r.receiptImage} alt="Receipt Thumbnail" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </button>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-disabled)', fontSize: '11px' }}>No photo</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Lightbox Receipt Modal */}
+      {selectedLightboxImage && (
+        <div 
+          onClick={() => setSelectedLightboxImage(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(5px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 25000, padding: '20px', cursor: 'zoom-out'
+          }}
+        >
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '85vh' }} onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setSelectedLightboxImage(null)}
+              style={{
+                position: 'absolute', top: -36, right: 0,
+                border: 'none', background: 'transparent',
+                cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700
+              }}
+            >
+              <X size={18} />
+              <span>Close</span>
+            </button>
+            <img 
+              src={selectedLightboxImage} 
+              alt="Receipt Full Preview" 
+              style={{
+                maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain',
+                borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', display: 'block'
+              }} 
+            />
           </div>
         </div>
       )}

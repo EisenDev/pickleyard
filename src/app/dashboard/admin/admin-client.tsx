@@ -72,16 +72,6 @@ interface BookingLedgerItem {
   userEmail: string
 }
 
-interface OnlineReceipt {
-  id: string
-  amount: number
-  createdAt: string
-  userName: string
-  userEmail: string
-  paymentFor: string
-  receiptImage: string
-}
-
 interface Props {
   courts: Court[]
   stacks: StackEntry[]
@@ -90,7 +80,6 @@ interface Props {
   expiryHours: number
   opStartHour: number
   opEndHour: number
-  onlineReceipts?: OnlineReceipt[]
 }
 
 // Real-Time Player Session Countdown Timer (Timezone-safe & Hydration-safe)
@@ -164,13 +153,49 @@ function ClockCountdown({ sessionExpiresAt }: { sessionExpiresAt: Date | string 
   return <span>{hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}</span>
 }
 
-export function AdminClient({ courts: initialCourts, stacks: initialStacks, users, bookings, expiryHours, opStartHour, opEndHour, onlineReceipts = [] }: Props) {
+const compressImage = (base64Str: string, maxWidth = 800, maxHeight = 800): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.src = base64Str
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      let width = img.width
+      let height = img.height
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width)
+          width = maxWidth
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height)
+          height = maxHeight
+        }
+      }
+
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', 0.7))
+      } else {
+        resolve(base64Str)
+      }
+    }
+    img.onerror = () => {
+      resolve(base64Str)
+    }
+  })
+}
+
+export function AdminClient({ courts: initialCourts, stacks: initialStacks, users, bookings, expiryHours, opStartHour, opEndHour }: Props) {
   const [courts, setCourts] = useState<Court[]>(initialCourts)
   const [stacks, setStacks] = useState<StackEntry[]>(initialStacks)
   const [isPending, setIsPending] = useState(false)
   const [activeLoadingId, setActiveLoadingId] = useState<string | null>(null)
   const router = useRouter()
-  const [activeAdminTab, setActiveAdminTab] = useState<'control' | 'receipts'>('control')
   const [scannedMember, setScannedMember] = useState<any | null>(null)
   const [isMemberLoading, setIsMemberLoading] = useState(false)
   const [isTopupModalOpen, setIsTopupModalOpen] = useState(false)
@@ -330,11 +355,19 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
 
   useEffect(() => {
     const text = scanText.trim()
+    if (!text) {
+      setOverrideCashAmount('')
+      setScannedBooking(null)
+      setScannedMember(null)
+      setAdminMessage(null)
+      return
+    }
+
     const isBookingPass = text.startsWith('BOOKING-PASS:')
     const isManualBK = text.toUpperCase().startsWith('BK-')
     const isShortCode = text.length === 6 && /^[a-zA-Z0-9]+$/.test(text)
     const isCashQr = text.startsWith('CASH-TOPUP:') || text.toUpperCase().startsWith('TU-')
-    const isMemberPass = text.startsWith('MEMBER-PASS:')
+    const isMemberPass = text.startsWith('MEMBER-PASS:') || (!isCashQr && !isBookingPass && !isManualBK && !isShortCode)
 
     if (isCashQr) {
       let amount = ''
@@ -382,7 +415,7 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
       setScannedBooking(null)
       const decoded = decodeURIComponent(text)
       const userIdMatch = decoded.match(/userId=([^&]+)/)
-      const memberUserId = userIdMatch ? userIdMatch[1] : ''
+      const memberUserId = userIdMatch ? userIdMatch[1] : (decoded.startsWith('MEMBER-PASS:') ? decoded.replace('MEMBER-PASS:', '') : decoded)
 
       if (memberUserId) {
         setIsMemberLoading(true)
@@ -399,10 +432,6 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
       } else {
         setScannedMember(null)
       }
-    } else {
-      setOverrideCashAmount('')
-      setScannedBooking(null)
-      setScannedMember(null)
     }
     setAdminMessage(null)
   }, [scanText])
@@ -442,7 +471,13 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
 
       html5QrcodeScanner.render(
         (decodedText: string) => {
-          setScanText(decodedText)
+          const decoded = decodeURIComponent(decodedText).trim()
+          let cleanText = decoded
+          if (decoded.startsWith('MEMBER-PASS:')) {
+            const userIdMatch = decoded.match(/userId=([^&]+)/)
+            cleanText = userIdMatch ? userIdMatch[1] : decoded.replace('MEMBER-PASS:', '')
+          }
+          setScanText(cleanText)
           
           try {
             const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -782,49 +817,6 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
     <>
       {/* ── Page Layout Content (Fades up cleanly) ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }} className="animate-fade-up">
-        
-        {/* Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px', marginBottom: '-8px' }}>
-          <button
-            type="button"
-            onClick={() => setActiveAdminTab('control')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 'var(--radius-md)',
-              border: 'none',
-              background: activeAdminTab === 'control' ? 'var(--color-primary)' : 'transparent',
-              color: activeAdminTab === 'control' ? 'white' : 'var(--color-text-secondary)',
-              fontWeight: activeAdminTab === 'control' ? 700 : 500,
-              fontSize: '13px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              outline: 'none'
-            }}
-          >
-            🎛️ Kiosk & Queue Panel
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveAdminTab('receipts')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 'var(--radius-md)',
-              border: 'none',
-              background: activeAdminTab === 'receipts' ? 'var(--color-primary)' : 'transparent',
-              color: activeAdminTab === 'receipts' ? 'white' : 'var(--color-text-secondary)',
-              fontWeight: activeAdminTab === 'receipts' ? 700 : 500,
-              fontSize: '13px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              outline: 'none'
-            }}
-          >
-            🧾 Online Payment Receipts
-          </button>
-        </div>
-
-        {activeAdminTab === 'control' ? (
-          <>
             {/* Kiosk General Notices (Modern & elegant replacement for alerts) */}
         {kioskNotice && (
           <div style={{
@@ -1406,108 +1398,6 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
             </div>
           </div>
         </div>
-        </>
-      ) : (
-        /* ── ONLINE PAYMENT RECEIPTS TAB ── */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
-              Online Payment Receipts
-            </h2>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-              Review and audit payment receipt images uploaded by counter staff during member top-ups.
-            </p>
-          </div>
-
-          {onlineReceipts.length === 0 ? (
-            <div style={{
-              padding: '40px 20px',
-              textAlign: 'center',
-              background: 'var(--color-card)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-xl)',
-              color: 'var(--color-text-disabled)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}>
-              <DollarSign size={28} style={{ opacity: 0.3 }} />
-              <span style={{ fontSize: '13px', fontWeight: 700 }}>No Online Payment Receipts Found</span>
-              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Receipts uploaded during GCash/Bank Top-Ups will appear here.</span>
-            </div>
-          ) : (
-            <div style={{
-              background: 'var(--color-card)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-xl)',
-              overflow: 'hidden',
-              boxShadow: 'var(--shadow-sm)'
-            }}>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
-                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Date & Time</th>
-                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Member Name</th>
-                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Payment For</th>
-                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Amount Topped</th>
-                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase', textAlign: 'center' }}>Receipt Photo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {onlineReceipts.map(r => (
-                      <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                        <td style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
-                          {new Date(r.createdAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}
-                        </td>
-                        <td style={{ padding: '14px 16px', fontSize: '12px' }}>
-                          <strong style={{ color: 'var(--color-text-primary)', display: 'block' }}>{r.userName}</strong>
-                          <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>{r.userEmail}</span>
-                        </td>
-                        <td style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--color-text-primary)', fontWeight: 650 }}>
-                          {r.paymentFor}
-                        </td>
-                        <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)' }}>
-                          ₱{r.amount.toFixed(2)}
-                        </td>
-                        <td style={{ padding: '10px 16px', textAlign: 'center' }}>
-                          {r.receiptImage ? (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedLightboxImage(r.receiptImage)}
-                              style={{
-                                border: '1px solid var(--color-border)',
-                                borderRadius: '6px',
-                                overflow: 'hidden',
-                                width: '48px',
-                                height: '48px',
-                                padding: 0,
-                                cursor: 'pointer',
-                                background: 'var(--color-surface)',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'transform 0.15s ease'
-                              }}
-                              className="receipt-thumb-btn"
-                            >
-                              <img src={r.receiptImage} alt="Receipt Thumbnail" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            </button>
-                          ) : (
-                            <span style={{ fontSize: '11px', color: 'var(--color-text-disabled)' }}>No Image</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
       </div>
 
       {/* ── CAMERA SCANNER MODAL (Outside of animated wrapper to prevent viewport trapping!) ── */}
@@ -1593,7 +1483,7 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                 const text = scanText.trim()
                 const isCashQr = text.startsWith('CASH-TOPUP:') || text.toUpperCase().startsWith('TU-')
                 const isBookingQr = text.startsWith('BOOKING-PASS:') || text.toUpperCase().startsWith('BK-') || (text.length === 6 && /^[a-zA-Z0-9]+$/.test(text))
-                const isMemberQr = text.startsWith('MEMBER-PASS:')
+                const isMemberQr = text.startsWith('MEMBER-PASS:') || (!isCashQr && !isBookingQr)
 
                 if (isMemberQr) {
                   if (isMemberLoading) {
@@ -2824,8 +2714,10 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                       const file = e.target.files?.[0]
                       if (file) {
                         const reader = new FileReader()
-                        reader.onloadend = () => {
-                          setReceiptImage(reader.result as string)
+                        reader.onloadend = async () => {
+                          const base64 = reader.result as string
+                          const compressed = await compressImage(base64)
+                          setReceiptImage(compressed)
                         }
                         reader.readAsDataURL(file)
                       }
