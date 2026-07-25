@@ -1434,76 +1434,34 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
                 </div>
               )}
 
-              {/* Payment Method Select (Player booking only) */}
+              {/* Payment Method - Enforce Credits payment only for players */}
               {!isAdminOrStaff && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
                     Payment Method
                   </label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {/* Pay with Credits */}
-                    <button
-                      type="button"
-                      disabled={hasInsufficientBalance}
-                      onClick={() => setSelectedPaymentMethod('credits')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '10px 14px',
-                        borderRadius: 'var(--radius-md)',
-                        border: selectedPaymentMethod === 'credits' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                        background: selectedPaymentMethod === 'credits' ? 'var(--color-primary-subtle)' : hasInsufficientBalance ? 'var(--color-surface)' : 'var(--color-card)',
-                        cursor: hasInsufficientBalance ? 'not-allowed' : 'pointer',
-                        textAlign: 'left',
-                        opacity: hasInsufficientBalance ? 0.6 : 1,
-                        width: '100%',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {selectedPaymentMethod === 'credits' && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)' }} />}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1.5px solid var(--color-primary)',
+                    background: 'var(--color-primary-subtle)',
+                    width: '100%',
+                    boxSizing: 'border-box'
+                  }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)' }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                        Pay with Credits (Wallet)
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                          Pay with Credits (Wallet)
-                        </div>
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
-                          Deduct instantly. Booking is fully confirmed and guaranteed.
-                        </span>
-                      </div>
-                    </button>
-
-                    {/* Pay Cash at Counter */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPaymentMethod('cash')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '10px 14px',
-                        borderRadius: 'var(--radius-md)',
-                        border: selectedPaymentMethod === 'cash' ? '1.5px solid var(--color-accent)' : '1px solid var(--color-border)',
-                        background: selectedPaymentMethod === 'cash' ? 'var(--color-accent-subtle)' : 'var(--color-card)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        width: '100%',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {selectedPaymentMethod === 'cash' && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-accent)' }} />}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                          Pay Cash at Desk (5m Expiration Rule)
-                        </div>
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
-                          Pay at counter. Unpaid reservations release 5 minutes after game start.
-                        </span>
-                      </div>
-                    </button>
+                      <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                        Payment will be deducted instantly from your credits balance.
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1528,13 +1486,15 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
                       <span>Account Balance</span>
                       <span style={{ fontWeight: 700 }}>₱{userBalance.toFixed(2)}</span>
                     </div>
-                    {hasInsufficientBalance && selectedPaymentMethod === 'credits' && (
+                    {hasInsufficientBalance && (
                       <div style={{
                         color: 'var(--color-danger)', fontSize: '11px', fontWeight: 700,
-                        marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px'
+                        marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px',
+                        background: 'rgba(239, 68, 68, 0.05)', padding: '8px 12px', borderRadius: '6px',
+                        border: '1px solid rgba(239, 68, 68, 0.2)', width: '100%', boxSizing: 'border-box'
                       }}>
-                        <AlertTriangle size={12} />
-                        <span>Insufficient balance. Please top up or choose Cash at Desk.</span>
+                        <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+                        <span>Insufficient Credits. Required: ₱{totalCost.toFixed(2)}, Available: ₱{userBalance.toFixed(2)}.</span>
                       </div>
                     )}
                   </>

@@ -1561,3 +1561,111 @@ export async function adminCancelBookingAction(bookingId: string): Promise<Actio
   }
 }
 
+// Get member details and active bookings when scanning their membership card
+export async function getMemberDetailsForScanAction(userId: string) {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized. Staff permissions required.' }
+
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        credits: true
+      }
+    })
+
+    if (!user) {
+      return { success: false, error: 'Member not found.' }
+    }
+
+    // Fetch active bookings (RESERVED, PAID, PENDING)
+    const bookings = await db.booking.findMany({
+      where: {
+        userId: user.id,
+        status: { in: ['RESERVED', 'PAID', 'PENDING'] }
+      },
+      include: {
+        court: { select: { name: true } }
+      },
+      orderBy: { startTime: 'asc' }
+    })
+
+    return {
+      success: true,
+      member: {
+        id: user.id,
+        name: user.name || 'Member',
+        email: user.email,
+        credits: Number(user.credits),
+        activeBookings: bookings.map(b => ({
+          id: b.id,
+          courtName: b.court.name,
+          startTime: b.startTime.toISOString(),
+          endTime: b.endTime.toISOString(),
+          price: Number(b.price),
+          status: b.status
+        }))
+      }
+    }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to load member details.' }
+  }
+}
+
+// Complete manual top-up (CASH or ONLINE with base64 receipt)
+export async function adminConfirmTopupAction(
+  userId: string,
+  amount: number,
+  paymentMethod: 'CASH' | 'ONLINE',
+  receiptImage?: string | null
+): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized. Staff permissions required.' }
+
+  if (!amount || amount <= 0) {
+    return { success: false, error: 'Invalid top up amount.' }
+  }
+
+  try {
+    await db.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId } })
+      if (!user) throw new Error('User not found.')
+
+      // Update user credits
+      await tx.user.update({
+        where: { id: user.id },
+        data: { credits: Number(user.credits) + amount }
+      })
+
+      // Create ledger entry using reference field to store base64 image if ONLINE
+      let refStr = `CASH-${new Date().getTime()}`
+      if (paymentMethod === 'ONLINE' && receiptImage) {
+        refStr = `ONLINE_PAYMENT_RECEIPT|${receiptImage}`
+      }
+
+      await tx.transaction.create({
+        data: {
+          userId: user.id,
+          amount,
+          type: 'TOPUP',
+          reference: refStr
+        }
+      })
+
+      // Award loyalty points
+      await awardTopUpPoints(tx, user.id, amount)
+    })
+
+    revalidatePath('/dashboard/admin')
+    revalidatePath('/dashboard/admin/users')
+    revalidatePath('/dashboard/yard-points')
+    revalidatePath('/dashboard/ledger')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to top up balance.' }
+  }
+}
+

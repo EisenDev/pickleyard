@@ -14,7 +14,9 @@ import {
   recordMatchResultAction,
   getLatestUserCreditsAction,
   getBookingDetailsForScanAction,
-  adminConfirmBookingCheckinAction
+  adminConfirmBookingCheckinAction,
+  getMemberDetailsForScanAction,
+  adminConfirmTopupAction
 } from '@/lib/actions/admin'
 import { Users, Clock, ShieldCheck, ShieldAlert, X, Search, UserCheck, Play, Award, Zap, Power, Volume2, QrCode, Trash2, Camera, AlertTriangle, Calendar, RefreshCw, DollarSign, Star, Trophy } from 'lucide-react'
 
@@ -70,6 +72,16 @@ interface BookingLedgerItem {
   userEmail: string
 }
 
+interface OnlineReceipt {
+  id: string
+  amount: number
+  createdAt: string
+  userName: string
+  userEmail: string
+  paymentFor: string
+  receiptImage: string
+}
+
 interface Props {
   courts: Court[]
   stacks: StackEntry[]
@@ -78,6 +90,7 @@ interface Props {
   expiryHours: number
   opStartHour: number
   opEndHour: number
+  onlineReceipts?: OnlineReceipt[]
 }
 
 // Real-Time Player Session Countdown Timer (Timezone-safe & Hydration-safe)
@@ -151,12 +164,21 @@ function ClockCountdown({ sessionExpiresAt }: { sessionExpiresAt: Date | string 
   return <span>{hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}</span>
 }
 
-export function AdminClient({ courts: initialCourts, stacks: initialStacks, users, bookings, expiryHours, opStartHour, opEndHour }: Props) {
+export function AdminClient({ courts: initialCourts, stacks: initialStacks, users, bookings, expiryHours, opStartHour, opEndHour, onlineReceipts = [] }: Props) {
   const [courts, setCourts] = useState<Court[]>(initialCourts)
   const [stacks, setStacks] = useState<StackEntry[]>(initialStacks)
   const [isPending, setIsPending] = useState(false)
   const [activeLoadingId, setActiveLoadingId] = useState<string | null>(null)
   const router = useRouter()
+  const [activeAdminTab, setActiveAdminTab] = useState<'control' | 'receipts'>('control')
+  const [scannedMember, setScannedMember] = useState<any | null>(null)
+  const [isMemberLoading, setIsMemberLoading] = useState(false)
+  const [isTopupModalOpen, setIsTopupModalOpen] = useState(false)
+  const [topupAmount, setTopupAmount] = useState('')
+  const [topupMethod, setTopupMethod] = useState<'CASH' | 'ONLINE'>('CASH')
+  const [receiptImage, setReceiptImage] = useState<string | null>(null)
+  const [isTopupSubmitting, setIsTopupSubmitting] = useState(false)
+  const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null)
 
   // Keep state in sync with server component props
   useEffect(() => {
@@ -312,6 +334,7 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
     const isManualBK = text.toUpperCase().startsWith('BK-')
     const isShortCode = text.length === 6 && /^[a-zA-Z0-9]+$/.test(text)
     const isCashQr = text.startsWith('CASH-TOPUP:') || text.toUpperCase().startsWith('TU-')
+    const isMemberPass = text.startsWith('MEMBER-PASS:')
 
     if (isCashQr) {
       let amount = ''
@@ -327,8 +350,10 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
       }
       setOverrideCashAmount(amount)
       setScannedBooking(null)
+      setScannedMember(null)
     } else if (isBookingPass || isManualBK || isShortCode) {
       setOverrideCashAmount('')
+      setScannedMember(null)
       let lookupId = text
       if (isBookingPass) {
         const decoded = decodeURIComponent(text)
@@ -352,9 +377,32 @@ export function AdminClient({ courts: initialCourts, stacks: initialStacks, user
       } else {
         setScannedBooking(null)
       }
+    } else if (isMemberPass) {
+      setOverrideCashAmount('')
+      setScannedBooking(null)
+      const decoded = decodeURIComponent(text)
+      const userIdMatch = decoded.match(/userId=([^&]+)/)
+      const memberUserId = userIdMatch ? userIdMatch[1] : ''
+
+      if (memberUserId) {
+        setIsMemberLoading(true)
+        setAdminMessage(null)
+        getMemberDetailsForScanAction(memberUserId).then(res => {
+          setIsMemberLoading(false)
+          if (res.success && res.member) {
+            setScannedMember(res.member)
+          } else {
+            setScannedMember(null)
+            setAdminMessage({ success: false, text: res.error || 'Failed to resolve member details.' })
+          }
+        })
+      } else {
+        setScannedMember(null)
+      }
     } else {
       setOverrideCashAmount('')
       setScannedBooking(null)
+      setScannedMember(null)
     }
     setAdminMessage(null)
   }, [scanText])
@@ -734,7 +782,50 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
     <>
       {/* ── Page Layout Content (Fades up cleanly) ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }} className="animate-fade-up">
-        {/* Kiosk General Notices (Modern & elegant replacement for alerts) */}
+        
+        {/* Navigation Tabs */}
+        <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px', marginBottom: '-8px' }}>
+          <button
+            type="button"
+            onClick={() => setActiveAdminTab('control')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 'var(--radius-md)',
+              border: 'none',
+              background: activeAdminTab === 'control' ? 'var(--color-primary)' : 'transparent',
+              color: activeAdminTab === 'control' ? 'white' : 'var(--color-text-secondary)',
+              fontWeight: activeAdminTab === 'control' ? 700 : 500,
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              outline: 'none'
+            }}
+          >
+            🎛️ Kiosk & Queue Panel
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveAdminTab('receipts')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 'var(--radius-md)',
+              border: 'none',
+              background: activeAdminTab === 'receipts' ? 'var(--color-primary)' : 'transparent',
+              color: activeAdminTab === 'receipts' ? 'white' : 'var(--color-text-secondary)',
+              fontWeight: activeAdminTab === 'receipts' ? 700 : 500,
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              outline: 'none'
+            }}
+          >
+            🧾 Online Payment Receipts
+          </button>
+        </div>
+
+        {activeAdminTab === 'control' ? (
+          <>
+            {/* Kiosk General Notices (Modern & elegant replacement for alerts) */}
         {kioskNotice && (
           <div style={{
             padding: '12px 16px',
@@ -1315,8 +1406,108 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
             </div>
           </div>
         </div>
+        </>
+      ) : (
+        /* ── ONLINE PAYMENT RECEIPTS TAB ── */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
+              Online Payment Receipts
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+              Review and audit payment receipt images uploaded by counter staff during member top-ups.
+            </p>
+          </div>
 
-
+          {onlineReceipts.length === 0 ? (
+            <div style={{
+              padding: '40px 20px',
+              textAlign: 'center',
+              background: 'var(--color-card)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-xl)',
+              color: 'var(--color-text-disabled)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}>
+              <DollarSign size={28} style={{ opacity: 0.3 }} />
+              <span style={{ fontSize: '13px', fontWeight: 700 }}>No Online Payment Receipts Found</span>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Receipts uploaded during GCash/Bank Top-Ups will appear here.</span>
+            </div>
+          ) : (
+            <div style={{
+              background: 'var(--color-card)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-xl)',
+              overflow: 'hidden',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Date & Time</th>
+                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Member Name</th>
+                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Payment For</th>
+                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Amount Topped</th>
+                      <th style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase', textAlign: 'center' }}>Receipt Photo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {onlineReceipts.map(r => (
+                      <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+                          {new Date(r.createdAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: '12px' }}>
+                          <strong style={{ color: 'var(--color-text-primary)', display: 'block' }}>{r.userName}</strong>
+                          <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>{r.userEmail}</span>
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--color-text-primary)', fontWeight: 650 }}>
+                          {r.paymentFor}
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)' }}>
+                          ₱{r.amount.toFixed(2)}
+                        </td>
+                        <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                          {r.receiptImage ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedLightboxImage(r.receiptImage)}
+                              style={{
+                                border: '1px solid var(--color-border)',
+                                borderRadius: '6px',
+                                overflow: 'hidden',
+                                width: '48px',
+                                height: '48px',
+                                padding: 0,
+                                cursor: 'pointer',
+                                background: 'var(--color-surface)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'transform 0.15s ease'
+                              }}
+                              className="receipt-thumb-btn"
+                            >
+                              <img src={r.receiptImage} alt="Receipt Thumbnail" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '11px', color: 'var(--color-text-disabled)' }}>No Image</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       </div>
 
       {/* ── CAMERA SCANNER MODAL (Outside of animated wrapper to prevent viewport trapping!) ── */}
@@ -1402,7 +1593,153 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                 const text = scanText.trim()
                 const isCashQr = text.startsWith('CASH-TOPUP:') || text.toUpperCase().startsWith('TU-')
                 const isBookingQr = text.startsWith('BOOKING-PASS:') || text.toUpperCase().startsWith('BK-') || (text.length === 6 && /^[a-zA-Z0-9]+$/.test(text))
-                
+                const isMemberQr = text.startsWith('MEMBER-PASS:')
+
+                if (isMemberQr) {
+                  if (isMemberLoading) {
+                    return (
+                      <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+                        <RefreshCw size={18} className="animate-spin" style={{ margin: '0 auto 8px', display: 'block' }} />
+                        <span>Fetching member details...</span>
+                      </div>
+                    )
+                  }
+                  if (!scannedMember) {
+                    return (
+                      <div style={{
+                        padding: '12px', textAlign: 'center', background: 'rgba(239, 68, 68, 0.03)',
+                        border: '1.5px dashed #fecaca', borderRadius: 'var(--radius-lg)',
+                        fontSize: '12px', color: 'var(--color-danger)', fontWeight: 650, marginTop: '4px'
+                      }}>
+                        {adminMessage?.text || 'No matching member pass found.'}
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {/* Player Profile Details Card */}
+                      <div style={{
+                        background: 'rgba(0, 124, 128, 0.03)',
+                        border: '1px solid rgba(0, 124, 128, 0.15)',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: '14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase' }}>
+                            👤 Player Club Pass
+                          </span>
+                          <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)', fontWeight: 700, background: 'var(--color-surface)', padding: '2px 8px', borderRadius: '4px' }}>
+                            Bal: ₱{scannedMember.credits.toFixed(2)}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--color-text-primary)' }}>
+                          <strong>{scannedMember.name}</strong>
+                          <span style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>{scannedMember.email}</span>
+                        </div>
+                        
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTopupAmount('')
+                            setTopupMethod('CASH')
+                            setReceiptImage(null)
+                            setIsTopupModalOpen(true)
+                          }}
+                          style={{
+                            width: '100%', height: '36px', background: 'var(--color-primary)',
+                            color: 'white', border: 'none', borderRadius: 'var(--radius-md)',
+                            fontSize: '12px', fontWeight: 750, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '4px'
+                          }}
+                        >
+                          <DollarSign size={14} />
+                          <span>TOPUP PLAYER Balance</span>
+                        </button>
+                      </div>
+
+                      {/* Active Bookings Section */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          📅 Member Court Reservations:
+                        </span>
+                        
+                        {scannedMember.activeBookings.length === 0 ? (
+                          <div style={{ padding: '16px', textAlign: 'center', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', color: 'var(--color-text-disabled)', fontSize: '11px' }}>
+                            No active or upcoming bookings found for today.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', paddingRight: '4px' }}>
+                            {scannedMember.activeBookings.map((b: any) => {
+                              const isCheckinEligible = b.status === 'PAID' || b.status === 'RESERVED'
+                              return (
+                                <div key={b.id} style={{
+                                  background: 'var(--color-card)',
+                                  border: '1px solid var(--color-border)',
+                                  borderRadius: 'var(--radius-md)',
+                                  padding: '10px 12px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '8px'
+                                }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <strong style={{ fontSize: '12px', color: 'var(--color-text-primary)' }}>{b.courtName}</strong>
+                                    <span style={{
+                                      fontSize: '9px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px',
+                                      background: b.status === 'PAID' ? 'var(--color-success-subtle)' : b.status === 'PENDING' ? 'var(--color-warning-subtle)' : 'var(--color-info-subtle)',
+                                      color: b.status === 'PAID' ? 'var(--color-success)' : b.status === 'PENDING' ? 'var(--color-warning)' : 'var(--color-info)'
+                                    }}>
+                                      {b.status === 'PENDING' ? 'UNPAID' : b.status === 'RESERVED' ? 'CHECKED IN' : b.status}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <span>🕒 {new Date(b.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} – {new Date(b.endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span>💰 Fee: ₱{b.price.toFixed(2)}</span>
+                                  </div>
+                                  
+                                  {isCheckinEligible && b.status !== 'RESERVED' && (
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        setIsPending(true)
+                                        const res = await adminConfirmBookingCheckinAction(b.id)
+                                        setIsPending(false)
+                                        if (res.success) {
+                                          setAdminMessage({ success: true, text: res.message || 'Check-in confirmed successfully.' })
+                                          // Refresh member details
+                                          const refreshed = await getMemberDetailsForScanAction(scannedMember.id)
+                                          if (refreshed.success && refreshed.member) {
+                                            setScannedMember(refreshed.member)
+                                          }
+                                          router.refresh()
+                                        } else {
+                                          setAdminMessage({ success: false, text: res.error || 'Failed to check in.' })
+                                        }
+                                      }}
+                                      style={{
+                                        width: '100%', height: '28px', background: 'var(--color-success-subtle)',
+                                        color: 'var(--color-success)', border: 'none', borderRadius: '4px',
+                                        fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                      }}
+                                    >
+                                      <UserCheck size={12} />
+                                      <span>Confirm Check-In</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                }
+
                 if (isBookingQr) {
                   if (isBookingLoading) {
                     return (
@@ -2370,6 +2707,250 @@ function ActiveTimer({ startTime, duration }: { startTime: Date | string; durati
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* ── TOP-UP PLAYER BALANCE MODAL ── */}
+      {isTopupModalOpen && scannedMember && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.40)', backdropFilter: 'blur(5px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 11000
+        }}>
+          <div style={{
+            background: 'var(--color-card)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-xl)',
+            padding: '24px',
+            maxWidth: '440px',
+            width: '90%',
+            boxShadow: 'var(--shadow-xl)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            position: 'relative'
+          }} className="animate-fade-up">
+            
+            <button
+              onClick={() => setIsTopupModalOpen(false)}
+              style={{
+                position: 'absolute', top: 16, right: 16,
+                border: 'none', background: 'transparent',
+                cursor: 'pointer', color: 'var(--color-text-secondary)'
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
+                Top-Up Member Wallet
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                Credit credits to <strong>{scannedMember.name}</strong>'s wallet balance.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Amount field */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
+                  Amount to Top-Up (₱ PHP):
+                </label>
+                <input
+                  type="number"
+                  placeholder="e.g. 500"
+                  value={topupAmount}
+                  onChange={e => setTopupAmount(e.target.value)}
+                  style={{
+                    width: '100%', height: '36px', padding: '0 12px',
+                    borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                    background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                    fontSize: '13px', outline: 'none', boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {/* Payment Method field */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
+                  Payment Method:
+                </label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTopupMethod('CASH')
+                      setReceiptImage(null)
+                    }}
+                    style={{
+                      flex: 1, height: '36px', borderRadius: 'var(--radius-md)',
+                      border: topupMethod === 'CASH' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: topupMethod === 'CASH' ? 'var(--color-primary-subtle)' : 'var(--color-card)',
+                      color: 'var(--color-text-primary)', fontSize: '12px', fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    💵 Cash at Desk
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTopupMethod('ONLINE')}
+                    style={{
+                      flex: 1, height: '36px', borderRadius: 'var(--radius-md)',
+                      border: topupMethod === 'ONLINE' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: topupMethod === 'ONLINE' ? 'var(--color-primary-subtle)' : 'var(--color-card)',
+                      color: 'var(--color-text-primary)', fontSize: '12px', fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    📱 Online Payment
+                  </button>
+                </div>
+              </div>
+
+              {/* Camera Upload field for ONLINE */}
+              {topupMethod === 'ONLINE' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
+                    Capture GCash / Bank Receipt:
+                  </span>
+                  
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    id="kiosk-receipt-file"
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        const reader = new FileReader()
+                        reader.onloadend = () => {
+                          setReceiptImage(reader.result as string)
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                  
+                  <label
+                    htmlFor="kiosk-receipt-file"
+                    style={{
+                      border: '2px dashed var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '16px 12px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      background: 'var(--color-surface)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <Camera size={20} color="var(--color-text-disabled)" />
+                    <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--color-text-secondary)' }}>
+                      {receiptImage ? 'Change Photo' : 'Take Picture of Receipt'}
+                    </span>
+                  </label>
+
+                  {receiptImage && (
+                    <div style={{
+                      position: 'relative', width: '100%', height: '140px',
+                      borderRadius: 'var(--radius-md)', overflow: 'hidden',
+                      border: '1px solid var(--color-border)', background: '#000',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <img src={receiptImage} alt="Receipt Snap" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setIsTopupModalOpen(false)}
+                style={{
+                  height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)', background: 'white',
+                  color: 'var(--color-text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isTopupSubmitting || !topupAmount || parseFloat(topupAmount) <= 0 || (topupMethod === 'ONLINE' && !receiptImage)}
+                onClick={async () => {
+                  setIsTopupSubmitting(true)
+                  const res = await adminConfirmTopupAction(scannedMember.id, parseFloat(topupAmount), topupMethod, receiptImage)
+                  setIsTopupSubmitting(false)
+                  if (res.success) {
+                    setIsTopupModalOpen(false)
+                    setTopupAmount('')
+                    setReceiptImage(null)
+                    // Refresh member details local state
+                    const refreshed = await getMemberDetailsForScanAction(scannedMember.id)
+                    if (refreshed.success && refreshed.member) {
+                      setScannedMember(refreshed.member)
+                    }
+                    setAdminMessage({ success: true, text: `Successfully topped up ₱${parseFloat(topupAmount).toFixed(2)} to ${scannedMember.name}'s wallet.` })
+                    router.refresh()
+                  } else {
+                    setAdminMessage({ success: false, text: res.error || 'Failed to top up user credits.' })
+                  }
+                }}
+                style={{
+                  height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
+                  border: 'none', background: 'var(--color-primary)',
+                  color: 'white', fontSize: '13px', fontWeight: 700,
+                  cursor: (isTopupSubmitting || !topupAmount || parseFloat(topupAmount) <= 0 || (topupMethod === 'ONLINE' && !receiptImage)) ? 'not-allowed' : 'pointer',
+                  opacity: (isTopupSubmitting || !topupAmount || parseFloat(topupAmount) <= 0 || (topupMethod === 'ONLINE' && !receiptImage)) ? 0.6 : 1
+                }}
+              >
+                {isTopupSubmitting ? 'Processing...' : 'Confirm Top-Up'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── LIGHTBOX RECEIPT PREVIEW MODAL ── */}
+      {selectedLightboxImage && (
+        <div 
+          onClick={() => setSelectedLightboxImage(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(5px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 25000, padding: '20px', cursor: 'zoom-out'
+          }}
+        >
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '85vh' }} onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setSelectedLightboxImage(null)}
+              style={{
+                position: 'absolute', top: -36, right: 0,
+                border: 'none', background: 'transparent',
+                cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700
+              }}
+            >
+              <X size={18} />
+              <span>Close</span>
+            </button>
+            <img 
+              src={selectedLightboxImage} 
+              alt="Receipt Full Preview" 
+              style={{
+                maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain',
+                borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', display: 'block'
+              }} 
+            />
           </div>
         </div>
       )}

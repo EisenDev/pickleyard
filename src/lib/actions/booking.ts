@@ -107,9 +107,16 @@ export async function createBookingsAction(
       }
 
       // 2. Validate Payment Method
+      if (paymentMethod === 'cash') {
+        const isAdminOrStaff = user.role === 'ADMIN' || user.role === 'STAFF'
+        if (!isAdminOrStaff) {
+          throw new Error(`Insufficient Credits. Required: ₱${totalCost.toFixed(2)}, Available: ₱${Number(user.credits).toFixed(2)}.`)
+        }
+      }
+
       if (paymentMethod === 'credits') {
         if (totalCost > 0 && Number(user.credits) < totalCost) {
-          throw new Error(`Insufficient credits. Booking cost: ₱${totalCost.toFixed(2)}, Balance: ₱${Number(user.credits).toFixed(2)}`)
+          throw new Error(`Insufficient Credits. Required: ₱${totalCost.toFixed(2)}, Available: ₱${Number(user.credits).toFixed(2)}.`)
         }
       } else {
         // Abuse proof: check how many distinct courts the user currently has pending cash bookings on the same day
