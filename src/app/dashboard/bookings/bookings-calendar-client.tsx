@@ -1204,6 +1204,9 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
               padding: '28px',
               maxWidth: '520px',
               width: '90%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxSizing: 'border-box',
               boxShadow: 'var(--shadow-lg)',
               display: 'flex',
               flexDirection: 'column',
@@ -1305,6 +1308,8 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
                           border: '1px solid var(--color-border)',
                           borderRadius: 'var(--radius-md)',
                           overflow: 'hidden',
+                          overflowY: 'auto',
+                          maxHeight: '180px',
                           boxShadow: 'var(--shadow-md)'
                         }}>
                           {filtered.map(p => (
