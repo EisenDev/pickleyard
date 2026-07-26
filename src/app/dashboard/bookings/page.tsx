@@ -56,6 +56,18 @@ export default async function MyBookingsPage() {
     }
   })
 
+  const isAdminOrStaff = user.role === 'ADMIN' || user.role === 'STAFF'
+  const players = isAdminOrStaff ? await db.user.findMany({
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      credits: true,
+      role: true
+    },
+    orderBy: { name: 'asc' }
+  }) : []
+
   return (
     <BookingsCalendarClient
       bookingPricePerHour={bookingPricePerHour}
@@ -91,6 +103,13 @@ export default async function MyBookingsPage() {
         id: v.id,
         name: v.product.name,
         durationHours: v.product.durationHours
+      }))}
+      players={players.map(p => ({
+        id: p.id,
+        name: p.name || 'Player',
+        email: p.email,
+        credits: Number(p.credits),
+        role: p.role
       }))}
     />
   )

@@ -188,26 +188,33 @@ export async function createBookingsAction(
           throw new Error(`This court is already reserved at ${formatLocalTime(startTime)}.`);
         }
 
-        // User overlapping booking check (cannot book multiple courts at the same time)
-        const userConflict = await tx.booking.findFirst({
-          where: {
-            userId: user.id,
-            status: { in: [BookingStatus.PAID, BookingStatus.RESERVED, BookingStatus.PENDING] },
-            OR: [
-              {
-                startTime: { lte: startTime },
-                endTime: { gt: startTime }
-              },
-              {
-                startTime: { lt: endTime },
-                endTime: { gte: endTime }
-              }
-            ]
-          }
-        })
+        // User overlapping booking check (cannot book multiple courts at the same time, except for courts 1, 2, and 10)
+        const targetCourtIsDoubleBookable = [1, 2, 10].includes(court.number)
 
-        if (userConflict) {
-          throw new Error(`You already have an active booking at ${formatLocalTime(startTime)} on another court. Double booking is not allowed.`);
+        if (!targetCourtIsDoubleBookable) {
+          const userConflict = await tx.booking.findFirst({
+            where: {
+              userId: user.id,
+              status: { in: [BookingStatus.PAID, BookingStatus.RESERVED, BookingStatus.PENDING] },
+              court: {
+                number: { notIn: [1, 2, 10] }
+              },
+              OR: [
+                {
+                  startTime: { lte: startTime },
+                  endTime: { gt: startTime }
+                },
+                {
+                  startTime: { lt: endTime },
+                  endTime: { gte: endTime }
+                }
+              ]
+            }
+          })
+
+          if (userConflict) {
+            throw new Error(`You already have an active booking at ${formatLocalTime(startTime)} on another court. Double booking is not allowed.`);
+          }
         }
       }
 

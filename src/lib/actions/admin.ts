@@ -994,6 +994,110 @@ export async function adminReserveCourtForOpenPlayAction(data: {
   }
 }
 
+export async function adminBookOnBehalfOfPlayerAction(data: {
+  targetUserId: string
+  courtId: string
+  startTimes: string[] // ISO strings
+}): Promise<ActionState> {
+  const session = await auth()
+  if (!session?.user?.email) return { success: false, error: 'Unauthorized.' }
+  const admin = await db.user.findUnique({ where: { email: session.user.email } })
+  if (!admin || (admin.role !== 'ADMIN' && admin.role !== 'STAFF')) {
+    return { success: false, error: 'Unauthorized. Staff permissions required.' }
+  }
+
+  try {
+    const result = await db.$transaction(async (tx) => {
+      const targetUser = await tx.user.findUnique({ where: { id: data.targetUserId } })
+      if (!targetUser) throw new Error('Player not found.')
+
+      const court = await tx.court.findUnique({ where: { id: data.courtId } })
+      if (!court) throw new Error('Court not found.')
+      if (court.status === 'MAINTENANCE') throw new Error('This court is under maintenance.')
+
+      const priceSetting = await tx.systemSetting.findUnique({ where: { key: 'booking_price_per_hour' } })
+      const baseRate = priceSetting ? parseFloat(priceSetting.value) : 250
+      const hourlyRate = court.type === 'ROOFTOP' ? 300 : baseRate
+      const totalCost = hourlyRate * data.startTimes.length
+
+      if (Number(targetUser.credits) < totalCost) {
+        throw new Error(`Insufficient credits. Required: ₱${totalCost.toFixed(2)}, Available: ₱${Number(targetUser.credits).toFixed(2)}.`)
+      }
+
+      const startHourSetting = await tx.systemSetting.findUnique({ where: { key: 'openplay_start_hour' } })
+      const endHourSetting = await tx.systemSetting.findUnique({ where: { key: 'openplay_end_hour' } })
+      const startHour = startHourSetting ? parseInt(startHourSetting.value) : 8
+      const endHour = endHourSetting ? parseInt(endHourSetting.value) : 22
+
+      for (const timeStr of data.startTimes) {
+        const startTime = new Date(timeStr)
+        const endTime = new Date(startTime.getTime() + 3600000)
+
+        const bookingHour = parseInt(
+          new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', hour12: false }).format(startTime)
+        )
+        if (bookingHour < startHour || bookingHour >= endHour) {
+          throw new Error(`Slot at ${bookingHour}:00 is outside operating hours (${startHour}:00–${endHour}:00).`)
+        }
+
+        const conflict = await tx.booking.findFirst({
+          where: {
+            courtId: data.courtId,
+            status: { in: [BookingStatus.RESERVED, BookingStatus.PAID, BookingStatus.PENDING] },
+            OR: [
+              { startTime: { lte: startTime }, endTime: { gt: startTime } },
+              { startTime: { lt: endTime }, endTime: { gte: endTime } }
+            ]
+          }
+        })
+        if (conflict) {
+          throw new Error(`${court.name} already has a booking at ${new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: true }).format(startTime)}.`)
+        }
+      }
+
+      // Deduct credits from player
+      await tx.user.update({
+        where: { id: targetUser.id },
+        data: { credits: Number(targetUser.credits) - totalCost }
+      })
+
+      // Create bookings and transaction records
+      for (const timeStr of data.startTimes) {
+        const startTime = new Date(timeStr)
+        const endTime = new Date(startTime.getTime() + 3600000)
+
+        await tx.booking.create({
+          data: {
+            userId: targetUser.id,
+            courtId: data.courtId,
+            startTime,
+            endTime,
+            status: BookingStatus.PAID,
+            price: hourlyRate
+          }
+        })
+
+        await tx.transaction.create({
+          data: {
+            userId: targetUser.id,
+            amount: -hourlyRate,
+            type: 'BOOKING_DEBIT',
+            reference: `ADMIN-BOOK-${court.name.replace(/\s+/g, '-').toUpperCase()}-BY-${admin.name || admin.email}`
+          }
+        })
+      }
+
+      return { success: true }
+    })
+
+    revalidatePath('/dashboard/bookings')
+    revalidatePath('/dashboard/admin')
+    return result
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to book court for player.' }
+  }
+}
+
 export async function getBookingDetailsForScanAction(bookingId: string) {
   const admin = await checkAdmin()
   if (!admin) return { success: false, error: 'Unauthorized. Staff permissions required.' }
