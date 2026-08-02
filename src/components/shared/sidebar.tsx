@@ -43,7 +43,8 @@ const adminNavItems = [
   { href: '/dashboard/ledger', label: 'Ledger', icon: CreditCard },
   { href: '/dashboard/admin/users', label: 'User Management', icon: Users },
   { href: '/dashboard/admin/yard-points', label: 'Yard Points Mgr', icon: Star },
-  { href: '/dashboard/admin/vouchers', label: 'Voucher Manager', icon: Gift },
+  // VOUCHER PAGE DISABLED - uncomment to re-enable
+  // { href: '/dashboard/admin/vouchers', label: 'Voucher Manager', icon: Gift },
   { href: '/dashboard/admin/settings', label: 'Time & Cost Control', icon: Settings },
 ]
 
