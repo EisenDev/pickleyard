@@ -36,7 +36,12 @@ export default async function AnalyticsPage() {
     select: {
       type: true,
       amount: true,
-      createdAt: true
+      createdAt: true,
+      user: {
+        select: {
+          email: true
+        }
+      }
     }
   })
 
@@ -91,10 +96,11 @@ export default async function AnalyticsPage() {
 
   for (const tx of allTransactions) {
     const isTopup = tx.type === 'TOPUP' || tx.type === 'CASH_TOPUP'
-    if (!isTopup) continue
+    const isGuestRefund = tx.type === 'REFUND' && (tx.user?.email?.endsWith('@paddleyard.guest') ?? false)
+    if (!isTopup && !isGuestRefund) continue
 
     const txTime = tx.createdAt.getTime()
-    const amt = Number(tx.amount)
+    const amt = isGuestRefund ? -Number(tx.amount) : Number(tx.amount)
 
     revenueLifetime += amt
     if (txTime >= startOfToday.getTime()) revenueToday += amt
@@ -113,11 +119,13 @@ export default async function AnalyticsPage() {
     const dayAmount = allTransactions
       .filter(tx => {
         const isTopup = tx.type === 'TOPUP' || tx.type === 'CASH_TOPUP'
+        const isGuestRefund = tx.type === 'REFUND' && (tx.user?.email?.endsWith('@paddleyard.guest') ?? false)
         const txTime = tx.createdAt.getTime()
-        return isTopup && txTime >= dayStart && txTime < dayEnd
+        return (isTopup || isGuestRefund) && txTime >= dayStart && txTime < dayEnd
       })
       .reduce((sum, tx) => {
-        return sum + Number(tx.amount)
+        const amt = tx.type === 'REFUND' ? -Number(tx.amount) : Number(tx.amount)
+        return sum + amt
       }, 0)
 
     const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })

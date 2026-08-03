@@ -1651,17 +1651,18 @@ export async function adminCancelBookingAction(bookingId: string): Promise<Actio
               credits: { increment: Number(booking.price) }
             }
           })
-
-          await tx.transaction.create({
-            data: {
-              userId: booking.userId,
-              amount: Number(booking.price),
-              type: 'REFUND',
-              reference: `REFUND-C${booking.court.number}-${booking.startTime.toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
-            }
-          })
         }
-        // If guest, booking is simply marked CANCELLED — no credits touched.
+
+        // We still record the REFUND transaction for guest players so there's a ledger trail
+        // and we can deduct it from day income calculations since physical cash is returned.
+        await tx.transaction.create({
+          data: {
+            userId: booking.userId,
+            amount: Number(booking.price),
+            type: 'REFUND',
+            reference: `REFUND-C${booking.court.number}-${booking.startTime.toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
+          }
+        })
       }
 
       await tx.booking.update({

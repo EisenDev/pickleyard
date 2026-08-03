@@ -61,11 +61,14 @@ export default async function LedgerPage({ searchParams }: PageProps) {
     })
   }
 
-  // Calculate income stats (from cash TOPUPs and CASH_TOPUPs) for admin dashboard
+  // Calculate income stats (from cash TOPUPs, CASH_TOPUPs, and guest REFUNDs) for admin dashboard
   let stats = { day: 0, week: 0, month: 0, year: 0 }
   if (isAdminOrStaff) {
     const allStatsTransactions = await db.transaction.findMany({
-      where: { type: { in: ['TOPUP', 'CASH_TOPUP'] } }
+      where: { type: { in: ['TOPUP', 'CASH_TOPUP', 'REFUND'] } },
+      include: {
+        user: { select: { email: true } }
+      }
     })
 
     const now = new Date()
@@ -81,7 +84,10 @@ export default async function LedgerPage({ searchParams }: PageProps) {
 
     for (const t of allStatsTransactions) {
       const tTime = t.createdAt.getTime()
-      const amt = Number(t.amount)
+      const isGuestRefund = t.type === 'REFUND' && (t.user?.email?.endsWith('@paddleyard.guest') ?? false)
+      if (t.type === 'REFUND' && !isGuestRefund) continue
+
+      const amt = isGuestRefund ? -Number(t.amount) : Number(t.amount)
       if (tTime >= startOfToday) dSum += amt
       if (tTime >= startOfWeek) wSum += amt
       if (tTime >= startOfMonth) mSum += amt
