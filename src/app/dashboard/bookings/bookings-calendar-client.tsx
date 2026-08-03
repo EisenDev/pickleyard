@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { createBookingAction, createBookingsAction } from '@/lib/actions/booking'
-import { adminReserveCourtForOpenPlayAction, adminCancelBookingAction, adminBookOnBehalfOfPlayerAction } from '@/lib/actions/admin'
+import { adminReserveCourtForOpenPlayAction, adminCancelBookingAction, adminBookOnBehalfOfPlayerAction, adminNoAccountBookingAction } from '@/lib/actions/admin'
 import { ShieldCheck, AlertTriangle, Calendar, List, Plus, Clock, MapPin, ChevronLeft, ChevronRight, ArrowLeft, X, Search, QrCode, Gift, User, Users } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -161,10 +161,12 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
   const [modalHours, setModalHours] = useState<number[]>([])
   const [selectedVouchers, setSelectedVouchers] = useState<Record<number, string>>({})
 
-  // Admin booking mode: 'openplay' = reserve open play, 'player_booking' = book on behalf of player
-  const [adminBookingMode, setAdminBookingMode] = useState<'openplay' | 'player_booking'>('openplay')
+  // Admin booking mode: 'openplay' | 'player_booking' | 'no_account'
+  const [adminBookingMode, setAdminBookingMode] = useState<'openplay' | 'player_booking' | 'no_account'>('openplay')
   const [playerSearch, setPlayerSearch] = useState('')
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerItem | null>(null)
+  const [guestName, setGuestName] = useState('')
+  const [guestAmountPaid, setGuestAmountPaid] = useState('')
 
   const filteredCourts = selectedCourt === 'all' ? courts : courts.filter(c => c.id === selectedCourt)
 
@@ -220,6 +222,8 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
     setAdminBookingMode('openplay')
     setPlayerSearch('')
     setSelectedPlayer(null)
+    setGuestName('')
+    setGuestAmountPaid('')
     setIsModalOpen(true)
   }
 
@@ -233,6 +237,8 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
     setAdminBookingMode('openplay')
     setPlayerSearch('')
     setSelectedPlayer(null)
+    setGuestName('')
+    setGuestAmountPaid('')
     setIsModalOpen(true)
   }
 
@@ -294,6 +300,8 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
 
     if (isAdminOrStaff && adminBookingMode === 'player_booking') {
       if (!selectedPlayer || !modalCourtId || modalHours.length === 0) return
+    } else if (isAdminOrStaff && adminBookingMode === 'no_account') {
+      if (!guestName.trim() || !modalCourtId || modalHours.length === 0) return
     } else if (isAdminOrStaff) {
       if (modalCourtIds.length === 0 || modalHours.length === 0) return
     } else {
@@ -320,7 +328,23 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
     setMessage(null)
     setIsModalOpen(false)
     startTransition(async () => {
-      if (isAdminOrStaff && adminBookingMode === 'player_booking') {
+      if (isAdminOrStaff && adminBookingMode === 'no_account') {
+        // No-account walk-in guest booking
+        const result = await adminNoAccountBookingAction({
+          guestName: guestName.trim(),
+          amountPaid: parseFloat(guestAmountPaid) || 0,
+          courtId: modalCourtId,
+          startTimes: startTimesISO
+        })
+        if (result.success) {
+          setMessage({ success: true, text: `Booking recorded for walk-in guest "${guestName.trim()}"!` })
+          setSelectedDate(new Date(modalDate + 'T00:00:00'))
+          setGuestName('')
+          setGuestAmountPaid('')
+        } else {
+          setMessage({ success: false, text: result.error || 'Failed to record guest booking.' })
+        }
+      } else if (isAdminOrStaff && adminBookingMode === 'player_booking') {
         // Admin booking on behalf of player
         const result = await adminBookOnBehalfOfPlayerAction({
           targetUserId: selectedPlayer!.id,
@@ -1238,42 +1262,145 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
 
               {/* Admin: Mode selector */}
               {isAdminOrStaff && (
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {/* Row 1: Open Play Reserve + Player Booking */}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => { setAdminBookingMode('openplay'); setSelectedPlayer(null); setPlayerSearch(''); setGuestName(''); setGuestAmountPaid(''); }}
+                      style={{
+                        flex: 1, height: '38px', borderRadius: 'var(--radius-md)',
+                        border: adminBookingMode === 'openplay' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        background: adminBookingMode === 'openplay' ? 'var(--color-primary-subtle)' : 'var(--color-card)',
+                        color: adminBookingMode === 'openplay' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                        fontWeight: 700, fontSize: '12px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <Users size={14} /> Open Play Reserve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAdminBookingMode('player_booking'); setModalCourtIds([]); setGuestName(''); setGuestAmountPaid(''); }}
+                      style={{
+                        flex: 1, height: '38px', borderRadius: 'var(--radius-md)',
+                        border: adminBookingMode === 'player_booking' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        background: adminBookingMode === 'player_booking' ? 'var(--color-primary-subtle)' : 'var(--color-card)',
+                        color: adminBookingMode === 'player_booking' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                        fontWeight: 700, fontSize: '12px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <User size={14} /> Player Booking
+                    </button>
+                  </div>
+                  {/* Row 2: No Account Player Booking (full width) */}
                   <button
                     type="button"
-                    onClick={() => { setAdminBookingMode('openplay'); setSelectedPlayer(null); setPlayerSearch(''); }}
+                    onClick={() => { setAdminBookingMode('no_account'); setModalCourtIds([]); setSelectedPlayer(null); setPlayerSearch(''); }}
                     style={{
-                      flex: 1, height: '38px', borderRadius: 'var(--radius-md)',
-                      border: adminBookingMode === 'openplay' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                      background: adminBookingMode === 'openplay' ? 'var(--color-primary-subtle)' : 'var(--color-card)',
-                      color: adminBookingMode === 'openplay' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      width: '100%', height: '38px', borderRadius: 'var(--radius-md)',
+                      border: adminBookingMode === 'no_account' ? '1.5px solid #f59e0b' : '1px solid var(--color-border)',
+                      background: adminBookingMode === 'no_account' ? '#fffbeb' : 'var(--color-card)',
+                      color: adminBookingMode === 'no_account' ? '#d97706' : 'var(--color-text-secondary)',
                       fontWeight: 700, fontSize: '12px', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                       transition: 'all 0.15s'
                     }}
                   >
-                    <Users size={14} /> Open Play Reserve
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setAdminBookingMode('player_booking'); setModalCourtIds([]); }}
-                    style={{
-                      flex: 1, height: '38px', borderRadius: 'var(--radius-md)',
-                      border: adminBookingMode === 'player_booking' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                      background: adminBookingMode === 'player_booking' ? 'var(--color-primary-subtle)' : 'var(--color-card)',
-                      color: adminBookingMode === 'player_booking' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                      fontWeight: 700, fontSize: '12px', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                      transition: 'all 0.15s'
-                    }}
-                  >
-                    <User size={14} /> Player Booking
+                    <Users size={14} /> No Account Player Booking
                   </button>
                 </div>
               )}
 
               {/* Inputs */}
-              {isAdminOrStaff && adminBookingMode === 'player_booking' ? (
+              {isAdminOrStaff && adminBookingMode === 'no_account' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {/* Info strip */}
+                  <div style={{
+                    background: '#fffbeb', border: '1px solid #fcd34d',
+                    borderRadius: 'var(--radius-md)', padding: '10px 14px',
+                    fontSize: '12px', color: '#92400e', display: 'flex', gap: '8px', alignItems: 'center'
+                  }}>
+                    <Users size={14} color="#d97706" style={{ flexShrink: 0 }} />
+                    <span>Walk-in guest with <strong>no PaddleYard account</strong>. This booking will be recorded for tracking only.</span>
+                  </div>
+
+                  {/* Player Full Name + Amount Paid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Player Full Name *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Juan dela Cruz"
+                        value={guestName}
+                        onChange={e => setGuestName(e.target.value)}
+                        style={{
+                          width: '100%', height: '38px', padding: '0 12px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1px solid var(--color-border)',
+                          background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                          fontSize: '13px', fontWeight: 500, outline: 'none', boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Amount Paid (₱)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={guestAmountPaid}
+                        onChange={e => setGuestAmountPaid(e.target.value)}
+                        style={{
+                          width: '100%', height: '38px', padding: '0 12px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1px solid var(--color-border)',
+                          background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                          fontSize: '13px', fontWeight: 500, outline: 'none', boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Court + Date */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Court</label>
+                      <select
+                        value={modalCourtId}
+                        onChange={e => { setModalCourtId(e.target.value); setModalHours([]); }}
+                        style={{
+                          width: '100%', height: '38px', padding: '0 10px',
+                          borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                          background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                          fontSize: '13px', fontWeight: 600, outline: 'none'
+                        }}
+                      >
+                        {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Date</label>
+                      <input
+                        type="date"
+                        value={modalDate}
+                        min={formatDateToYYYYMMDD(new Date())}
+                        onChange={e => { setModalDate(e.target.value); setModalHours([]); }}
+                        style={{
+                          width: '100%', height: '38px', padding: '0 10px',
+                          borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                          background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                          fontSize: '13px', fontWeight: 600, outline: 'none', boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : isAdminOrStaff && adminBookingMode === 'player_booking' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {/* Player Search */}
                   <div>
@@ -1680,6 +1807,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
               {/* Info Summary */}
               {(() => {
                 const isPlayerBookingMode = isAdminOrStaff && adminBookingMode === 'player_booking'
+                const isNoAccountMode = isAdminOrStaff && adminBookingMode === 'no_account'
                 const playerHourlyRate = isPlayerBookingMode ? (() => {
                   const c = courts.find(c => c.id === modalCourtId)
                   return c?.type === 'ROOFTOP' ? 300 : bookingPricePerHour
@@ -1688,7 +1816,8 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
                 const playerInsufficientBalance = isPlayerBookingMode && selectedPlayer ? selectedPlayer.credits < playerTotalCost : false
                 const isConfirmDisabled = isPending ||
                   modalHours.length === 0 ||
-                  (isPlayerBookingMode ? (!selectedPlayer || !modalCourtId || playerInsufficientBalance) :
+                  (isNoAccountMode ? (!guestName.trim() || !modalCourtId) :
+                  isPlayerBookingMode ? (!selectedPlayer || !modalCourtId || playerInsufficientBalance) :
                     isAdminOrStaff ? modalCourtIds.length === 0 :
                     (!modalCourtId || (selectedPaymentMethod === 'credits' && hasInsufficientBalance)))
 
@@ -1702,13 +1831,27 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                         <span>Court Fee</span>
                         <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                          {isPlayerBookingMode
+                          {isNoAccountMode
+                            ? `₱${(bookingPricePerHour * modalHours.length).toFixed(2)} (${modalHours.length} slot${modalHours.length > 1 ? 's' : ''}, guest)`
+                            : isPlayerBookingMode
                             ? `₱${playerTotalCost.toFixed(2)} (${modalHours.length} slot${modalHours.length > 1 ? 's' : ''})`
                             : isAdminOrStaff
                               ? `₱0.00 (Open Play block on ${modalCourtIds.length} court${modalCourtIds.length > 1 ? 's' : ''})`
                               : `₱${totalCost.toFixed(2)}`}
                         </span>
                       </div>
+                      {isNoAccountMode && guestName.trim() && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                          <span>Guest Name</span>
+                          <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{guestName.trim()}</span>
+                        </div>
+                      )}
+                      {isNoAccountMode && guestAmountPaid && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                          <span>Amount Paid</span>
+                          <span style={{ fontWeight: 700, color: '#10b981' }}>₱{parseFloat(guestAmountPaid || '0').toFixed(2)}</span>
+                        </div>
+                      )}
                       {isPlayerBookingMode && selectedPlayer && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                           <span>Player Balance</span>
@@ -1775,8 +1918,8 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
                         }}
                       >
                         {isPending
-                          ? (isPlayerBookingMode ? 'Booking...' : isAdminOrStaff ? 'Reserving...' : 'Booking...')
-                          : (isPlayerBookingMode ? `Book for ${selectedPlayer?.name || 'Player'}` : isAdminOrStaff ? 'Confirm Reservation' : 'Confirm Booking')}
+                          ? (isNoAccountMode ? 'Recording...' : isPlayerBookingMode ? 'Booking...' : isAdminOrStaff ? 'Reserving...' : 'Booking...')
+                          : (isNoAccountMode ? `Record Guest Booking` : isPlayerBookingMode ? `Book for ${selectedPlayer?.name || 'Player'}` : isAdminOrStaff ? 'Confirm Reservation' : 'Confirm Booking')}
                       </button>
                     </div>
                   </>
