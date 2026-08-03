@@ -7,6 +7,28 @@ import { useRouter, usePathname } from 'next/navigation'
 import { CreditCard, ArrowDownLeft, ArrowUpRight, TrendingUp, Calendar, DollarSign, X, Gift, Search } from 'lucide-react'
 // import { expirePromoCreditsAction } from '@/lib/actions/admin' // re-enable with Launch Credits tab
 
+/** DJB2 hash → short 8-char hex string */
+function djb2Hash(str: string): string {
+  let hash = 5381
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i)
+    hash = hash >>> 0 // keep unsigned 32-bit
+  }
+  return hash.toString(16).padStart(8, '0').toUpperCase()
+}
+
+/** Formats a transaction reference for display.
+ *  ONLINE_PAYMENT_RECEIPT|<base64> → "RECEIPT #A3F1B2C4"
+ *  Everything else is returned as-is. */
+function formatReference(ref: string | null): string {
+  if (!ref) return 'SYSTEM_AUTO'
+  if (ref.startsWith('ONLINE_PAYMENT_RECEIPT|')) {
+    const data = ref.slice('ONLINE_PAYMENT_RECEIPT|'.length)
+    return `RECEIPT #${djb2Hash(data)}`
+  }
+  return ref
+}
+
 interface TransactionItem {
   id: string
   amount: number
@@ -549,7 +571,7 @@ export function LedgerClient({
                             </div>
                           </td>
                           <td style={{ padding: '10px 8px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
-                            {t.reference || 'SYSTEM_AUTO'}
+                            {formatReference(t.reference)}
                           </td>
                           <td style={{ padding: '10px 8px', color: 'var(--color-text-secondary)' }}>
                             {new Date(t.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' })}

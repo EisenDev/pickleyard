@@ -44,11 +44,11 @@ export default async function LedgerPage({ searchParams }: PageProps) {
     })
   }
 
-  // Calculate income stats (from cash TOPUPs) for admin dashboard
+  // Calculate income stats (from cash TOPUPs minus refunds) for admin dashboard
   let stats = { day: 0, week: 0, month: 0, year: 0 }
   if (isAdminOrStaff) {
-    const allTopups = await db.transaction.findMany({
-      where: { type: { in: ['TOPUP', 'CASH_TOPUP'] } }
+    const allStatsTransactions = await db.transaction.findMany({
+      where: { type: { in: ['TOPUP', 'CASH_TOPUP', 'REFUND'] } }
     })
 
     const now = new Date()
@@ -62,9 +62,9 @@ export default async function LedgerPage({ searchParams }: PageProps) {
     let mSum = 0
     let ySum = 0
 
-    for (const t of allTopups) {
+    for (const t of allStatsTransactions) {
       const tTime = t.createdAt.getTime()
-      const amt = Number(t.amount)
+      const amt = t.type === 'REFUND' ? -Number(t.amount) : Number(t.amount)
       if (tTime >= startOfToday) dSum += amt
       if (tTime >= startOfWeek) wSum += amt
       if (tTime >= startOfMonth) mSum += amt
