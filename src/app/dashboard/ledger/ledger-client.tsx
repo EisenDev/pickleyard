@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CreditCard, ArrowDownLeft, ArrowUpRight, TrendingUp, Calendar, DollarSign, X, Gift, AlertTriangle, CheckCircle2, Search } from 'lucide-react'
+import { CreditCard, ArrowDownLeft, ArrowUpRight, TrendingUp, Calendar, DollarSign, X, Gift, AlertTriangle, CheckCircle2, Search, Trash2 } from 'lucide-react'
+import { expirePromoCreditsAction } from '@/lib/actions/admin'
 
 interface TransactionItem {
   id: string
@@ -87,6 +88,10 @@ export function LedgerClient({
   const [range, setRange] = useState<string>(initialRange || '48h')
   const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null)
   const [launchSearch, setLaunchSearch] = useState<string>('')
+  // Expire modal state
+  const [expireTarget, setExpireTarget] = useState<{ userId: string; userName: string; amount: number } | null>(null)
+  const [expireError, setExpireError] = useState<string>('')
+  const [isExpiring, startExpireTransition] = useTransition()
 
   const handleRangeChange = (newRange: string) => {
     setRange(newRange)
@@ -519,6 +524,8 @@ export function LedgerClient({
                         } else {
                           displayType = 'Open Play Charge (Wallet Credits)'
                         }
+                      } else if (t.type === 'PROMO_EXPIRY') {
+                        displayType = 'Launch Promo Credit Expired'
                       } else {
                         displayType = isTopup ? 'Cash Top-up' : 'Booking Debit'
                       }
@@ -669,6 +676,24 @@ export function LedgerClient({
           u.userEmail.toLowerCase().includes(launchSearch.toLowerCase())
         )
 
+        const handleExpire = (u: LaunchCreditUser) => {
+          setExpireError('')
+          setExpireTarget({ userId: u.userId, userName: u.userName, amount: u.unusedPromo })
+        }
+
+        const confirmExpire = () => {
+          if (!expireTarget) return
+          startExpireTransition(async () => {
+            const res = await expirePromoCreditsAction(expireTarget)
+            if (res.success) {
+              setExpireTarget(null)
+              router.refresh()
+            } else {
+              setExpireError(res.error || 'Failed to expire promo credits.')
+            }
+          })
+        }
+
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
@@ -686,10 +711,9 @@ export function LedgerClient({
               <div>
                 <div style={{ fontSize: '13px', fontWeight: 800, color: '#92400e', marginBottom: '4px' }}>About Launch Credits</div>
                 <div style={{ fontSize: '12px', color: '#78350f', lineHeight: 1.6 }}>
-                  This table shows players who received the <strong>Auto Sign-up Promo</strong> credit at launch.
-                  {' '}<strong>Unused Promo</strong> = credit that has not yet been consumed by spending.
-                  {' '}If a player topped up separately, their top-up balance is <strong>never</strong> included in unused promo — only the original promo portion is tracked.
-                  {' '}Use the <strong>Unused Promo</strong> column to identify who still has unexpired promo credits that can be manually expired.
+                  Shows every player who received the <strong>Auto Sign-up Promo</strong> (₱500) at launch.
+                  {' '}<strong>Spending always consumes promo credits first (FIFO)</strong> — own top-up credits are never touched until the promo is fully used.
+                  {' '}Only click <strong>Expire</strong> when a player has remaining unused promo and you want to remove it.
                 </div>
               </div>
             </div>
@@ -717,7 +741,7 @@ export function LedgerClient({
               ))}
             </div>
 
-            {/* Search + Table */}
+            {/* Table */}
             <div style={{
               background: 'var(--color-card)',
               border: '1px solid var(--color-border)',
@@ -725,7 +749,6 @@ export function LedgerClient({
               overflow: 'hidden',
               boxShadow: 'var(--shadow-sm)'
             }}>
-              {/* Table header + search */}
               <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
                   <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -744,27 +767,20 @@ export function LedgerClient({
                     value={launchSearch}
                     onChange={e => setLaunchSearch(e.target.value)}
                     style={{
-                      paddingLeft: '30px',
-                      paddingRight: '12px',
-                      height: '34px',
-                      border: '1.5px solid var(--color-border)',
-                      borderRadius: 'var(--radius-lg)',
-                      background: 'var(--color-surface)',
-                      color: 'var(--color-text-primary)',
-                      fontSize: '12px',
-                      fontFamily: 'inherit',
-                      outline: 'none',
-                      width: '200px'
+                      paddingLeft: '30px', paddingRight: '12px', height: '34px',
+                      border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
+                      background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                      fontSize: '12px', fontFamily: 'inherit', outline: 'none', width: '200px'
                     }}
                   />
                 </div>
               </div>
 
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '860px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
                   <thead>
                     <tr style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
-                      {['Player', 'Promo Given', 'Total Spent', 'Promo Used', 'Unused Promo ⚠', 'Own Top-ups', 'Wallet Balance', 'Received', 'Status'].map(h => (
+                      {['Player', 'Promo Given', 'Used on Booking', 'Promo Used', 'Unused Promo ⚠', 'Own Top-ups', 'Wallet Balance', 'Status', 'Action'].map(h => (
                         <th key={h} style={{ padding: '11px 14px', fontSize: '10px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>
@@ -780,16 +796,15 @@ export function LedgerClient({
                       filtered.map((u) => {
                         const fullyUsed = u.unusedPromo === 0
                         const partiallyUsed = u.promoUsed > 0 && u.unusedPromo > 0
-                        const neverUsed = u.promoUsed === 0
+                        const canExpire = u.unusedPromo > 0 && u.currentBalance >= u.unusedPromo
+                        const cantExpireReason = u.unusedPromo > 0 && u.currentBalance < u.unusedPromo
+                          ? `Balance too low (₱${u.currentBalance.toFixed(2)})` : ''
 
                         return (
-                          <tr
-                            key={u.userId}
-                            style={{
-                              borderBottom: '1px solid var(--color-border)',
-                              background: u.unusedPromo > 0 ? 'rgba(245,158,11,0.03)' : 'transparent'
-                            }}
-                          >
+                          <tr key={u.userId} style={{
+                            borderBottom: '1px solid var(--color-border)',
+                            background: u.unusedPromo > 0 ? 'rgba(245,158,11,0.03)' : 'transparent'
+                          }}>
                             {/* Player */}
                             <td style={{ padding: '12px 14px' }}>
                               <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--color-text-primary)' }}>{u.userName}</div>
@@ -801,26 +816,23 @@ export function LedgerClient({
                               +₱{u.promoAmount.toFixed(2)}
                             </td>
 
-                            {/* Total Spent */}
+                            {/* Used on Booking (total spent) */}
                             <td style={{ padding: '12px 14px', fontSize: '12px', fontWeight: 600, color: u.totalSpent > 0 ? '#ef4444' : 'var(--color-text-disabled)' }}>
-                              {u.totalSpent > 0 ? `-₱${u.totalSpent.toFixed(2)}` : '₱0.00'}
+                              {u.totalSpent > 0 ? `₱${u.totalSpent.toFixed(2)}` : '₱0.00'}
                             </td>
 
-                            {/* Promo Used */}
+                            {/* Promo Used (portion of spending from promo) */}
                             <td style={{ padding: '12px 14px', fontSize: '12px', fontWeight: 600, color: u.promoUsed > 0 ? '#ef4444' : 'var(--color-text-disabled)' }}>
                               {u.promoUsed > 0 ? `₱${u.promoUsed.toFixed(2)}` : '₱0.00'}
                             </td>
 
-                            {/* Unused Promo — highlight if nonzero */}
+                            {/* Unused Promo */}
                             <td style={{ padding: '12px 14px' }}>
                               <span style={{
-                                fontSize: '12px',
-                                fontWeight: 800,
+                                fontSize: '12px', fontWeight: 800,
                                 color: u.unusedPromo > 0 ? '#d97706' : '#10b981',
                                 background: u.unusedPromo > 0 ? '#fef3c7' : '#d1fae5',
-                                padding: '3px 8px',
-                                borderRadius: 'var(--radius-full)',
-                                whiteSpace: 'nowrap'
+                                padding: '3px 8px', borderRadius: 'var(--radius-full)', whiteSpace: 'nowrap'
                               }}>
                                 {u.unusedPromo > 0 ? `₱${u.unusedPromo.toFixed(2)}` : 'Fully Used'}
                               </span>
@@ -831,17 +843,12 @@ export function LedgerClient({
                               {u.regularTopupTotal > 0 ? `₱${u.regularTopupTotal.toFixed(2)}` : <span style={{ color: 'var(--color-text-disabled)' }}>None</span>}
                             </td>
 
-                            {/* Current Balance */}
+                            {/* Wallet Balance */}
                             <td style={{ padding: '12px 14px', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
                               ₱{u.currentBalance.toFixed(2)}
                             </td>
 
-                            {/* Received At */}
-                            <td style={{ padding: '12px 14px', fontSize: '11px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
-                              {new Date(u.receivedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' })}
-                            </td>
-
-                            {/* Status badge */}
+                            {/* Status */}
                             <td style={{ padding: '12px 14px' }}>
                               {fullyUsed ? (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 800, color: '#6b7280', background: '#f3f4f6', padding: '3px 8px', borderRadius: 'var(--radius-full)' }}>
@@ -857,6 +864,32 @@ export function LedgerClient({
                                 </span>
                               )}
                             </td>
+
+                            {/* Action — Expire button */}
+                            <td style={{ padding: '12px 14px' }}>
+                              {u.unusedPromo > 0 ? (
+                                <button
+                                  type="button"
+                                  title={cantExpireReason || `Expire ₱${u.unusedPromo.toFixed(2)} unused promo`}
+                                  disabled={!canExpire}
+                                  onClick={() => handleExpire(u)}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                    padding: '5px 10px', borderRadius: 'var(--radius-md)',
+                                    border: canExpire ? '1.5px solid #ef4444' : '1.5px solid var(--color-border)',
+                                    background: canExpire ? '#fee2e2' : 'var(--color-surface)',
+                                    color: canExpire ? '#dc2626' : 'var(--color-text-disabled)',
+                                    fontSize: '11px', fontWeight: 800, cursor: canExpire ? 'pointer' : 'not-allowed',
+                                    fontFamily: 'inherit', whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  <Trash2 size={11} />
+                                  {cantExpireReason ? 'Low Bal' : `Expire ₱${u.unusedPromo.toFixed(2)}`}
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: '11px', color: 'var(--color-text-disabled)' }}>—</span>
+                              )}
+                            </td>
                           </tr>
                         )
                       })
@@ -864,13 +897,85 @@ export function LedgerClient({
                   </tbody>
                 </table>
               </div>
-
-              {/* Footer note */}
-              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--color-border)', fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-                💡 <strong>Expiring unused promo:</strong> To expire a player's unused promo balance, go to <strong>User Management → select player → Deduct Credits</strong> for the exact <em>Unused Promo</em> amount shown above.
-                The deduction will appear on the player's ledger as a negative transaction. Only deduct the <strong>Unused Promo</strong> amount — their own top-up credits are protected.
-              </div>
             </div>
+
+            {/* Expire Confirmation Modal */}
+            {expireTarget && (
+              <div style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px'
+              }}>
+                <div style={{
+                  background: 'var(--color-card)', border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-xl)', padding: '28px', width: '100%', maxWidth: '420px',
+                  boxShadow: 'var(--shadow-xl)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Trash2 size={18} color="#dc2626" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)' }}>Expire Promo Credits</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>This action cannot be undone</div>
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
+                    padding: '14px 16px', marginBottom: '16px', border: '1px solid var(--color-border)'
+                  }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>You are about to deduct:</div>
+                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#dc2626', letterSpacing: '-0.02em' }}>
+                      −₱{expireTarget.amount.toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                      from <strong style={{ color: 'var(--color-text-primary)' }}>{expireTarget.userName}</strong>'s wallet
+                    </div>
+                    <div style={{ marginTop: '10px', fontSize: '11px', color: '#78350f', background: '#fef3c7', padding: '8px 12px', borderRadius: 'var(--radius-md)', lineHeight: 1.5 }}>
+                      ⚠ Only the unused promo portion is deducted. Their own top-up credits are <strong>protected</strong>.
+                      This will be logged on the player's ledger as a promo expiry.
+                    </div>
+                  </div>
+
+                  {expireError && (
+                    <div style={{ fontSize: '12px', color: '#dc2626', background: '#fee2e2', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: '14px', border: '1px solid #fca5a5' }}>
+                      {expireError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => { setExpireTarget(null); setExpireError('') }}
+                      disabled={isExpiring}
+                      style={{
+                        height: '38px', padding: '0 16px', borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--color-border)', background: 'var(--color-card)',
+                        color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: 600,
+                        cursor: 'pointer', fontFamily: 'inherit'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmExpire}
+                      disabled={isExpiring}
+                      style={{
+                        height: '38px', padding: '0 20px', borderRadius: 'var(--radius-md)',
+                        border: 'none', background: isExpiring ? '#fca5a5' : '#dc2626',
+                        color: 'white', fontSize: '13px', fontWeight: 700,
+                        cursor: isExpiring ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                        display: 'flex', alignItems: 'center', gap: '6px'
+                      }}
+                    >
+                      <Trash2 size={13} />
+                      {isExpiring ? 'Expiring...' : 'Confirm Expiry'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )
       })()}

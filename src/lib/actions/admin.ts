@@ -1787,13 +1787,10 @@ export async function adminConfirmTopupAction(
 }
 
 // ── Launch Credits / Signup Promo Tracker ──────────────────────────────────────
-// Returns every player who received the "Auto Sign-up Promo" credit, along with:
-//  - promoAmount  : the raw credit granted at signup
-//  - totalSpent   : sum of all debit transactions on their account (any source)
-//  - promoUsed    : how much of the promo was consumed (capped at promoAmount)
-//  - unusedPromo  : remaining unused promo credit (= promoAmount - promoUsed)
-//  - currentBalance: their live wallet balance
-//  - receivedAt   : when the promo transaction was created
+// Groups by userId so that users with multiple promo entries are not double-counted.
+// Correct "unused promo" formula: spending is assumed to consume promo first (FIFO).
+//   promoUsed   = min(totalPromoReceived, totalSpent)
+//   unusedPromo = max(0, totalPromoReceived - promoUsed)
 //
 // NOTE: This is READ-ONLY. No data is modified here.
 export async function getSignupPromoCreditUsersAction(): Promise<ActionState> {
@@ -1801,7 +1798,7 @@ export async function getSignupPromoCreditUsersAction(): Promise<ActionState> {
   if (!admin) return { success: false, error: 'Unauthorized.' }
 
   try {
-    // Fetch all transactions that are promo credits
+    // Fetch every promo credit transaction (could be multiple per user in edge cases)
     const promoTransactions = await db.transaction.findMany({
       where: {
         type: 'TOPUP',
@@ -1815,13 +1812,33 @@ export async function getSignupPromoCreditUsersAction(): Promise<ActionState> {
       orderBy: { createdAt: 'asc' }
     })
 
-    // For each promo recipient, fetch their total spending (debits)
-    const results = await Promise.all(
-      promoTransactions.map(async (promoTx) => {
-        const userId = promoTx.userId
-        const promoAmount = Number(promoTx.amount)
+    // --- GROUP BY userId so each player appears exactly once ---
+    const userMap = new Map<string, {
+      userId: string
+      user: any
+      totalPromoReceived: number
+      firstReceivedAt: Date
+    }>()
 
-        // Sum of all debit transactions for this user
+    for (const tx of promoTransactions) {
+      const uid = tx.userId
+      if (!userMap.has(uid)) {
+        userMap.set(uid, {
+          userId: uid,
+          user: tx.user,
+          totalPromoReceived: 0,
+          firstReceivedAt: tx.createdAt
+        })
+      }
+      userMap.get(uid)!.totalPromoReceived += Number(tx.amount)
+    }
+
+    // --- For each unique user compute all stats ---
+    const results = await Promise.all(
+      [...userMap.values()].map(async (entry) => {
+        const { userId, user, totalPromoReceived, firstReceivedAt } = entry
+
+        // Sum of all debit (spending) transactions
         const debits = await db.transaction.aggregate({
           where: {
             userId,
@@ -1829,15 +1846,14 @@ export async function getSignupPromoCreditUsersAction(): Promise<ActionState> {
           },
           _sum: { amount: true }
         })
-
         const totalSpent = Number(debits._sum.amount ?? 0)
 
-        // How much of the promo was consumed
-        const promoUsed = Math.min(promoAmount, totalSpent)
-        const unusedPromo = Math.max(0, promoAmount - promoUsed)
+        // Promo is consumed first (FIFO): promoUsed can't exceed promoReceived
+        const promoUsed = Math.min(totalPromoReceived, totalSpent)
+        const unusedPromo = Math.max(0, totalPromoReceived - promoUsed)
 
-        // Sum all non-promo TOPUPs (to understand real deposited credits)
-        const regularTopups = await db.transaction.aggregate({
+        // Sum all NON-promo top-ups (real cash deposits)
+        const ownTopups = await db.transaction.aggregate({
           where: {
             userId,
             type: { in: ['TOPUP', 'CASH_TOPUP'] },
@@ -1845,27 +1861,83 @@ export async function getSignupPromoCreditUsersAction(): Promise<ActionState> {
           },
           _sum: { amount: true }
         })
-        const regularTopupTotal = Number(regularTopups._sum.amount ?? 0)
+        const regularTopupTotal = Number(ownTopups._sum.amount ?? 0)
 
         return {
           userId,
-          userName: promoTx.user?.name || 'Unknown',
-          userEmail: promoTx.user?.email || '',
-          promoAmount,
+          userName: user?.name || 'Unknown',
+          userEmail: user?.email || '',
+          promoAmount: totalPromoReceived,
           totalSpent,
           promoUsed,
           unusedPromo,
           regularTopupTotal,
-          currentBalance: Number(promoTx.user?.credits ?? 0),
-          receivedAt: promoTx.createdAt.toISOString(),
-          promoRef: promoTx.reference || ''
+          currentBalance: Number(user?.credits ?? 0),
+          receivedAt: firstReceivedAt.toISOString()
         }
       })
     )
 
+    // Sort: players with most unused promo first
+    results.sort((a, b) => b.unusedPromo - a.unusedPromo)
+
     return { success: true, users: results }
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to fetch promo credit data.' }
+  }
+}
+
+// ── Expire Unused Promo Credits ─────────────────────────────────────────────────
+// Deducts a player's unused promo balance and logs it as a PROMO_EXPIRY transaction.
+// Only the exact unused promo amount is deducted — own top-up credits are untouched.
+// No schema changes required: uses existing Transaction model with type 'PROMO_EXPIRY'.
+export async function expirePromoCreditsAction(params: {
+  userId: string
+  amount: number
+  userName: string
+}): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized.' }
+
+  const { userId, amount, userName } = params
+
+  if (!userId) return { success: false, error: 'User ID is required.' }
+  if (amount <= 0) return { success: false, error: 'Amount must be greater than zero.' }
+
+  try {
+    await db.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId } })
+      if (!user) throw new Error('User not found.')
+
+      const currentBalance = Number(user.credits)
+      if (currentBalance < amount) {
+        throw new Error(
+          `Cannot expire ₱${amount.toFixed(2)} — ${userName} only has ₱${currentBalance.toFixed(2)} in their wallet.`
+        )
+      }
+
+      // Deduct the unused promo from the user's wallet
+      await tx.user.update({
+        where: { id: userId },
+        data: { credits: { decrement: amount } }
+      })
+
+      // Log as a PROMO_EXPIRY transaction so it shows on the player's ledger
+      await tx.transaction.create({
+        data: {
+          userId,
+          amount,
+          type: 'PROMO_EXPIRY',
+          reference: `Launch promo credit expired — ₱${amount.toFixed(2)} unused promo removed by admin`
+        }
+      })
+    })
+
+    revalidatePath('/dashboard/ledger')
+    revalidatePath('/dashboard/admin/users')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to expire promo credits.' }
   }
 }
 
