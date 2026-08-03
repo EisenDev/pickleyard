@@ -1640,21 +1640,28 @@ export async function adminCancelBookingAction(bookingId: string): Promise<Actio
           }
         })
       } else if (booking.status === 'PAID' && Number(booking.price) > 0) {
-        await tx.user.update({
-          where: { id: booking.userId },
-          data: {
-            credits: { increment: Number(booking.price) }
-          }
-        })
+        // Guest/no-account players (identified by @paddleyard.guest email) paid cash at the
+        // counter. Do NOT refund to their wallet — the admin handles cash refund manually.
+        const isGuestAccount = booking.user.email?.endsWith('@paddleyard.guest') ?? false
 
-        await tx.transaction.create({
-          data: {
-            userId: booking.userId,
-            amount: Number(booking.price),
-            type: 'REFUND',
-            reference: `REFUND-C${booking.court.number}-${booking.startTime.toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
-          }
-        })
+        if (!isGuestAccount) {
+          await tx.user.update({
+            where: { id: booking.userId },
+            data: {
+              credits: { increment: Number(booking.price) }
+            }
+          })
+
+          await tx.transaction.create({
+            data: {
+              userId: booking.userId,
+              amount: Number(booking.price),
+              type: 'REFUND',
+              reference: `REFUND-C${booking.court.number}-${booking.startTime.toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
+            }
+          })
+        }
+        // If guest, booking is simply marked CANCELLED — no credits touched.
       }
 
       await tx.booking.update({

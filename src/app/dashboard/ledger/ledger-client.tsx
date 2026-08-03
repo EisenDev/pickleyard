@@ -112,8 +112,46 @@ export function LedgerClient({
   const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
 
+  // Search states for each tab
+  const [bookingSearch, setBookingSearch] = useState('')
+  const [transactionSearch, setTransactionSearch] = useState('')
+  const [receiptSearch, setReceiptSearch] = useState('')
+
   // Need to know we're client-mounted before using createPortal
   useEffect(() => { setIsMounted(true) }, [])
+
+  // Filtered data
+  const bq = bookingSearch.toLowerCase().trim()
+  const filteredBookings = bq
+    ? bookings.filter(b =>
+        b.userName.toLowerCase().includes(bq) ||
+        b.userEmail.toLowerCase().includes(bq) ||
+        b.courtName.toLowerCase().includes(bq) ||
+        b.status.toLowerCase().includes(bq)
+      )
+    : bookings
+
+  const tq = transactionSearch.toLowerCase().trim()
+  const filteredTransactions = tq
+    ? transactions.filter(t =>
+        (t.userName || '').toLowerCase().includes(tq) ||
+        (t.userEmail || '').toLowerCase().includes(tq) ||
+        (t.reference || '').toLowerCase().includes(tq) ||
+        t.type.toLowerCase().includes(tq) ||
+        formatReference(t.reference).toLowerCase().includes(tq) ||
+        `${t.amount}`.includes(tq)
+      )
+    : transactions
+
+  const rq = receiptSearch.toLowerCase().trim()
+  const filteredReceipts = rq
+    ? onlineReceipts.filter(r =>
+        r.userName.toLowerCase().includes(rq) ||
+        r.userEmail.toLowerCase().includes(rq) ||
+        r.paymentFor.toLowerCase().includes(rq) ||
+        `${r.amount}`.includes(rq)
+      )
+    : onlineReceipts
 
   const handleRangeChange = (newRange: string) => {
     setRange(newRange)
@@ -246,34 +284,52 @@ export function LedgerClient({
               </p>
             </div>
 
-            {/* Time filters */}
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {[
-                { id: '48h', label: 'Past 48 Hours' },
-                { id: '1m', label: '1 Month' },
-                { id: '3m', label: '3 Months' },
-                { id: '1y', label: 'Annual' },
-                { id: 'all', label: 'All records' }
-              ].map(r => (
-                <button
-                  key={r.id}
-                  onClick={() => handleRangeChange(r.id)}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end' }}>
+              {/* Search */}
+              <div style={{ position: 'relative' }}>
+                <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)', pointerEvents: 'none' }} />
+                <input
+                  type="text"
+                  placeholder="Search player, court, status…"
+                  value={bookingSearch}
+                  onChange={e => setBookingSearch(e.target.value)}
                   style={{
-                    padding: '6px 12px',
-                    borderRadius: 'var(--radius-full)',
-                    border: '1.5px solid',
-                    borderColor: range === r.id ? 'var(--color-primary)' : 'var(--color-border)',
-                    background: range === r.id ? 'var(--color-primary-subtle)' : 'var(--color-card)',
-                    color: range === r.id ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit'
+                    paddingLeft: '30px', paddingRight: '12px', paddingTop: '7px', paddingBottom: '7px',
+                    borderRadius: 'var(--radius-full)', border: '1.5px solid var(--color-border)',
+                    background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                    fontSize: '12px', fontFamily: 'inherit', width: '220px', outline: 'none'
                   }}
-                >
-                  {r.label}
-                </button>
-              ))}
+                />
+              </div>
+              {/* Time filters */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {[
+                  { id: '48h', label: 'Past 48 Hours' },
+                  { id: '1m', label: '1 Month' },
+                  { id: '3m', label: '3 Months' },
+                  { id: '1y', label: 'Annual' },
+                  { id: 'all', label: 'All records' }
+                ].map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => handleRangeChange(r.id)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-full)',
+                      border: '1.5px solid',
+                      borderColor: range === r.id ? 'var(--color-primary)' : 'var(--color-border)',
+                      background: range === r.id ? 'var(--color-primary-subtle)' : 'var(--color-card)',
+                      color: range === r.id ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -289,14 +345,14 @@ export function LedgerClient({
                 </tr>
               </thead>
               <tbody>
-                {bookings.length === 0 ? (
+                {filteredBookings.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ padding: '32px 8px', textAlign: 'center', color: 'var(--color-text-disabled)' }}>
-                      No court reservations recorded for this selected time window.
+                      {bookingSearch ? 'No bookings match your search.' : 'No court reservations recorded for this selected time window.'}
                     </td>
                   </tr>
                 ) : (
-                  bookings.map(b => {
+                  filteredBookings.map(b => {
                     const isPending = b.status === 'PENDING'
                     const isPaid = b.status === 'PAID'
                     const isReserved = b.status === 'RESERVED'
@@ -499,9 +555,26 @@ export function LedgerClient({
             boxShadow: 'var(--shadow-sm)',
             overflow: 'hidden'
           }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '20px', margin: 0 }}>
-              {isAdminOrStaff ? 'All Club Statements' : 'Historical Statements'}
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
+                {isAdminOrStaff ? 'All Club Statements' : 'Historical Statements'}
+              </h3>
+              <div style={{ position: 'relative' }}>
+                <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)', pointerEvents: 'none' }} />
+                <input
+                  type="text"
+                  placeholder="Search user, reference, type…"
+                  value={transactionSearch}
+                  onChange={e => setTransactionSearch(e.target.value)}
+                  style={{
+                    paddingLeft: '30px', paddingRight: '12px', paddingTop: '7px', paddingBottom: '7px',
+                    borderRadius: 'var(--radius-full)', border: '1.5px solid var(--color-border)',
+                    background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                    fontSize: '12px', fontFamily: 'inherit', width: '220px', outline: 'none'
+                  }}
+                />
+              </div>
+            </div>
 
             <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '580px', paddingRight: '4px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
@@ -515,14 +588,14 @@ export function LedgerClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.length === 0 ? (
+                  {filteredTransactions.length === 0 ? (
                     <tr>
                       <td colSpan={isAdminOrStaff ? 5 : 4} style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--color-text-disabled)' }}>
-                        No transactions recorded on this account yet.
+                        {transactionSearch ? 'No transactions match your search.' : 'No transactions recorded on this account yet.'}
                       </td>
                     </tr>
                   ) : (
-                    transactions.map(t => {
+                    filteredTransactions.map(t => {
                       const isTopup = t.type === 'TOPUP' || t.type === 'CASH_TOPUP'
                       let displayType = 'Statement'
                       const ref = (t.reference || '').toUpperCase()
@@ -598,7 +671,27 @@ export function LedgerClient({
       {/* Tab Contents: Online Payment Receipts */}
       {tab === 'receipts' && isAdminOrStaff && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {(!onlineReceipts || onlineReceipts.length === 0) ? (
+          {/* Receipt Search */}
+          {onlineReceipts && onlineReceipts.length > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ position: 'relative' }}>
+                <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)', pointerEvents: 'none' }} />
+                <input
+                  type="text"
+                  placeholder="Search member, payment for, amount…"
+                  value={receiptSearch}
+                  onChange={e => setReceiptSearch(e.target.value)}
+                  style={{
+                    paddingLeft: '30px', paddingRight: '12px', paddingTop: '7px', paddingBottom: '7px',
+                    borderRadius: 'var(--radius-full)', border: '1.5px solid var(--color-border)',
+                    background: 'var(--color-card)', color: 'var(--color-text-primary)',
+                    fontSize: '12px', fontFamily: 'inherit', width: '260px', outline: 'none'
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          {(!filteredReceipts || filteredReceipts.length === 0) ? (
             <div style={{
               padding: '40px 20px',
               textAlign: 'center',
@@ -636,7 +729,7 @@ export function LedgerClient({
                     </tr>
                   </thead>
                   <tbody>
-                    {onlineReceipts.map(r => (
+                    {filteredReceipts.map(r => (
                       <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                         <td style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
                           {new Date(r.createdAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}
