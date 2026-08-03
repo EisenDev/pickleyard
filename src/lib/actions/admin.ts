@@ -1786,3 +1786,85 @@ export async function adminConfirmTopupAction(
   }
 }
 
+// ── Launch Credits / Signup Promo Tracker ──────────────────────────────────────
+// Returns every player who received the "Auto Sign-up Promo" credit, along with:
+//  - promoAmount  : the raw credit granted at signup
+//  - totalSpent   : sum of all debit transactions on their account (any source)
+//  - promoUsed    : how much of the promo was consumed (capped at promoAmount)
+//  - unusedPromo  : remaining unused promo credit (= promoAmount - promoUsed)
+//  - currentBalance: their live wallet balance
+//  - receivedAt   : when the promo transaction was created
+//
+// NOTE: This is READ-ONLY. No data is modified here.
+export async function getSignupPromoCreditUsersAction(): Promise<ActionState> {
+  const admin = await checkAdmin()
+  if (!admin) return { success: false, error: 'Unauthorized.' }
+
+  try {
+    // Fetch all transactions that are promo credits
+    const promoTransactions = await db.transaction.findMany({
+      where: {
+        type: 'TOPUP',
+        reference: { startsWith: 'Auto Sign-up Promo Credit' }
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, credits: true }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    })
+
+    // For each promo recipient, fetch their total spending (debits)
+    const results = await Promise.all(
+      promoTransactions.map(async (promoTx) => {
+        const userId = promoTx.userId
+        const promoAmount = Number(promoTx.amount)
+
+        // Sum of all debit transactions for this user
+        const debits = await db.transaction.aggregate({
+          where: {
+            userId,
+            type: { in: ['BOOKING_DEBIT', 'EVENT_DEBIT'] }
+          },
+          _sum: { amount: true }
+        })
+
+        const totalSpent = Number(debits._sum.amount ?? 0)
+
+        // How much of the promo was consumed
+        const promoUsed = Math.min(promoAmount, totalSpent)
+        const unusedPromo = Math.max(0, promoAmount - promoUsed)
+
+        // Sum all non-promo TOPUPs (to understand real deposited credits)
+        const regularTopups = await db.transaction.aggregate({
+          where: {
+            userId,
+            type: { in: ['TOPUP', 'CASH_TOPUP'] },
+            NOT: { reference: { startsWith: 'Auto Sign-up Promo Credit' } }
+          },
+          _sum: { amount: true }
+        })
+        const regularTopupTotal = Number(regularTopups._sum.amount ?? 0)
+
+        return {
+          userId,
+          userName: promoTx.user?.name || 'Unknown',
+          userEmail: promoTx.user?.email || '',
+          promoAmount,
+          totalSpent,
+          promoUsed,
+          unusedPromo,
+          regularTopupTotal,
+          currentBalance: Number(promoTx.user?.credits ?? 0),
+          receivedAt: promoTx.createdAt.toISOString(),
+          promoRef: promoTx.reference || ''
+        }
+      })
+    )
+
+    return { success: true, users: results }
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to fetch promo credit data.' }
+  }
+}

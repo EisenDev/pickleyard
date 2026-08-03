@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { LedgerClient } from './ledger-client'
+import { getSignupPromoCreditUsersAction } from '@/lib/actions/admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -161,11 +162,21 @@ export default async function LedgerPage({ searchParams }: PageProps) {
     })
   }
 
+  // Fetch launch/signup promo credit data (admin only)
+  let launchCreditUsers: any[] = []
+  if (isAdminOrStaff) {
+    const promoRes = await getSignupPromoCreditUsersAction()
+    if (promoRes.success && promoRes.users) {
+      launchCreditUsers = promoRes.users
+    }
+  }
+
   return (
     <LedgerClient
       transactions={formattedTransactions}
       bookings={formattedBookings}
       onlineReceipts={onlineReceipts}
+      launchCreditUsers={launchCreditUsers}
       userBalance={Number(user.credits)}
       userRole={user.role}
       stats={stats}

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CreditCard, ArrowDownLeft, ArrowUpRight, TrendingUp, Calendar, BookOpen, DollarSign, X } from 'lucide-react'
+import { CreditCard, ArrowDownLeft, ArrowUpRight, TrendingUp, Calendar, DollarSign, X, Gift, AlertTriangle, CheckCircle2, Search } from 'lucide-react'
 
 interface TransactionItem {
   id: string
@@ -37,10 +37,25 @@ interface OnlineReceipt {
   receiptImage: string
 }
 
+interface LaunchCreditUser {
+  userId: string
+  userName: string
+  userEmail: string
+  promoAmount: number
+  totalSpent: number
+  promoUsed: number
+  unusedPromo: number
+  regularTopupTotal: number
+  currentBalance: number
+  receivedAt: string
+  promoRef: string
+}
+
 interface LedgerClientProps {
   transactions: TransactionItem[]
   bookings: BookingLedgerItem[]
   onlineReceipts?: OnlineReceipt[]
+  launchCreditUsers?: LaunchCreditUser[]
   userBalance: number
   userRole: string
   stats: {
@@ -57,6 +72,7 @@ export function LedgerClient({
   transactions,
   bookings,
   onlineReceipts = [],
+  launchCreditUsers = [],
   userBalance,
   userRole,
   stats,
@@ -67,9 +83,10 @@ export function LedgerClient({
   const pathname = usePathname()
   const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
 
-  const [tab, setTab] = useState<'bookings' | 'transactions' | 'receipts'>(initialTab as any || 'bookings')
+  const [tab, setTab] = useState<'bookings' | 'transactions' | 'receipts' | 'launch'>(initialTab as any || 'bookings')
   const [range, setRange] = useState<string>(initialRange || '48h')
   const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null)
+  const [launchSearch, setLaunchSearch] = useState<string>('')
 
   const handleRangeChange = (newRange: string) => {
     setRange(newRange)
@@ -79,7 +96,7 @@ export function LedgerClient({
     router.push(`${pathname}?${params.toString()}`)
   }
 
-  const handleTabChange = (newTab: 'bookings' | 'transactions' | 'receipts') => {
+  const handleTabChange = (newTab: 'bookings' | 'transactions' | 'receipts' | 'launch') => {
     setTab(newTab)
     const params = new URLSearchParams()
     params.set('tab', newTab)
@@ -153,6 +170,28 @@ export function LedgerClient({
             }}
           >
             Online Payment Receipts
+          </button>
+        )}
+        {isAdminOrStaff && (
+          <button
+            onClick={() => handleTabChange('launch')}
+            style={{
+              padding: '12px 16px',
+              background: 'none',
+              border: 'none',
+              borderBottom: tab === 'launch' ? '2.5px solid #f59e0b' : '2.5px solid transparent',
+              color: tab === 'launch' ? '#f59e0b' : 'var(--color-text-secondary)',
+              fontWeight: 800,
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Gift size={14} />
+            Launch Credits
           </button>
         )}
       </div>
@@ -617,6 +656,224 @@ export function LedgerClient({
           )}
         </div>
       )}
+
+      {/* Tab Contents: Launch Credits (Signup Promo Tracker) */}
+      {tab === 'launch' && isAdminOrStaff && (() => {
+        const totalPromoIssued = launchCreditUsers.reduce((s, u) => s + u.promoAmount, 0)
+        const totalUnused = launchCreditUsers.reduce((s, u) => s + u.unusedPromo, 0)
+        const totalFullyUsed = launchCreditUsers.filter(u => u.unusedPromo === 0).length
+        const totalHasUnused = launchCreditUsers.filter(u => u.unusedPromo > 0).length
+
+        const filtered = launchCreditUsers.filter(u =>
+          u.userName.toLowerCase().includes(launchSearch.toLowerCase()) ||
+          u.userEmail.toLowerCase().includes(launchSearch.toLowerCase())
+        )
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            {/* Info banner */}
+            <div style={{
+              background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+              border: '1.5px solid #fcd34d',
+              borderRadius: 'var(--radius-xl)',
+              padding: '16px 20px',
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'flex-start'
+            }}>
+              <AlertTriangle size={18} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#92400e', marginBottom: '4px' }}>About Launch Credits</div>
+                <div style={{ fontSize: '12px', color: '#78350f', lineHeight: 1.6 }}>
+                  This table shows players who received the <strong>Auto Sign-up Promo</strong> credit at launch.
+                  {' '}<strong>Unused Promo</strong> = credit that has not yet been consumed by spending.
+                  {' '}If a player topped up separately, their top-up balance is <strong>never</strong> included in unused promo — only the original promo portion is tracked.
+                  {' '}Use the <strong>Unused Promo</strong> column to identify who still has unexpired promo credits that can be manually expired.
+                </div>
+              </div>
+            </div>
+
+            {/* Summary stats row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+              {[
+                { label: 'Total Recipients', value: launchCreditUsers.length, color: '#3b82f6', suffix: '' },
+                { label: 'Total Promo Issued', value: `₱${totalPromoIssued.toFixed(2)}`, color: '#10b981', suffix: '' },
+                { label: 'Still Unused', value: `₱${totalUnused.toFixed(2)}`, color: '#f59e0b', suffix: '' },
+                { label: 'Fully Consumed', value: totalFullyUsed, color: '#6b7280', suffix: ` / ${launchCreditUsers.length}` },
+              ].map(stat => (
+                <div key={stat.label} style={{
+                  background: 'var(--color-card)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-xl)',
+                  padding: '16px 18px',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ fontSize: '10px', fontWeight: 800, color: stat.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>{stat.label}</div>
+                  <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--color-text-primary)', letterSpacing: '-0.02em' }}>
+                    {stat.value}<span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>{stat.suffix}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Search + Table */}
+            <div style={{
+              background: 'var(--color-card)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-xl)',
+              overflow: 'hidden',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              {/* Table header + search */}
+              <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Gift size={16} color="#f59e0b" />
+                    Promo Credit Recipients
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '3px' }}>
+                    {totalHasUnused} player{totalHasUnused !== 1 ? 's' : ''} still have unused promo credits
+                  </div>
+                </div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Search size={13} color="var(--color-text-secondary)" style={{ position: 'absolute', left: 10, pointerEvents: 'none' }} />
+                  <input
+                    type="text"
+                    placeholder="Search player..."
+                    value={launchSearch}
+                    onChange={e => setLaunchSearch(e.target.value)}
+                    style={{
+                      paddingLeft: '30px',
+                      paddingRight: '12px',
+                      height: '34px',
+                      border: '1.5px solid var(--color-border)',
+                      borderRadius: 'var(--radius-lg)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text-primary)',
+                      fontSize: '12px',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                      width: '200px'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '860px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
+                      {['Player', 'Promo Given', 'Total Spent', 'Promo Used', 'Unused Promo ⚠', 'Own Top-ups', 'Wallet Balance', 'Received', 'Status'].map(h => (
+                        <th key={h} style={{ padding: '11px 14px', fontSize: '10px', fontWeight: 800, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--color-text-disabled)', fontSize: '13px' }}>
+                          {launchCreditUsers.length === 0 ? 'No signup promo credits have been issued yet.' : 'No players match your search.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      filtered.map((u) => {
+                        const fullyUsed = u.unusedPromo === 0
+                        const partiallyUsed = u.promoUsed > 0 && u.unusedPromo > 0
+                        const neverUsed = u.promoUsed === 0
+
+                        return (
+                          <tr
+                            key={u.userId}
+                            style={{
+                              borderBottom: '1px solid var(--color-border)',
+                              background: u.unusedPromo > 0 ? 'rgba(245,158,11,0.03)' : 'transparent'
+                            }}
+                          >
+                            {/* Player */}
+                            <td style={{ padding: '12px 14px' }}>
+                              <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--color-text-primary)' }}>{u.userName}</div>
+                              <div style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>{u.userEmail}</div>
+                            </td>
+
+                            {/* Promo Given */}
+                            <td style={{ padding: '12px 14px', fontSize: '12px', fontWeight: 700, color: '#10b981' }}>
+                              +₱{u.promoAmount.toFixed(2)}
+                            </td>
+
+                            {/* Total Spent */}
+                            <td style={{ padding: '12px 14px', fontSize: '12px', fontWeight: 600, color: u.totalSpent > 0 ? '#ef4444' : 'var(--color-text-disabled)' }}>
+                              {u.totalSpent > 0 ? `-₱${u.totalSpent.toFixed(2)}` : '₱0.00'}
+                            </td>
+
+                            {/* Promo Used */}
+                            <td style={{ padding: '12px 14px', fontSize: '12px', fontWeight: 600, color: u.promoUsed > 0 ? '#ef4444' : 'var(--color-text-disabled)' }}>
+                              {u.promoUsed > 0 ? `₱${u.promoUsed.toFixed(2)}` : '₱0.00'}
+                            </td>
+
+                            {/* Unused Promo — highlight if nonzero */}
+                            <td style={{ padding: '12px 14px' }}>
+                              <span style={{
+                                fontSize: '12px',
+                                fontWeight: 800,
+                                color: u.unusedPromo > 0 ? '#d97706' : '#10b981',
+                                background: u.unusedPromo > 0 ? '#fef3c7' : '#d1fae5',
+                                padding: '3px 8px',
+                                borderRadius: 'var(--radius-full)',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {u.unusedPromo > 0 ? `₱${u.unusedPromo.toFixed(2)}` : 'Fully Used'}
+                              </span>
+                            </td>
+
+                            {/* Own Top-ups */}
+                            <td style={{ padding: '12px 14px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                              {u.regularTopupTotal > 0 ? `₱${u.regularTopupTotal.toFixed(2)}` : <span style={{ color: 'var(--color-text-disabled)' }}>None</span>}
+                            </td>
+
+                            {/* Current Balance */}
+                            <td style={{ padding: '12px 14px', fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                              ₱{u.currentBalance.toFixed(2)}
+                            </td>
+
+                            {/* Received At */}
+                            <td style={{ padding: '12px 14px', fontSize: '11px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+                              {new Date(u.receivedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' })}
+                            </td>
+
+                            {/* Status badge */}
+                            <td style={{ padding: '12px 14px' }}>
+                              {fullyUsed ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 800, color: '#6b7280', background: '#f3f4f6', padding: '3px 8px', borderRadius: 'var(--radius-full)' }}>
+                                  <CheckCircle2 size={11} /> Consumed
+                                </span>
+                              ) : partiallyUsed ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 800, color: '#d97706', background: '#fef3c7', padding: '3px 8px', borderRadius: 'var(--radius-full)' }}>
+                                  <AlertTriangle size={11} /> Partial
+                                </span>
+                              ) : (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 800, color: '#ef4444', background: '#fee2e2', padding: '3px 8px', borderRadius: 'var(--radius-full)' }}>
+                                  <Gift size={11} /> Untouched
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Footer note */}
+              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--color-border)', fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                💡 <strong>Expiring unused promo:</strong> To expire a player's unused promo balance, go to <strong>User Management → select player → Deduct Credits</strong> for the exact <em>Unused Promo</em> amount shown above.
+                The deduction will appear on the player's ledger as a negative transaction. Only deduct the <strong>Unused Promo</strong> amount — their own top-up credits are protected.
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Lightbox Receipt Modal */}
       {selectedLightboxImage && (
