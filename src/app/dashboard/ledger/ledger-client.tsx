@@ -555,24 +555,55 @@ export function LedgerClient({
             boxShadow: 'var(--shadow-sm)',
             overflow: 'hidden'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
-                {isAdminOrStaff ? 'All Club Statements' : 'Historical Statements'}
-              </h3>
-              <div style={{ position: 'relative' }}>
-                <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)', pointerEvents: 'none' }} />
-                <input
-                  type="text"
-                  placeholder="Search user, reference, type…"
-                  value={transactionSearch}
-                  onChange={e => setTransactionSearch(e.target.value)}
-                  style={{
-                    paddingLeft: '30px', paddingRight: '12px', paddingTop: '7px', paddingBottom: '7px',
-                    borderRadius: 'var(--radius-full)', border: '1.5px solid var(--color-border)',
-                    background: 'var(--color-surface)', color: 'var(--color-text-primary)',
-                    fontSize: '12px', fontFamily: 'inherit', width: '220px', outline: 'none'
-                  }}
-                />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
+                  {isAdminOrStaff ? 'All Club Statements' : 'Historical Statements'}
+                </h3>
+                <div style={{ position: 'relative' }}>
+                  <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)', pointerEvents: 'none' }} />
+                  <input
+                    type="text"
+                    placeholder="Search user, reference, type…"
+                    value={transactionSearch}
+                    onChange={e => setTransactionSearch(e.target.value)}
+                    style={{
+                      paddingLeft: '30px', paddingRight: '12px', paddingTop: '7px', paddingBottom: '7px',
+                      borderRadius: 'var(--radius-full)', border: '1.5px solid var(--color-border)',
+                      background: 'var(--color-surface)', color: 'var(--color-text-primary)',
+                      fontSize: '12px', fontFamily: 'inherit', width: '220px', outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Time range filter — same as bookings tab, changes URL param which re-fetches transactions */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {[
+                  { id: '48h', label: 'Past 48 Hours' },
+                  { id: '1m', label: '1 Month' },
+                  { id: '3m', label: '3 Months' },
+                  { id: '1y', label: 'Annual' },
+                  { id: 'all', label: 'All records' }
+                ].map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => handleRangeChange(r.id)}
+                    style={{
+                      padding: '5px 11px',
+                      borderRadius: 'var(--radius-full)',
+                      border: '1.5px solid',
+                      borderColor: range === r.id ? 'var(--color-primary)' : 'var(--color-border)',
+                      background: range === r.id ? 'var(--color-primary-subtle)' : 'var(--color-card)',
+                      color: range === r.id ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    {r.label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -619,6 +650,8 @@ export function LedgerClient({
                         } else {
                           displayType = 'Open Play Charge (Wallet Credits)'
                         }
+                      } else if (t.type === 'REFUND') {
+                        displayType = 'Booking Refund (Credited Back)'
                       } else if (t.type === 'PROMO_EXPIRY') {
                         displayType = 'Launch Promo Credit Expired'
                       } else {
@@ -635,7 +668,9 @@ export function LedgerClient({
                           )}
                           <td style={{ padding: '10px 8px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              {isTopup ? (
+                              {t.type === 'REFUND' ? (
+                                <ArrowDownLeft size={13} color="#f59e0b" />
+                              ) : isTopup ? (
                                 <ArrowDownLeft size={13} color="#10b981" />
                               ) : (
                                 <ArrowUpRight size={13} color="#ef4444" />
@@ -653,9 +688,9 @@ export function LedgerClient({
                             padding: '10px 8px',
                             textAlign: 'right',
                             fontWeight: 700,
-                            color: isTopup ? '#10b981' : '#ef4444'
+                            color: t.type === 'REFUND' ? '#f59e0b' : isTopup ? '#10b981' : '#ef4444'
                           }}>
-                            {isTopup ? '+' : '-'}₱{t.amount.toFixed(2)}
+                            {t.type === 'REFUND' ? '↩ ' : isTopup ? '+' : '-'}₱{t.amount.toFixed(2)}
                           </td>
                         </tr>
                       )

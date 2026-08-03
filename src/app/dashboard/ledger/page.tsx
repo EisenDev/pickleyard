@@ -32,6 +32,7 @@ export default async function LedgerPage({ searchParams }: PageProps) {
   let transactions = []
   if (isAdminOrStaff) {
     transactions = await db.transaction.findMany({
+      where: dateFilter ? { createdAt: { gte: dateFilter } } : undefined,
       orderBy: { createdAt: 'desc' },
       include: {
         user: { select: { name: true, email: true } }
@@ -39,7 +40,10 @@ export default async function LedgerPage({ searchParams }: PageProps) {
     })
   } else {
     transactions = await db.transaction.findMany({
-      where: { userId: user.id },
+      where: {
+        userId: user.id,
+        ...(dateFilter ? { createdAt: { gte: dateFilter } } : {})
+      },
       orderBy: { createdAt: 'desc' }
     })
   }
