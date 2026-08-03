@@ -696,7 +696,11 @@ export async function getSystemSettingsAction() {
     const list = await db.systemSetting.findMany()
     const settings: Record<string, string> = {
       booking_duration_minutes: '60',
-      booking_price_per_hour: '500',
+      booking_price_per_hour: '250',      // legacy flat rate (fallback)
+      booking_daytime_price: '250',        // daytime slot price
+      booking_daytime_start_hour: '8',     // daytime starts at 8 AM
+      booking_daytime_end_hour: '17',      // daytime ends at 5 PM (exclusive: 5PM slot = nighttime)
+      booking_nighttime_price: '300',      // nighttime slot price
       openplay_match_duration_seconds: '900',
       openplay_expiry_hours: '3',
       openplay_entry_fee: '150',
@@ -716,6 +720,10 @@ export async function getSystemSettingsAction() {
 export async function updateSystemSettingsAction(settings: {
   booking_duration_minutes: string
   booking_price_per_hour: string
+  booking_daytime_price: string
+  booking_daytime_start_hour: string
+  booking_daytime_end_hour: string
+  booking_nighttime_price: string
   openplay_match_duration_seconds: string
   openplay_expiry_hours: string
   openplay_entry_fee: string
@@ -748,6 +756,7 @@ export async function updateSystemSettingsAction(settings: {
     revalidatePath('/dashboard/admin')
     revalidatePath('/dashboard/paddlestack')
     revalidatePath('/dashboard/openplay')
+    revalidatePath('/dashboard/bookings')
     return { success: true }
   } catch (error: any) {
     return { success: false, error: error.message }

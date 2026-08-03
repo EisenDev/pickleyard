@@ -54,7 +54,11 @@ interface PlayerItem {
 }
 
 interface Props {
-  bookingPricePerHour: number
+  bookingPricePerHour: number   // legacy fallback
+  daytimePrice: number
+  daytimeStartHour: number
+  daytimeEndHour: number
+  nighttimePrice: number
   courts: Court[]
   allBookings: BookingItem[]
   myBookings: MyBooking[]
@@ -80,8 +84,14 @@ function formatDateToYYYYMMDD(d: Date) {
   return `${year}-${month}-${day}`
 }
 
-export function BookingsCalendarClient({ bookingPricePerHour, courts, allBookings, myBookings, userBalance, userId, userRole, startHour, endHour, courtVouchers = [], players = [] }: Props) {
+export function BookingsCalendarClient({ bookingPricePerHour, daytimePrice, daytimeStartHour, daytimeEndHour, nighttimePrice, courts, allBookings, myBookings, userBalance, userId, userRole, startHour, endHour, courtVouchers = [], players = [] }: Props) {
   const HOURS = Array.from({ length: Math.max(1, endHour - startHour) }, (_, i) => i + startHour)
+
+  // Returns the price for a given hour of day (0-23), respecting daytime/nighttime windows
+  const getHourlyRate = (hour: number, courtType?: string): number => {
+    if (courtType === 'ROOFTOP') return 300
+    return (hour >= daytimeStartHour && hour < daytimeEndHour) ? daytimePrice : nighttimePrice
+  }
   const [activeTab, setActiveTab] = useState<'calendar' | 'list' | 'passes'>('calendar')
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'credits' | 'cash'>('credits')
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -199,7 +209,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
     
     // Auto check balance
     const court = courts.find(c => c.id === courtId)
-    const hourlyRate = court?.type === 'ROOFTOP' ? 300 : bookingPricePerHour
+    const hourlyRate = getHourlyRate(hour, court?.type)
     if (userBalance >= hourlyRate) {
       setSelectedPaymentMethod('credits')
     } else {
@@ -217,7 +227,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
     setModalDate(formatDateToYYYYMMDD(selectedDate))
     setModalHours([])
     setSelectedVouchers({})
-    setSelectedPaymentMethod(userBalance >= bookingPricePerHour ? 'credits' : 'cash')
+    setSelectedPaymentMethod(userBalance >= daytimePrice ? 'credits' : 'cash')
     // Reset admin mode
     setAdminBookingMode('openplay')
     setPlayerSearch('')
@@ -275,9 +285,9 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
   useEffect(() => {
     if (!isModalOpen) return
     const court = courts.find(c => c.id === modalCourtId)
-    const hourlyRate = court?.type === 'ROOFTOP' ? 300 : bookingPricePerHour
     const voucherCount = modalHours.filter(h => !!selectedVouchers[h]).length
-    const totalCost = hourlyRate * Math.max(0, modalHours.length - voucherCount)
+    const paidHours = modalHours.filter(h => !selectedVouchers[h])
+    const totalCost = paidHours.reduce((sum, h) => sum + getHourlyRate(h, court?.type), 0)
     if (userBalance >= totalCost) {
       setSelectedPaymentMethod('credits')
     } else {
@@ -1209,9 +1219,8 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
       {isModalOpen && (() => {
         const isAdminOrStaff = userRole === 'ADMIN' || userRole === 'STAFF'
         const court = courts.find(c => c.id === modalCourtId)
-        const hourlyRate = court?.type === 'ROOFTOP' ? 300 : bookingPricePerHour
-        const voucherCount = modalHours.filter(h => !!selectedVouchers[h]).length
-        const totalCost = hourlyRate * Math.max(0, modalHours.length - voucherCount)
+        const paidHours = modalHours.filter(h => !selectedVouchers[h])
+        const totalCost = paidHours.reduce((sum, h) => sum + getHourlyRate(h, court?.type), 0)
         const hasInsufficientBalance = !isAdminOrStaff && userBalance < totalCost
 
         return (
@@ -1810,9 +1819,17 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
                 const isNoAccountMode = isAdminOrStaff && adminBookingMode === 'no_account'
                 const playerHourlyRate = isPlayerBookingMode ? (() => {
                   const c = courts.find(c => c.id === modalCourtId)
-                  return c?.type === 'ROOFTOP' ? 300 : bookingPricePerHour
-                })() : hourlyRate
-                const playerTotalCost = isPlayerBookingMode ? playerHourlyRate * modalHours.length : totalCost
+                  // For player booking mode, use average of selected slots for simplicity
+                  const paidSlots = modalHours.filter(h => !selectedVouchers[h])
+                  const avg = paidSlots.length > 0
+                    ? paidSlots.reduce((s, h) => s + getHourlyRate(h, c?.type), 0) / paidSlots.length
+                    : getHourlyRate(modalHours[0] ?? 8, c?.type)
+                  return avg
+                })() : (paidHours.length > 0 ? totalCost / paidHours.length : getHourlyRate(modalHours[0] ?? 8, court?.type))
+                const playerTotalCost = isPlayerBookingMode ? (() => {
+                  const c = courts.find(c => c.id === modalCourtId)
+                  return modalHours.filter(h => !selectedVouchers[h]).reduce((s, h) => s + getHourlyRate(h, c?.type), 0)
+                })() : totalCost
                 const playerInsufficientBalance = isPlayerBookingMode && selectedPlayer ? selectedPlayer.credits < playerTotalCost : false
                 const isConfirmDisabled = isPending ||
                   modalHours.length === 0 ||
@@ -1832,7 +1849,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, courts, allBooking
                         <span>Court Fee</span>
                         <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
                           {isNoAccountMode
-                            ? `₱${(bookingPricePerHour * modalHours.length).toFixed(2)} (${modalHours.length} slot${modalHours.length > 1 ? 's' : ''}, guest)`
+                            ? `₱${modalHours.reduce((s, h) => s + getHourlyRate(h, court?.type), 0).toFixed(2)} (${modalHours.length} slot${modalHours.length > 1 ? 's' : ''}, guest)`
                             : isPlayerBookingMode
                             ? `₱${playerTotalCost.toFixed(2)} (${modalHours.length} slot${modalHours.length > 1 ? 's' : ''})`
                             : isAdminOrStaff

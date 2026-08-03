@@ -84,9 +84,23 @@ export async function createBookingsAction(
       const startHour = startHourSetting ? parseInt(startHourSetting.value) : 8
       const endHour = endHourSetting ? parseInt(endHourSetting.value) : 22
 
-      const priceSetting = await tx.systemSetting.findUnique({ where: { key: 'booking_price_per_hour' } })
-      const defaultHourlyRate = priceSetting ? parseFloat(priceSetting.value) : 250.00
-      const hourlyRate = court.type === 'ROOFTOP' ? 300.00 : defaultHourlyRate
+      // Daytime / Nighttime pricing
+      const allPriceSettings = await tx.systemSetting.findMany({
+        where: { key: { in: ['booking_price_per_hour', 'booking_daytime_price', 'booking_daytime_start_hour', 'booking_daytime_end_hour', 'booking_nighttime_price'] } }
+      })
+      const pMap: Record<string, string> = {}
+      for (const s of allPriceSettings) pMap[s.key] = s.value
+
+      const daytimeStart  = parseInt(pMap.booking_daytime_start_hour ?? '8')
+      const daytimeEnd    = parseInt(pMap.booking_daytime_end_hour   ?? '17')
+      const daytimePrice  = parseFloat(pMap.booking_daytime_price    ?? pMap.booking_price_per_hour ?? '250')
+      const nighttimePrice= parseFloat(pMap.booking_nighttime_price  ?? pMap.booking_price_per_hour ?? '300')
+
+      // Returns the rate for a given hour (0-23)
+      const getRateForHour = (hour: number): number => {
+        const base = (hour >= daytimeStart && hour < daytimeEnd) ? daytimePrice : nighttimePrice
+        return court.type === 'ROOFTOP' ? 300.00 : base
+      }
 
       // Map time strings to check if paid by voucher
       const slotPayments = startTimeStrings.map(timeStr => {
@@ -102,7 +116,8 @@ export async function createBookingsAction(
       let totalCost = 0
       for (const slot of slotPayments) {
         if (!slot.isVoucher) {
-          totalCost += hourlyRate
+          const slotHour = slot.time.getHours()
+          totalCost += getRateForHour(slotHour)
         }
       }
 
@@ -240,7 +255,7 @@ export async function createBookingsAction(
             startTime,
             endTime,
             status: (paymentMethod === 'credits' || slot.isVoucher) ? BookingStatus.PAID : BookingStatus.PENDING,
-            price: slot.isVoucher ? 0 : hourlyRate
+            price: slot.isVoucher ? 0 : getRateForHour(slot.time.getHours())
           }
         })
 
@@ -272,7 +287,7 @@ export async function createBookingsAction(
             await tx.transaction.create({
               data: {
                 userId: user.id,
-                amount: -hourlyRate,
+                amount: -getRateForHour(slot.time.getHours()),
                 type: 'BOOKING_DEBIT',
                 reference: `RESRV-C${court.number}-${startTime.toLocaleDateString([], { month: '2-digit', day: '2-digit' })}`
               }

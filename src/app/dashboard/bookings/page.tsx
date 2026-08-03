@@ -40,8 +40,17 @@ export default async function MyBookingsPage() {
   const startHour = startHourSetting ? parseInt(startHourSetting.value) : 8
   const endHour = endHourSetting ? parseInt(endHourSetting.value) : 22
 
-  const priceSetting = await db.systemSetting.findUnique({ where: { key: 'booking_price_per_hour' } })
-  const bookingPricePerHour = priceSetting ? parseFloat(priceSetting.value) : 250.00
+  // Fetch daytime / nighttime pricing settings
+  const priceSettings = await db.systemSetting.findMany({
+    where: { key: { in: ['booking_price_per_hour', 'booking_daytime_price', 'booking_daytime_start_hour', 'booking_daytime_end_hour', 'booking_nighttime_price'] } }
+  })
+  const psMap: Record<string, string> = {}
+  for (const s of priceSettings) psMap[s.key] = s.value
+  const bookingPricePerHour  = parseFloat(psMap.booking_price_per_hour     ?? '250')
+  const daytimePrice         = parseFloat(psMap.booking_daytime_price       ?? psMap.booking_price_per_hour ?? '250')
+  const daytimeStartHour     = parseInt(psMap.booking_daytime_start_hour    ?? '8')
+  const daytimeEndHour       = parseInt(psMap.booking_daytime_end_hour      ?? '17')
+  const nighttimePrice       = parseFloat(psMap.booking_nighttime_price     ?? psMap.booking_price_per_hour ?? '300')
 
   // Fetch active approved court vouchers for the player
   const courtVouchers = await db.redemptionRequest.findMany({
@@ -71,6 +80,10 @@ export default async function MyBookingsPage() {
   return (
     <BookingsCalendarClient
       bookingPricePerHour={bookingPricePerHour}
+      daytimePrice={daytimePrice}
+      daytimeStartHour={daytimeStartHour}
+      daytimeEndHour={daytimeEndHour}
+      nighttimePrice={nighttimePrice}
       courts={courts.map(c => ({ id: c.id, number: c.number, name: c.name, type: c.type, status: c.status }))}
       allBookings={allBookingsToday.map(b => ({
         id: b.id,

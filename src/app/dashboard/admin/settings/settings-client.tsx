@@ -26,6 +26,10 @@ export function SettingsClient({ initialSettings, courts }: Props) {
   // State variables
   const [bookingDuration, setBookingDuration] = useState(initialSettings.booking_duration_minutes)
   const [bookingPrice, setBookingPrice] = useState(initialSettings.booking_price_per_hour)
+  const [daytimePrice, setDaytimePrice] = useState(initialSettings.booking_daytime_price || initialSettings.booking_price_per_hour || '250')
+  const [daytimeStartHour, setDaytimeStartHour] = useState(initialSettings.booking_daytime_start_hour || '8')
+  const [daytimeEndHour, setDaytimeEndHour] = useState(initialSettings.booking_daytime_end_hour || '17')
+  const [nighttimePrice, setNighttimePrice] = useState(initialSettings.booking_nighttime_price || initialSettings.booking_price_per_hour || '300')
   const [openplayMatchMinutes, setOpenplayMatchMinutes] = useState(
     (parseInt(initialSettings.openplay_match_duration_seconds) / 60).toString()
   )
@@ -57,10 +61,21 @@ export function SettingsClient({ initialSettings, courts }: Props) {
       return
     }
 
+    const dtStart = parseInt(daytimeStartHour)
+    const dtEnd = parseInt(daytimeEndHour)
+    if (isNaN(dtStart) || isNaN(dtEnd) || dtStart >= dtEnd) {
+      setMessage({ success: false, text: 'Daytime start hour must be before daytime end hour.' })
+      return
+    }
+
     startTransition(async () => {
       const res = await updateSystemSettingsAction({
         booking_duration_minutes: bookingDuration,
         booking_price_per_hour: bookingPrice,
+        booking_daytime_price: daytimePrice,
+        booking_daytime_start_hour: daytimeStartHour,
+        booking_daytime_end_hour: daytimeEndHour,
+        booking_nighttime_price: nighttimePrice,
         openplay_match_duration_seconds: matchSeconds.toString(),
         openplay_expiry_hours: openplayExpiryHours,
         openplay_entry_fee: openplayEntryFee,
@@ -143,17 +158,87 @@ export function SettingsClient({ initialSettings, courts }: Props) {
                     style={{ width: '100%', height: '40px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0 12px', fontSize: '13px', background: 'var(--color-surface)', color: 'var(--color-text-primary)', boxSizing: 'border-box' }} />
                   <span style={{ fontSize: '10px', color: 'var(--color-text-disabled)', marginTop: '4px', display: 'block' }}>Default calendar event block size.</span>
                 </div>
+              </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                    Hourly Price (₱ PHP)
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '13px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>₱</span>
-                    <input type="number" value={bookingPrice} onChange={(e) => setBookingPrice(e.target.value)} required min="0" step="0.01"
-                      style={{ width: '100%', height: '40px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0 12px 0 28px', fontSize: '13px', background: 'var(--color-surface)', color: 'var(--color-text-primary)', boxSizing: 'border-box' }} />
+              {/* Daytime / Nighttime Pricing */}
+              <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Clock size={14} color="var(--color-primary)" />
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--color-text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Daytime &amp; Nighttime Pricing
+                  </span>
+                </div>
+
+                {/* Preview banner */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #fffbeb 0%, #eff6ff 100%)',
+                  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
+                  padding: '10px 14px', fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.7
+                }}>
+                  🌤️ <strong style={{ color: '#d97706' }}>Daytime</strong>: {
+                    (() => {
+                      const s = parseInt(daytimeStartHour), e = parseInt(daytimeEndHour)
+                      const fmt = (h: number) => h === 0 ? '12:00 AM' : h < 12 ? `${h}:00 AM` : h === 12 ? '12:00 PM' : `${h - 12}:00 PM`
+                      return `${fmt(s)} – ${fmt(e)}`
+                    })()
+                  } → <strong style={{ color: '#d97706' }}>₱{daytimePrice}/hr</strong>
+                  {'  '}🌙 <strong style={{ color: '#6366f1' }}>Nighttime</strong>: all other hours → <strong style={{ color: '#6366f1' }}>₱{nighttimePrice}/hr</strong>
+                </div>
+
+                {/* Daytime row */}
+                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#92400e', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    🌤️ Daytime Period
                   </div>
-                  <span style={{ fontSize: '10px', color: 'var(--color-text-disabled)', marginTop: '4px', display: 'block' }}>Cost charged per court hour.</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }} className="tcc-pricing-row">
+                    <div>
+                      <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>Start Hour</label>
+                      <select value={daytimeStartHour} onChange={e => setDaytimeStartHour(e.target.value)}
+                        style={{ width: '100%', height: '38px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0 8px', fontSize: '12px', background: 'var(--color-surface)', color: 'var(--color-text-primary)', cursor: 'pointer', boxSizing: 'border-box' }}>
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <option key={i} value={i.toString()}>
+                            {i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i - 12}:00 PM`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>End Hour</label>
+                      <select value={daytimeEndHour} onChange={e => setDaytimeEndHour(e.target.value)}
+                        style={{ width: '100%', height: '38px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0 8px', fontSize: '12px', background: 'var(--color-surface)', color: 'var(--color-text-primary)', cursor: 'pointer', boxSizing: 'border-box' }}>
+                        {Array.from({ length: 24 }, (_, i) => i + 1).map(i => (
+                          <option key={i} value={i.toString()}>
+                            {i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : i === 24 ? '12:00 AM (Next Day)' : `${i - 12}:00 PM`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>Price / Hour (₱)</label>
+                      <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', fontWeight: 700, color: '#d97706' }}>₱</span>
+                        <input type="number" value={daytimePrice} onChange={e => setDaytimePrice(e.target.value)} required min="0" step="0.01"
+                          style={{ width: '100%', height: '38px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0 10px 0 24px', fontSize: '12px', background: 'var(--color-surface)', color: 'var(--color-text-primary)', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nighttime row */}
+                <div style={{ background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#4338ca', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    🌙 Nighttime Period <span style={{ fontSize: '10px', fontWeight: 600, color: '#6366f1', marginLeft: '4px' }}>(all hours outside daytime)</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px', maxWidth: '200px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>Price / Hour (₱)</label>
+                      <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', fontWeight: 700, color: '#6366f1' }}>₱</span>
+                        <input type="number" value={nighttimePrice} onChange={e => setNighttimePrice(e.target.value)} required min="0" step="0.01"
+                          style={{ width: '100%', height: '38px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0 10px 0 24px', fontSize: '12px', background: 'var(--color-surface)', color: 'var(--color-text-primary)', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
