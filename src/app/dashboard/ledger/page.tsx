@@ -28,6 +28,19 @@ export default async function LedgerPage({ searchParams }: PageProps) {
 
   const isAdminOrStaff = user.role === 'ADMIN' || user.role === 'STAFF'
 
+  // Calculate range filter date threshold
+  let dateFilter = undefined
+  const now = new Date()
+  if (range === '48h') {
+    dateFilter = new Date(now.getTime() - 48 * 3600 * 1000)
+  } else if (range === '1m') {
+    dateFilter = new Date(now.getTime() - 30 * 24 * 3600 * 1000)
+  } else if (range === '3m') {
+    dateFilter = new Date(now.getTime() - 90 * 24 * 3600 * 1000)
+  } else if (range === '1y') {
+    dateFilter = new Date(now.getTime() - 365 * 24 * 3600 * 1000)
+  }
+
   // Fetch transactions based on role
   let transactions = []
   if (isAdminOrStaff) {
@@ -48,11 +61,11 @@ export default async function LedgerPage({ searchParams }: PageProps) {
     })
   }
 
-  // Calculate income stats (from cash TOPUPs minus refunds) for admin dashboard
+  // Calculate income stats (from cash TOPUPs and CASH_TOPUPs) for admin dashboard
   let stats = { day: 0, week: 0, month: 0, year: 0 }
   if (isAdminOrStaff) {
     const allStatsTransactions = await db.transaction.findMany({
-      where: { type: { in: ['TOPUP', 'CASH_TOPUP', 'REFUND'] } }
+      where: { type: { in: ['TOPUP', 'CASH_TOPUP'] } }
     })
 
     const now = new Date()
@@ -68,7 +81,7 @@ export default async function LedgerPage({ searchParams }: PageProps) {
 
     for (const t of allStatsTransactions) {
       const tTime = t.createdAt.getTime()
-      const amt = t.type === 'REFUND' ? -Number(t.amount) : Number(t.amount)
+      const amt = Number(t.amount)
       if (tTime >= startOfToday) dSum += amt
       if (tTime >= startOfWeek) wSum += amt
       if (tTime >= startOfMonth) mSum += amt
@@ -76,19 +89,6 @@ export default async function LedgerPage({ searchParams }: PageProps) {
     }
 
     stats = { day: dSum, week: wSum, month: mSum, year: ySum }
-  }
-
-  // Calculate range filter date threshold
-  let dateFilter = undefined
-  const now = new Date()
-  if (range === '48h') {
-    dateFilter = new Date(now.getTime() - 48 * 3600 * 1000)
-  } else if (range === '1m') {
-    dateFilter = new Date(now.getTime() - 30 * 24 * 3600 * 1000)
-  } else if (range === '3m') {
-    dateFilter = new Date(now.getTime() - 90 * 24 * 3600 * 1000)
-  } else if (range === '1y') {
-    dateFilter = new Date(now.getTime() - 365 * 24 * 3600 * 1000)
   }
 
   // Query Bookings Ledger

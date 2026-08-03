@@ -91,11 +91,10 @@ export default async function AnalyticsPage() {
 
   for (const tx of allTransactions) {
     const isTopup = tx.type === 'TOPUP' || tx.type === 'CASH_TOPUP'
-    const isRefund = tx.type === 'REFUND'
-    if (!isTopup && !isRefund) continue
+    if (!isTopup) continue
 
     const txTime = tx.createdAt.getTime()
-    const amt = isRefund ? -Number(tx.amount) : Number(tx.amount)
+    const amt = Number(tx.amount)
 
     revenueLifetime += amt
     if (txTime >= startOfToday.getTime()) revenueToday += amt
@@ -114,13 +113,11 @@ export default async function AnalyticsPage() {
     const dayAmount = allTransactions
       .filter(tx => {
         const isTopup = tx.type === 'TOPUP' || tx.type === 'CASH_TOPUP'
-        const isRefund = tx.type === 'REFUND'
         const txTime = tx.createdAt.getTime()
-        return (isTopup || isRefund) && txTime >= dayStart && txTime < dayEnd
+        return isTopup && txTime >= dayStart && txTime < dayEnd
       })
       .reduce((sum, tx) => {
-        const amt = tx.type === 'REFUND' ? -Number(tx.amount) : Number(tx.amount)
-        return sum + amt
+        return sum + Number(tx.amount)
       }, 0)
 
     const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
