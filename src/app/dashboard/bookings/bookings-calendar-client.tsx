@@ -176,7 +176,6 @@ export function BookingsCalendarClient({ bookingPricePerHour, daytimePrice, dayt
   const [playerSearch, setPlayerSearch] = useState('')
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerItem | null>(null)
   const [guestName, setGuestName] = useState('')
-  const [guestAmountPaid, setGuestAmountPaid] = useState('')
 
   const filteredCourts = selectedCourt === 'all' ? courts : courts.filter(c => c.id === selectedCourt)
 
@@ -233,7 +232,6 @@ export function BookingsCalendarClient({ bookingPricePerHour, daytimePrice, dayt
     setPlayerSearch('')
     setSelectedPlayer(null)
     setGuestName('')
-    setGuestAmountPaid('')
     setIsModalOpen(true)
   }
 
@@ -248,7 +246,6 @@ export function BookingsCalendarClient({ bookingPricePerHour, daytimePrice, dayt
     setPlayerSearch('')
     setSelectedPlayer(null)
     setGuestName('')
-    setGuestAmountPaid('')
     setIsModalOpen(true)
   }
 
@@ -342,7 +339,6 @@ export function BookingsCalendarClient({ bookingPricePerHour, daytimePrice, dayt
         // No-account walk-in guest booking
         const result = await adminNoAccountBookingAction({
           guestName: guestName.trim(),
-          amountPaid: parseFloat(guestAmountPaid) || 0,
           courtId: modalCourtId,
           startTimes: startTimesISO
         })
@@ -350,7 +346,6 @@ export function BookingsCalendarClient({ bookingPricePerHour, daytimePrice, dayt
           setMessage({ success: true, text: `Booking recorded for walk-in guest "${guestName.trim()}"!` })
           setSelectedDate(new Date(modalDate + 'T00:00:00'))
           setGuestName('')
-          setGuestAmountPaid('')
         } else {
           setMessage({ success: false, text: result.error || 'Failed to record guest booking.' })
         }
@@ -1276,7 +1271,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, daytimePrice, dayt
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       type="button"
-                      onClick={() => { setAdminBookingMode('openplay'); setSelectedPlayer(null); setPlayerSearch(''); setGuestName(''); setGuestAmountPaid(''); }}
+                      onClick={() => { setAdminBookingMode('openplay'); setSelectedPlayer(null); setPlayerSearch(''); setGuestName(''); }}
                       style={{
                         flex: 1, height: '38px', borderRadius: 'var(--radius-md)',
                         border: adminBookingMode === 'openplay' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
@@ -1291,7 +1286,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, daytimePrice, dayt
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setAdminBookingMode('player_booking'); setModalCourtIds([]); setGuestName(''); setGuestAmountPaid(''); }}
+                      onClick={() => { setAdminBookingMode('player_booking'); setModalCourtIds([]); setGuestName(''); }}
                       style={{
                         flex: 1, height: '38px', borderRadius: 'var(--radius-md)',
                         border: adminBookingMode === 'player_booking' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
@@ -1337,8 +1332,8 @@ export function BookingsCalendarClient({ bookingPricePerHour, daytimePrice, dayt
                     <span>Walk-in guest with <strong>no PaddleYard account</strong>. This booking will be recorded for tracking only.</span>
                   </div>
 
-                  {/* Player Full Name + Amount Paid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  {/* Player Full Name (full width) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
                     <div>
                       <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Player Full Name *</label>
                       <input
@@ -1346,24 +1341,6 @@ export function BookingsCalendarClient({ bookingPricePerHour, daytimePrice, dayt
                         placeholder="e.g. Juan dela Cruz"
                         value={guestName}
                         onChange={e => setGuestName(e.target.value)}
-                        style={{
-                          width: '100%', height: '38px', padding: '0 12px',
-                          borderRadius: 'var(--radius-md)',
-                          border: '1px solid var(--color-border)',
-                          background: 'var(--color-surface)', color: 'var(--color-text-primary)',
-                          fontSize: '13px', fontWeight: 500, outline: 'none', boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Amount Paid (₱)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={guestAmountPaid}
-                        onChange={e => setGuestAmountPaid(e.target.value)}
                         style={{
                           width: '100%', height: '38px', padding: '0 12px',
                           borderRadius: 'var(--radius-md)',
@@ -1863,12 +1840,7 @@ export function BookingsCalendarClient({ bookingPricePerHour, daytimePrice, dayt
                           <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{guestName.trim()}</span>
                         </div>
                       )}
-                      {isNoAccountMode && guestAmountPaid && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                          <span>Amount Paid</span>
-                          <span style={{ fontWeight: 700, color: '#10b981' }}>₱{parseFloat(guestAmountPaid || '0').toFixed(2)}</span>
-                        </div>
-                      )}
+
                       {isPlayerBookingMode && selectedPlayer && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                           <span>Player Balance</span>

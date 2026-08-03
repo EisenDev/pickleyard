@@ -1952,59 +1952,89 @@ export async function expirePromoCreditsAction(params: {
 
 // ── No-Account Player Booking ───────────────────────────────────────────────────
 // Books a court slot for a walk-in player who has no PaddleYard account.
-// Creates bookings under the ADMIN's userId (as proxy), marks them PAID,
-// and records a CASH_TOPUP transaction for amount-paid tracking.
+// Creates a placeholder user record, marks the booking PAID, and records a CASH_TOPUP.
 export async function adminNoAccountBookingAction(params: {
   guestName: string
-  amountPaid: number
+  amountPaid?: number
   courtId: string
   startTimes: string[]
 }): Promise<ActionState> {
   const admin = await checkAdmin()
   if (!admin) return { success: false, error: 'Unauthorized.' }
 
-  const { guestName, amountPaid, courtId, startTimes } = params
+  const { guestName, courtId, startTimes } = params
 
   if (!guestName.trim()) return { success: false, error: 'Player name is required.' }
   if (!courtId) return { success: false, error: 'Court is required.' }
   if (startTimes.length === 0) return { success: false, error: 'At least one time slot is required.' }
-  if (amountPaid < 0) return { success: false, error: 'Amount paid cannot be negative.' }
 
   try {
     const court = await db.court.findUnique({ where: { id: courtId } })
     if (!court) return { success: false, error: 'Court not found.' }
 
-    const pricePerSlot = court.type === 'ROOFTOP' ? 300 : 250
+    // Fetch daytime/nighttime pricing settings
+    const priceSettings = await db.systemSetting.findMany({
+      where: { key: { in: ['booking_price_per_hour', 'booking_daytime_price', 'booking_daytime_start_hour', 'booking_daytime_end_hour', 'booking_nighttime_price'] } }
+    })
+    const psMap: Record<string, string> = {}
+    for (const s of priceSettings) psMap[s.key] = s.value
+
+    const daytimeStart = parseInt(psMap.booking_daytime_start_hour ?? '8')
+    const daytimeEnd = parseInt(psMap.booking_daytime_end_hour ?? '17')
+    const daytimePrice = parseFloat(psMap.booking_daytime_price ?? psMap.booking_price_per_hour ?? '250')
+    const nighttimePrice = parseFloat(psMap.booking_nighttime_price ?? psMap.booking_price_per_hour ?? '300')
+
+    const getRateForHour = (hour: number): number => {
+      const base = (hour >= daytimeStart && hour < daytimeEnd) ? daytimePrice : nighttimePrice
+      return court.type === 'ROOFTOP' ? 300.00 : base
+    }
+
+    const cleanName = guestName.trim().replace(/[^a-zA-Z0-9 ]/g, '')
+    const emailSlug = cleanName.toLowerCase().replace(/\s+/g, '-')
+    const guestEmail = `guest-${emailSlug}-${Math.random().toString(36).substring(2, 7)}@paddleyard.guest`
 
     await db.$transaction(async (tx) => {
-      // Create one booking per time slot
+      // 1. Create the placeholder guest User record (with PLAYER role so it displays as standard Player booking)
+      const guestUser = await tx.user.create({
+        data: {
+          name: guestName.trim(),
+          email: guestEmail,
+          role: 'PLAYER',
+          credits: 0
+        }
+      })
+
+      let computedTotal = 0
+
+      // 2. Create bookings
       for (const startTimeISO of startTimes) {
         const startTime = new Date(startTimeISO)
         const endTime = new Date(startTime.getTime() + 60 * 60 * 1000)
+        const slotHour = startTime.getHours()
+        const priceForSlot = getRateForHour(slotHour)
+        computedTotal += priceForSlot
 
         await tx.booking.create({
           data: {
-            userId: admin.id,
+            userId: guestUser.id,
             courtId,
             startTime,
             endTime,
             status: 'PAID',
-            price: pricePerSlot,
+            price: priceForSlot,
           }
         })
       }
 
-      // Record a CASH transaction for tracking
-      if (amountPaid > 0) {
-        await tx.transaction.create({
-          data: {
-            userId: admin.id,
-            amount: amountPaid,
-            type: 'CASH_TOPUP',
-            reference: `NO-ACCOUNT|GUEST:${guestName.trim()}|SLOTS:${startTimes.length}|COURT:${court.name}`
-          }
-        })
-      }
+      // 3. Record a CASH transaction for tracking, associated with the guest user
+      await tx.transaction.create({
+        data: {
+          userId: guestUser.id,
+          amount: computedTotal,
+          type: 'CASH_TOPUP',
+          reference: `NO-ACCOUNT|GUEST:${guestName.trim()}|SLOTS:${startTimes.length}|COURT:${court.name}`
+        }
+      })
     })
 
     revalidatePath('/dashboard/bookings')
@@ -2014,3 +2044,4 @@ export async function adminNoAccountBookingAction(params: {
     return { success: false, error: error.message || 'Failed to create no-account booking.' }
   }
 }
+
