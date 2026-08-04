@@ -826,18 +826,41 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Copyright */}
+        {/* Copyright & Footprint */}
         <div
           style={{
-            textAlign: 'center',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
             fontSize: 12,
             color: 'var(--color-text-secondary)',
             marginTop: 32,
             borderTop: '1px solid var(--color-border)',
             paddingTop: 16
           }}
+          className="footer-bottom-flex"
         >
-          © 2026 PickleYard. All rights reserved.
+          <div>© 2026 PickleYard. All rights reserved.</div>
+          <div>
+            Built & Crafted by{' '}
+            <a
+              href="https://novaryn.tech/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: 'var(--color-primary)',
+                fontWeight: 700,
+                textDecoration: 'none',
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+            >
+              Novaryn
+            </a>
+          </div>
         </div>
       </footer>
 
@@ -1593,6 +1616,11 @@ export default function LandingPage() {
           .footer-grid {
             grid-template-columns: 1fr;
             gap: 30px;
+          }
+          .footer-bottom-flex {
+            flex-direction: column;
+            gap: 8px;
+            text-align: center;
           }
         }
       `}</style>
