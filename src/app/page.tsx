@@ -294,76 +294,37 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right Hero / Immersive floating cards overlaid */}
+          {/* Right Hero / Compact court finder card */}
           <div className="hero-right-visual animate-fade-up">
-            {/* Floating Card 1: NEXT UP (Top Right) - Dark Glassmorphism */}
-            <div className="float-card-next" style={{
-              background: 'linear-gradient(135deg, rgba(2, 40, 42, 0.8) 0%, rgba(1, 20, 21, 0.9) 100%)', 
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255, 255, 255, 0.12)', 
-              borderRadius: '20px',
-              padding: '20px', 
-              width: '230px', 
-              boxShadow: '0 20px 48px rgba(0,0,0,0.3)',
-              marginBottom: '20px',
-              color: 'white'
-            }}>
-              <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>NEXT UP</span>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                <strong style={{ fontSize: '15px', color: 'white', fontWeight: 800 }}>Court 3</strong>
-                <span style={{ fontSize: '9px', fontWeight: 800, background: 'rgba(0, 230, 118, 0.12)', color: '#00e676', border: '1px solid rgba(0, 230, 118, 0.25)', padding: '3px 8px', borderRadius: '6px' }}>OPEN PLAY</span>
-              </div>
-              <div style={{ marginTop: '16px' }}>
-                <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.5)' }}>Start in</span>
-                <div style={{ fontSize: '28px', fontWeight: 900, color: 'white', marginTop: '2px', letterSpacing: '-0.02em' }}>05:30</div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.5)' }}>
-                <span>Your position</span>
-                <strong style={{ color: '#00e676', fontWeight: 800 }}>#2</strong>
-              </div>
-            </div>
+            <div className="hero-booking-card">
+              <h2>Find Your Court</h2>
+              <p>Choose when you want to play.</p>
 
-            {/* Floating Card 2: TODAY SLOT BOOKINGS (Bottom Right) - Light Glassmorphism */}
-            <div className="float-card-slots" style={{
-              background: 'rgba(255, 255, 255, 0.92)', 
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255, 255, 255, 0.6)', 
-              borderRadius: '20px',
-              padding: '22px 20px', 
-              width: '270px', 
-              boxShadow: '0 20px 48px rgba(0,0,0,0.18)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '8px', marginBottom: '10px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>TODAY</span>
-                <span style={{ fontSize: '10.5px', fontWeight: 800, color: 'var(--color-text-primary)' }}>May 25, 2026</span>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-                {[
-                  { time: '06:00 PM – 07:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' },
-                  { time: '07:00 PM – 08:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' },
-                  { time: '08:00 PM – 09:00 PM', status: 'Filling Fast', color: '#f59e0b', bg: '#fffbeb' },
-                  { time: '09:00 PM – 10:00 PM', status: 'Available', color: '#10b981', bg: '#ecfdf5' }
-                ].map((s, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10.5px' }}>
-                    <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{s.time}</span>
-                    <span style={{ fontSize: '8.5px', fontWeight: 800, background: s.bg, color: s.color, padding: '2px 6px', borderRadius: '4px' }}>{s.status}</span>
-                  </div>
-                ))}
+              <div className="hero-booking-tabs" role="group" aria-label="Choose booking day">
+                <button type="button" className="active">Today</button>
+                <button type="button">Tomorrow</button>
               </div>
 
-              <Link href={session ? "/dashboard/bookings" : "/signup"} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                height: '36px', background: 'var(--color-primary)', color: 'white',
-                borderRadius: '8px', fontSize: '11px', fontWeight: 800, textDecoration: 'none',
-                boxShadow: '0 4px 12px rgba(0, 124, 128, 0.2)',
-                transition: 'background 0.2s'
-              }}>
-                <span>Book Now</span>
-                <span>→</span>
+              <div className="hero-booking-fields">
+                <div>
+                  <span>Date</span>
+                  <strong><Calendar size={14} />Aug 10</strong>
+                </div>
+                <div>
+                  <span>Time</span>
+                  <strong><Clock size={14} />6:00 PM</strong>
+                </div>
+                <div>
+                  <span>Court</span>
+                  <strong>Any Court</strong>
+                </div>
+              </div>
+
+              <Link href={session ? "/dashboard/bookings" : "/signup"} className="hero-check-availability">
+                Check Availability
               </Link>
+
+              <span className="hero-booking-note">4 indoor courts • Open daily</span>
             </div>
           </div>
         </div>
@@ -1039,7 +1000,11 @@ export default function LandingPage() {
 
         /* Hero Layout */
         .hero-section {
-          background: linear-gradient(135deg, rgba(3, 49, 51, 0.96) 0%, rgba(1, 32, 34, 0.88) 100%), url('/court_illustration.jpg');
+          background:
+            radial-gradient(circle at 66% 34%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 24%, transparent 48%),
+            linear-gradient(180deg, rgba(5, 8, 12, 0.18) 0%, rgba(5, 8, 12, 0.24) 42%, rgba(5, 8, 12, 0.72) 100%),
+            linear-gradient(90deg, rgba(7, 10, 15, 0.92) 0%, rgba(7, 10, 15, 0.76) 28%, rgba(7, 10, 15, 0.26) 56%, rgba(7, 10, 15, 0.14) 100%),
+            url('/paddleyard-hero-section.jpg');
           background-size: cover;
           background-position: center;
           background-attachment: fixed;
@@ -1051,6 +1016,17 @@ export default function LandingPage() {
           position: relative;
           overflow: hidden;
           border-bottom: 1px solid var(--color-border);
+        }
+
+        .hero-section::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background:
+            radial-gradient(ellipse at 18% 52%, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0.12) 34%, transparent 58%),
+            radial-gradient(ellipse at 78% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 34%);
+          z-index: 1;
         }
 
         .hero-section .badge-courts {
@@ -1091,6 +1067,13 @@ export default function LandingPage() {
           gap: 20px;
           position: relative;
           z-index: 10;
+          text-shadow: 0 2px 12px rgba(0, 0, 0, 0.38);
+        }
+
+        .hero-left-content .hero-actions,
+        .hero-left-content .hero-features-flex,
+        .hero-left-content .badge-courts {
+          text-shadow: none;
         }
 
         .badge-courts {
@@ -1150,11 +1133,120 @@ export default function LandingPage() {
           flex-direction: column;
           align-items: flex-end;
           justify-content: center;
-          gap: 24px;
           position: relative;
           width: 100%;
           min-height: 480px;
           z-index: 10;
+        }
+
+        .hero-booking-card {
+          width: 240px;
+          background: rgba(255, 255, 255, 0.96);
+          border: 1px solid rgba(255, 255, 255, 0.72);
+          border-radius: 18px;
+          padding: 22px 18px 18px;
+          box-shadow: 0 22px 54px rgba(0, 0, 0, 0.22);
+          color: var(--color-text-primary);
+        }
+
+        .hero-booking-card h2 {
+          margin: 0;
+          text-align: center;
+          font-size: 18px;
+          font-weight: 900;
+          letter-spacing: -0.01em;
+        }
+
+        .hero-booking-card p {
+          margin: 4px 0 16px;
+          color: var(--color-text-secondary);
+          text-align: center;
+          font-size: 11px;
+          font-weight: 600;
+        }
+
+        .hero-booking-tabs {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          border: 1px solid var(--color-border);
+          border-radius: 8px;
+          overflow: hidden;
+          margin-bottom: 14px;
+        }
+
+        .hero-booking-tabs button {
+          height: 32px;
+          border: 0;
+          background: white;
+          color: var(--color-text-primary);
+          font-size: 10px;
+          font-weight: 850;
+          cursor: pointer;
+        }
+
+        .hero-booking-tabs button.active {
+          background: var(--color-primary);
+          color: white;
+        }
+
+        .hero-booking-fields {
+          display: grid;
+          gap: 8px;
+        }
+
+        .hero-booking-fields div {
+          min-height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          border: 1px solid var(--color-border);
+          border-radius: 8px;
+          background: white;
+          padding: 0 10px;
+        }
+
+        .hero-booking-fields span {
+          color: var(--color-text-secondary);
+          font-size: 10px;
+          font-weight: 750;
+        }
+
+        .hero-booking-fields strong {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          color: var(--color-text-primary);
+          font-size: 11px;
+          font-weight: 850;
+        }
+
+        .hero-booking-fields svg {
+          color: var(--color-text-secondary);
+        }
+
+        .hero-check-availability {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 36px;
+          margin-top: 14px;
+          border-radius: 8px;
+          background: var(--color-accent);
+          color: white;
+          font-size: 12px;
+          font-weight: 900;
+          text-decoration: none;
+          box-shadow: 0 8px 18px rgba(244, 124, 0, 0.22);
+        }
+
+        .hero-booking-note {
+          display: block;
+          margin-top: 12px;
+          text-align: center;
+          color: var(--color-primary);
+          font-size: 10.5px;
+          font-weight: 850;
         }
 
         /* Features Section */
@@ -1426,23 +1518,6 @@ export default function LandingPage() {
           margin-bottom: 64px;
         }
 
-        /* Float card animations */
-        .float-card-next {
-          animation: float-next 6s ease-in-out infinite;
-        }
-        .float-card-slots {
-          animation: float-slots 6s ease-in-out infinite;
-          animation-delay: 1.5s;
-        }
-        @keyframes float-next {
-          0%, 100% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-8px) scale(1.02); }
-        }
-        @keyframes float-slots {
-          0%, 100% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-6px) scale(1.01); }
-        }
-
         /* ── Responsive media queries ── */
         @media (max-width: 1120px) {
           .features-container-grid {
@@ -1470,14 +1545,10 @@ export default function LandingPage() {
             max-width: 600px;
             margin: 0 auto;
             min-height: auto;
-            gap: 16px;
           }
-          .float-card-next, .float-card-slots {
-            position: static !important;
-            width: 100% !important;
+          .hero-booking-card {
+            width: 100%;
             max-width: 320px;
-            margin: 0 !important;
-            animation: none !important;
           }
           .hero-background-image {
             width: 100%;
